@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 class LoginScreen extends StatelessWidget {
   const LoginScreen({super.key});
@@ -13,7 +14,11 @@ class LoginScreen extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.center,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const Icon(Icons.pets, size: 80, color: Colors.orange),
+              Icon(
+                Icons.pets,
+                size: 80,
+                color: Theme.of(context).colorScheme.primary,
+              ),
               const SizedBox(height: 24),
               const Text(
                 'RescueNet',
@@ -50,6 +55,17 @@ class LoginScreen extends StatelessWidget {
                 child: const Text(
                   'Iniciar Sesión',
                   style: TextStyle(fontSize: 16),
+                ),
+              ),
+              const SizedBox(height: 16),
+              TextButton(
+                onPressed: () {
+                  // context.push apila la nueva pantalla sobre el Login
+                  context.push('/register');
+                },
+                child: const Text(
+                  '¿No tienes cuenta? Regístrate aquí',
+                  style: TextStyle(fontWeight: FontWeight.bold),
                 ),
               ),
             ],
