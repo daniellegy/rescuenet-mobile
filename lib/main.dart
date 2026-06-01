@@ -1,37 +1,33 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-// Aquí está el cambio: usamos 'routing' en lugar de 'router'
+// Cambiamos la importación para usar el provider
 import 'core/routing/app_router.dart';
 
 void main() {
-  runApp(
-    // ProviderScope es obligatorio para que Riverpod funcione en toda la app
-    const ProviderScope(child: RescueNetApp()),
-  );
+  runApp(const ProviderScope(child: RescueNetApp()));
 }
 
-class RescueNetApp extends StatelessWidget {
+// Cambiamos StatelessWidget por ConsumerWidget para leer providers
+class RescueNetApp extends ConsumerWidget {
   const RescueNetApp({super.key});
 
-  // ... (código superior sin cambios)
-
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    // Escuchamos nuestro nuevo routerProvider
+    final appRouter = ref.watch(routerProvider);
+
     return MaterialApp.router(
       title: 'RescueNet',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(
-          seedColor:
-              Colors.redAccent, // Rojo vivo como base para calcular el resto
-          primary: const Color(0xFFD32F2F), // Rojo fuerte estándar para botones
-          secondary: const Color(
-            0xFF722F37,
-          ), // Rojo vino para detalles secundarios
+          seedColor: Colors.redAccent,
+          primary: const Color(0xFFD32F2F),
+          secondary: const Color(0xFF722F37),
         ),
         useMaterial3: true,
       ),
-      routerConfig: appRouter,
+      routerConfig: appRouter, // Aquí pasamos el router en vivo
     );
   }
 }
