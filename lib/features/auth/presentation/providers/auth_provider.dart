@@ -1,9 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../../core/network/dio_client.dart'; // Importamos Dio
 
-// 1. Definimos los roles basados en tu esquema de base de datos
 enum AppRole { ninguno, cliente, voluntario, refugio, superadmin }
 
-// 2. Definimos la "Memoria" de la sesión
 class AuthState {
   final bool isLogged;
   final AppRole role;
@@ -11,29 +10,46 @@ class AuthState {
   AuthState({this.isLogged = false, this.role = AppRole.ninguno});
 }
 
-// 3. Creamos el "Cerebro" moderno usando Notifier (Riverpod 2.0+)
+// 1. Modificamos el Notifier para que reciba el Ref de Riverpod
 class AuthNotifier extends Notifier<AuthState> {
   @override
   AuthState build() {
-    // Este método define el estado inicial al abrir la app
     return AuthState(isLogged: false, role: AppRole.ninguno);
   }
 
-  // Simulación de inicio de sesión
+  // 2. Modificamos la función de login
   Future<void> login(String email, String password) async {
-    await Future.delayed(const Duration(seconds: 2));
+    try {
+      // Obtenemos el cliente Dio desde Riverpod
+      final dio = ref.read(dioProvider);
 
-    // Asignamos el nuevo estado directamente
-    state = AuthState(isLogged: true, role: AppRole.voluntario);
+      // Hacemos la petición POST al servidor simulado
+      print('Intentando conectar con el servidor web...');
+
+      // ESTA LÍNEA FALLARÁ a propósito porque el backend aún no existe,
+      // pero es el código exacto que usarás cuando esté listo.
+      /*
+      final response = await dio.post('/login', data: {
+        'email': email,
+        'password': password,
+      });
+      */
+
+      // Simulamos la carga temporalmente mientras tus compañeros web terminan
+      await Future.delayed(const Duration(seconds: 2));
+
+      state = AuthState(isLogged: true, role: AppRole.voluntario);
+    } catch (e) {
+      print('Error en el login: $e');
+      // Aquí podrías cambiar el estado para mostrar un mensaje de error en la UI
+    }
   }
 
-  // Función para cerrar sesión
   void logout() {
     state = AuthState(isLogged: false, role: AppRole.ninguno);
   }
 }
 
-// 4. Exponemos este cerebro usando NotifierProvider
 final authProvider = NotifierProvider<AuthNotifier, AuthState>(() {
   return AuthNotifier();
 });
