@@ -1,51 +1,84 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../../core/network/dio_client.dart'; // Importamos Dio
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import '../../../../core/network/dio_client.dart';
 
-enum AppRole { ninguno, cliente, voluntario, refugio, superadmin }
+enum AppRole { ninguno, reportante, voluntario, refugio, superadmin }
 
 class AuthState {
   final bool isLogged;
   final AppRole role;
-
   AuthState({this.isLogged = false, this.role = AppRole.ninguno});
 }
 
-// 1. Modificamos el Notifier para que reciba el Ref de Riverpod
 class AuthNotifier extends Notifier<AuthState> {
+  final _storage = const FlutterSecureStorage();
+
   @override
   AuthState build() {
     return AuthState(isLogged: false, role: AppRole.ninguno);
   }
 
-  // 2. Modificamos la función de login
+  // Función interna para mapear y guardar estado
+  Future<void> _processAuthResponse(Map<String, dynamic> data) async {
+    final token = data['token'];
+    final int rolId = data['usuario']['rol_id'];
+
+    // Guardar el token en almacenamiento seguro
+    await _storage.write(key: 'jwt_token', value: token);
+
+    AppRole userRole = AppRole.ninguno;
+    if (rolId == 1) userRole = AppRole.reportante;
+    if (rolId == 2) userRole = AppRole.voluntario;
+
+    state = AuthState(isLogged: true, role: userRole);
+  }
+
   Future<void> login(String email, String password) async {
     try {
-      // Obtenemos el cliente Dio desde Riverpod
       final dio = ref.read(dioProvider);
+      final response = await dio.post(
+        '/auth/login',
+        data: {'email': email, 'password': password},
+      );
 
-      // Hacemos la petición POST al servidor simulado
-      print('Intentando conectar con el servidor web...');
-
-      // ESTA LÍNEA FALLARÁ a propósito porque el backend aún no existe,
-      // pero es el código exacto que usarás cuando esté listo.
-      /*
-      final response = await dio.post('/login', data: {
-        'email': email,
-        'password': password,
-      });
-      */
-
-      // Simulamos la carga temporalmente mientras tus compañeros web terminan
-      await Future.delayed(const Duration(seconds: 2));
-
-      state = AuthState(isLogged: true, role: AppRole.voluntario);
+      if (response.statusCode == 200) {
+        await _processAuthResponse(response.data);
+      }
     } catch (e) {
-      print('Error en el login: $e');
-      // Aquí podrías cambiar el estado para mostrar un mensaje de error en la UI
+      throw Exception('Credenciales incorrectas');
     }
   }
 
-  void logout() {
+  Future<void> register({
+    required String nombre,
+    required String telefono,
+    required String email,
+    required String password,
+    required int rolId,
+  }) async {
+    try {
+      final dio = ref.read(dioProvider);
+      final response = await dio.post(
+        '/auth/register',
+        data: {
+          'nombre_completo': nombre,
+          'telefono': telefono,
+          'email': email,
+          'password': password,
+          'rol_id': rolId,
+        },
+      );
+
+      if (response.statusCode == 201) {
+        await _processAuthResponse(response.data);
+      }
+    } catch (e) {
+      throw Exception('Error al registrar usuario');
+    }
+  }
+
+  Future<void> logout() async {
+    await _storage.delete(key: 'jwt_token');
     state = AuthState(isLogged: false, role: AppRole.ninguno);
   }
 }
