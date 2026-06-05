@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 // 10.0.2.2 es correcto para que el emulador de Android apunte a tu localhost
-const String baseUrl = 'http://10.0.2.2:3000/api';
+const String baseUrl = 'http://192.168.0.238:3000/api';
 
 class DioClient {
   final Dio _dio;
@@ -44,9 +44,10 @@ class DioClient {
           return handler.next(response);
         },
         onError: (DioException e, handler) {
-          print(
-            '❌ ERROR [${e.response?.statusCode}] => MENSAJE: ${e.response?.data}',
-          );
+          // Si el response es null, mostramos el tipo de error (ej. Timeout)
+          final statusCode = e.response?.statusCode ?? 'SIN CONEXIÓN';
+          final errorMessage = e.response?.data ?? e.message;
+          print('❌ ERROR [$statusCode] => MENSAJE: $errorMessage');
           return handler.next(e);
         },
       ),
