@@ -1,14 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:mask_text_input_formatter/mask_text_input_formatter.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart'; // Agrega esta línea
+import '../providers/auth_provider.dart'; // Agrega esta línea
 
-class RegisterScreen extends StatefulWidget {
+// Cambia StatefulWidget por ConsumerStatefulWidget
+class RegisterScreen extends ConsumerStatefulWidget {
   const RegisterScreen({super.key});
 
   @override
-  State<RegisterScreen> createState() => _RegisterScreenState();
+  ConsumerState<RegisterScreen> createState() => _RegisterScreenState();
 }
 
-class _RegisterScreenState extends State<RegisterScreen> {
+// Cambia State por ConsumerState
+class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   final _formKey = GlobalKey<FormState>();
 
   final _nameController = TextEditingController();
