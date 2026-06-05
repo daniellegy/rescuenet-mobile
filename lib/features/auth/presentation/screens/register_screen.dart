@@ -217,16 +217,27 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
                 // BOTÓN DE REGISTRO
                 FilledButton(
-                  onPressed: () {
+                  onPressed: () async {
                     if (_formKey.currentState!.validate()) {
-                      // Si pasa las validaciones, imprimimos en consola
-                      print('✅ Formulario perfecto:');
-                      print('Nombre: ${_nameController.text}');
-                      print(
-                        'Teléfono crudo (sin formato): ${_phoneMaskFormatter.getUnmaskedText()}',
-                      );
-                      print('Correo: ${_emailController.text}');
-                      print('Rol: $_selectedRole');
+                      try {
+                        await ref
+                            .read(authProvider.notifier)
+                            .register(
+                              nombre: _nameController.text,
+                              telefono: _phoneMaskFormatter.getUnmaskedText(),
+                              email: _emailController.text,
+                              password: _passwordController.text,
+                              rolId: _selectedRole == 'Voluntario'
+                                  ? 2
+                                  : 1, // 1 es Reportante
+                            );
+                        // No necesitas usar GoRouter aquí porque el guardia de rutas
+                        // te redirigirá automáticamente al mapa al cambiar el authState.
+                      } catch (e) {
+                        ScaffoldMessenger.of(
+                          context,
+                        ).showSnackBar(SnackBar(content: Text(e.toString())));
+                      }
                     }
                   },
                   style: FilledButton.styleFrom(
