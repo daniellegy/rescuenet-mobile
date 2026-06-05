@@ -139,7 +139,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
         foregroundColor: Colors.white,
         elevation: 4,
         shape: const CircleBorder(), // Asegura que sea completamente redondo
-        child: const Icon(Icons.camera_alt, size: 28),
+        child: const Icon(Icons.add_a_photo, size: 28),
       ),
 
       // 3. La barra de navegación inferior con el diseño solicitado
