@@ -2,7 +2,6 @@ import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
-// 10.0.2.2 es correcto para que el emulador de Android apunte a tu localhost
 const String baseUrl = 'http://192.168.0.238:3000/api';
 
 class DioClient {
