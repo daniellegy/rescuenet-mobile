@@ -6,6 +6,7 @@ import '../../features/auth/presentation/providers/auth_provider.dart';
 import '../../features/auth/presentation/screens/login_screen.dart';
 import '../../features/auth/presentation/screens/register_screen.dart';
 import '../../features/map/presentation/screens/map_screen.dart'; // Importamos el destino
+import '../../features/auth/presentation/screens/create_report_screen.dart';
 
 // Ahora el router es un Provider para poder leer el AuthProvider
 final routerProvider = Provider<GoRouter>((ref) {
@@ -47,6 +48,18 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const RegisterScreen(),
       ),
       GoRoute(path: '/map', builder: (context, state) => const MapScreen()),
+      GoRoute(
+        path: '/create-report',
+        builder: (context, state) {
+          // Ahora extraemos lat, lng y la ruta de la imagen
+          final extra = state.extra as Map<String, dynamic>;
+          return CreateReportScreen(
+            lat: extra['lat'] as double,
+            lng: extra['lng'] as double,
+            imagePath: extra['imagePath'] as String,
+          );
+        },
+      ),
     ],
   );
 });
