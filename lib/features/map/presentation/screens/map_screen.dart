@@ -1,14 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart'; // Importante para la cámara
 import '../../../auth/presentation/providers/auth_provider.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:geolocator/geolocator.dart';
 
-const MAPBOX_ACCESS_TOKEN = 
-'pk.eyJ1IjoiZWR1NTEyIiwiYSI6ImNtcHZlNHgxZzIzdmQyc29oeXV2ZnVhNjQifQ.rPhYjFYEQYUKkdovcabpxQ';
+const MAPBOX_ACCESS_TOKEN =
+    'pk.eyJ1IjoiZWR1NTEyIiwiYSI6ImNtcHZlNHgxZzIzdmQyc29oeXV2ZnVhNjQifQ.rPhYjFYEQYUKkdovcabpxQ';
 
-// 1. Cambiamos ConsumerWidget por ConsumerStatefulWidget
 class MapScreen extends ConsumerStatefulWidget {
   const MapScreen({super.key});
 
@@ -16,11 +17,9 @@ class MapScreen extends ConsumerStatefulWidget {
   ConsumerState<MapScreen> createState() => _MapScreenState();
 }
 
-// 2. El estado ahora extiende de ConsumerState
 class _MapScreenState extends ConsumerState<MapScreen> {
   LatLng? myPosition;
 
-  // 3. Ahora sí podemos usar initState de forma segura
   @override
   void initState() {
     super.initState();
@@ -29,18 +28,15 @@ class _MapScreenState extends ConsumerState<MapScreen> {
 
   Future<Position> determinePosition() async {
     LocationPermission permission = await Geolocator.checkPermission();
-    
     if (permission == LocationPermission.denied) {
       permission = await Geolocator.requestPermission();
       if (permission == LocationPermission.denied) {
         return Future.error('Permisos de ubicación denegados');
       }
     }
-    
     if (permission == LocationPermission.deniedForever) {
       return Future.error('Permisos denegados permanentemente');
     }
-
     return await Geolocator.getCurrentPosition();
   }
 
@@ -55,25 +51,51 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     }
   }
 
+  // LÓGICA DE CAPTURA ÁGIL
+  Future<void> _takePhotoAndNavigate() async {
+    if (myPosition == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Esperando ubicación GPS...')),
+      );
+      return;
+    }
+
+    final picker = ImagePicker();
+    final pickedFile = await picker.pickImage(
+      source: ImageSource.camera,
+      imageQuality: 70,
+    );
+
+    if (pickedFile != null && mounted) {
+      // Navegamos al formulario pasando coordenadas Y la foto
+      context.push(
+        '/create-report',
+        extra: {
+          'lat': myPosition!.latitude,
+          'lng': myPosition!.longitude,
+          'imagePath': pickedFile.path,
+        },
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    // En Riverpod, 'ref' ya está disponible globalmente dentro de un ConsumerState,
-    // por lo que no necesitas pasarlo como parámetro en el método build.
-    
     return Scaffold(
+      extendBody:
+          true, // Permite que el mapa pase por debajo de la barra transparente
       appBar: AppBar(
         title: const Text('Mapa de Rescates'),
+        backgroundColor: Colors.white.withOpacity(
+          0.9,
+        ), // Ligeramente transparente
         actions: [
           IconButton(
-            icon: const Icon(Icons.logout),
-            onPressed: () {
-              // ref está disponible automáticamente aquí
-              ref.read(authProvider.notifier).logout();
-            },
+            icon: const Icon(Icons.logout, color: Colors.red),
+            onPressed: () => ref.read(authProvider.notifier).logout(),
           ),
         ],
       ),
-      // 4. Reemplazamos el texto con la lógica de carga y el mapa
       body: myPosition == null
           ? const Center(child: CircularProgressIndicator())
           : FlutterMap(
@@ -85,7 +107,8 @@ class _MapScreenState extends ConsumerState<MapScreen> {
               ),
               children: [
                 TileLayer(
-                  urlTemplate: 'https://api.mapbox.com/styles/v1/mapbox/streets-v12/tiles/{z}/{x}/{y}?access_token=$MAPBOX_ACCESS_TOKEN',
+                  urlTemplate:
+                      'https://api.mapbox.com/styles/v1/mapbox/streets-v12/tiles/{z}/{x}/{y}?access_token=$MAPBOX_ACCESS_TOKEN',
                   additionalOptions: const {
                     'accessToken': MAPBOX_ACCESS_TOKEN,
                     'id': 'mapbox/streets-v12',
@@ -100,11 +123,60 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                         color: Colors.red,
                         size: 40,
                       ),
-                    )
+                    ),
                   ],
                 ),
               ],
             ),
+
+      // 1. Posicionamos el botón en el centro de la barra inferior
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
+
+      // 2. El botón de la cámara (Rojo sólido)
+      floatingActionButton: FloatingActionButton(
+        onPressed: _takePhotoAndNavigate,
+        backgroundColor: Colors.redAccent,
+        foregroundColor: Colors.white,
+        elevation: 4,
+        shape: const CircleBorder(), // Asegura que sea completamente redondo
+        child: const Icon(Icons.camera_alt, size: 28),
+      ),
+
+      // 3. La barra de navegación inferior con el diseño solicitado
+      bottomNavigationBar: BottomAppBar(
+        shape: const CircularNotchedRectangle(),
+        notchMargin: 8.0, // Espacio entre el botón y la barra
+        color: Colors.white,
+        elevation: 8,
+        child: SizedBox(
+          height: 60,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              // Lado Izquierdo (Iconos inactivos por ahora, color rojo)
+              IconButton(
+                icon: const Icon(Icons.home_outlined, color: Colors.red),
+                onPressed: () {},
+              ),
+              IconButton(
+                icon: const Icon(Icons.search, color: Colors.red),
+                onPressed: () {},
+              ),
+
+              const SizedBox(width: 48), // Espacio central para la muesca
+              // Lado Derecho (Iconos inactivos por ahora, color gris simulando inactividad)
+              IconButton(
+                icon: const Icon(Icons.favorite_border, color: Colors.grey),
+                onPressed: () {},
+              ),
+              IconButton(
+                icon: const Icon(Icons.person_outline, color: Colors.grey),
+                onPressed: () {},
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
