@@ -7,6 +7,8 @@ import '../../features/auth/presentation/screens/login_screen.dart';
 import '../../features/auth/presentation/screens/register_screen.dart';
 import '../../features/map/presentation/screens/map_screen.dart'; // Importamos el destino
 import '../../features/auth/presentation/screens/create_report_screen.dart';
+import '../../features/history/presentation/screens/history_screen.dart';
+import '../../features/history/presentation/screens/report_detail_screen.dart';
 
 // Ahora el router es un Provider para poder leer el AuthProvider
 final routerProvider = Provider<GoRouter>((ref) {
@@ -48,6 +50,17 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const RegisterScreen(),
       ),
       GoRoute(path: '/map', builder: (context, state) => const MapScreen()),
+      GoRoute(
+        path: '/history',
+        builder: (context, state) => const HistoryScreen(),
+      ),
+      GoRoute(
+        path: '/report-detail',
+        builder: (context, state) {
+          final reporteData = state.extra as Map<String, dynamic>;
+          return ReportDetailScreen(reporte: reporteData);
+        },
+      ),
       GoRoute(
         path: '/create-report',
         builder: (context, state) {

@@ -85,7 +85,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
       extendBody:
           true, // Permite que el mapa pase por debajo de la barra transparente
       appBar: AppBar(
-        title: const Text('Mapa de Rescates'),
+        title: const Text('Mapa de rescates'),
         backgroundColor: Colors.white.withOpacity(
           0.9,
         ), // Ligeramente transparente
@@ -159,8 +159,8 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                 onPressed: () {},
               ),
               IconButton(
-                icon: const Icon(Icons.search, color: Colors.red),
-                onPressed: () {},
+                icon: const Icon(Icons.article, color: Colors.red),
+                onPressed: () => context.push('/history'),
               ),
 
               const SizedBox(width: 48), // Espacio central para la muesca
@@ -168,6 +168,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
               IconButton(
                 icon: const Icon(Icons.favorite_border, color: Colors.grey),
                 onPressed: () {},
+
               ),
               IconButton(
                 icon: const Icon(Icons.person_outline, color: Colors.grey),
