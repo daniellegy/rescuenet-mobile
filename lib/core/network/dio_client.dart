@@ -2,7 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
-const String baseUrl = 'http://192.168.0.238:3000/api';
+const String baseUrl = 'http://192.168.100.75:3000/api';
 
 class DioClient {
   final Dio _dio;
