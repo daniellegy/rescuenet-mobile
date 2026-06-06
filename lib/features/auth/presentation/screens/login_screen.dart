@@ -107,7 +107,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     style: TextStyle(fontSize: 16),
                   ),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 10),
                 TextButton(
                   onPressed: () {
                     context.push('/register');
