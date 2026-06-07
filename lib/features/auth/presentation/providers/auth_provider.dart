@@ -1,6 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import '../../../../core/network/dio_client.dart';
+import '../../data/auth_repository.dart';
 
 enum AppRole { ninguno, reportante, voluntario, refugio, superadmin }
 
@@ -18,12 +18,10 @@ class AuthNotifier extends Notifier<AuthState> {
     return AuthState(isLogged: false, role: AppRole.ninguno);
   }
 
-  // Función interna para mapear y guardar estado
   Future<void> _processAuthResponse(Map<String, dynamic> data) async {
     final token = data['token'];
     final int rolId = data['usuario']['rol_id'];
 
-    // Guardar el token en almacenamiento seguro
     await _storage.write(key: 'jwt_token', value: token);
 
     AppRole userRole = AppRole.ninguno;
@@ -34,19 +32,9 @@ class AuthNotifier extends Notifier<AuthState> {
   }
 
   Future<void> login(String email, String password) async {
-    try {
-      final dio = ref.read(dioProvider);
-      final response = await dio.post(
-        '/auth/login',
-        data: {'email': email, 'password': password},
-      );
-
-      if (response.statusCode == 200) {
-        await _processAuthResponse(response.data);
-      }
-    } catch (e) {
-      throw Exception('Credenciales incorrectas');
-    }
+    final authRepository = ref.read(authRepositoryProvider);
+    final data = await authRepository.login(email, password);
+    await _processAuthResponse(data);
   }
 
   Future<void> register({
@@ -56,25 +44,15 @@ class AuthNotifier extends Notifier<AuthState> {
     required String password,
     required int rolId,
   }) async {
-    try {
-      final dio = ref.read(dioProvider);
-      final response = await dio.post(
-        '/auth/register',
-        data: {
-          'nombre_completo': nombre,
-          'telefono': telefono,
-          'email': email,
-          'password': password,
-          'rol_id': rolId,
-        },
-      );
-
-      if (response.statusCode == 201) {
-        await _processAuthResponse(response.data);
-      }
-    } catch (e) {
-      throw Exception('Error al registrar usuario');
-    }
+    final authRepository = ref.read(authRepositoryProvider);
+    final data = await authRepository.register(
+      nombre: nombre,
+      telefono: telefono,
+      email: email,
+      password: password,
+      rolId: rolId,
+    );
+    await _processAuthResponse(data);
   }
 
   Future<void> logout() async {

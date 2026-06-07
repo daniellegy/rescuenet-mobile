@@ -1,17 +1,10 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../data/history_repository.dart';
+import '../../domain/models/report_model.dart';
 
-import '../../../../core/network/dio_client.dart';
-
-final misReportesProvider = FutureProvider.autoDispose<List<Map<String, dynamic>>>(
-  (ref) async {
-    final dio = ref.watch(dioProvider).instance;
-    final response = await dio.get('/reportes/mis-reportes');
-
-    final data = response.data;
-    if (data is List) {
-      return data.cast<Map<String, dynamic>>();
-    }
-
-    return const [];
-  },
-);
+final misReportesProvider = FutureProvider.autoDispose<List<ReportModel>>((
+  ref,
+) async {
+  final repository = ref.watch(historyRepositoryProvider);
+  return await repository.getMyReports();
+});

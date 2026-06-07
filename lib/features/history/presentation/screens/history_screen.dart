@@ -9,6 +9,7 @@ class HistoryScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // Esto ahora devuelve un AsyncValue<List<ReportModel>>
     final reportesAsync = ref.watch(misReportesProvider);
 
     return Scaffold(
@@ -30,14 +31,13 @@ class HistoryScreen extends ConsumerWidget {
             itemCount: reportes.length,
             separatorBuilder: (_, __) => const SizedBox(height: 12),
             itemBuilder: (context, index) {
+              // Extraemos el objeto modelo
               final reporte = reportes[index];
-              final fotoUrl = reporte['foto_url'] as String?;
-              final especie = (reporte['especie'] ?? 'Sin especie').toString();
-              final colorDominante =
-                  (reporte['color_dominante'] ?? 'Sin color').toString();
-              final referencias =
-                  (reporte['referencias'] ?? 'Sin referencias adicionales')
-                      .toString();
+
+              final fotoUrl = reporte.fotoUrl;
+              final especie = reporte.especie;
+              final colorDominante = reporte.colorDominante;
+              final referencias = reporte.referencias;
 
               return Card(
                 elevation: 2,
@@ -59,9 +59,14 @@ class HistoryScreen extends ConsumerWidget {
                     '$especie - $colorDominante',
                     style: const TextStyle(fontWeight: FontWeight.w700),
                   ),
-                  subtitle: Text(referencias),
+                  subtitle: Text(
+                    referencias,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                   trailing: const Icon(Icons.chevron_right),
                   onTap: () {
+                    // Enviamos el ReportModel a la siguiente pantalla
                     context.push('/report-detail', extra: reporte);
                   },
                 ),

@@ -1,14 +1,13 @@
 import 'dart:io';
-import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import '../../../../core/network/dio_client.dart';
+import '../../data/report_repository.dart';
 
 class CreateReportScreen extends ConsumerStatefulWidget {
   final double lat;
   final double lng;
-  final String imagePath; // Nuevo parámetro para recibir la foto
+  final String imagePath;
 
   const CreateReportScreen({
     super.key,
@@ -28,43 +27,32 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
   bool _isLoading = false;
 
   Future<void> _submitReport() async {
-    if (!_formKey.currentState!.validate()) {
-      return;
-    }
+    if (!_formKey.currentState!.validate()) return;
 
     setState(() => _isLoading = true);
 
     try {
-      FormData formData = FormData.fromMap({
-        'latitud': widget.lat.toString(),
-        'longitud': widget.lng.toString(),
-        'especie': _especie,
-        'color_dominante': _colorController.text,
-        'foto': await MultipartFile.fromFile(
-          widget.imagePath,
-          filename: 'reporte.jpg',
-        ),
-      });
-
-      final dio = ref.read(dioProvider).instance;
-      final response = await dio.post('/reportes', data: formData);
-
-      if (response.statusCode == 201) {
-        if (mounted) {
-          context.pop();
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Reporte creado con éxito')),
-          );
-        }
-      }
-    } on DioException catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Error: ${e.response?.data['error'] ?? 'Fallo de red'}',
-          ),
-        ),
+      final repository = ref.read(reportRepositoryProvider);
+      await repository.createReport(
+        lat: widget.lat,
+        lng: widget.lng,
+        especie: _especie,
+        color: _colorController.text,
+        imagePath: widget.imagePath,
       );
+
+      if (mounted) {
+        context.pop();
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Reporte creado con éxito')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.toString().replaceAll('Exception: ', ''))),
+        );
+      }
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -89,7 +77,6 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    // Mostramos la imagen que recibimos del mapa
                     ClipRRect(
                       borderRadius: BorderRadius.circular(12),
                       child: Image.file(
