@@ -30,7 +30,7 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
   String? _especie;
   String? _sexo = 'Desconocido';
   String? _edad = 'Cachorro';
-  String? _tamano = 'Pequeño: Carga con una mano';
+  String? _tamano = 'Pequeño';
   bool _isLoading = false;
 
   Future<void> _submitReport() async {
@@ -178,17 +178,21 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
                         labelText: 'Tamaño',
                         border: OutlineInputBorder(),
                       ),
-                      items:
-                          [
-                                'Pequeño: Carga con una mano',
-                                'Mediano: Carga con dos manos',
-                                'Grande: Requiere ayuda para cargar',
-                              ]
-                              .map(
-                                (e) =>
-                                    DropdownMenuItem(value: e, child: Text(e)),
-                              )
-                              .toList(),
+                      // Desacoplamos el valor de la base de datos del texto visual
+                      items: const [
+                        DropdownMenuItem(
+                          value: 'Pequeño',
+                          child: Text('Pequeño: Carga con una mano'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'Mediano',
+                          child: Text('Mediano: Carga con dos manos'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'Grande',
+                          child: Text('Grande: Requiere ayuda para cargar'),
+                        ),
+                      ],
                       onChanged: (val) => setState(() => _tamano = val),
                     ),
                     const SizedBox(height: 16),
