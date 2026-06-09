@@ -2,20 +2,21 @@ import 'package:flutter/material.dart';
 import '../../domain/models/report_model.dart';
 
 class ReportDetailScreen extends StatelessWidget {
-  // 1. Cambiamos el tipo de dato: de Map a ReportModel
   final ReportModel reporte;
 
   const ReportDetailScreen({super.key, required this.reporte});
 
   @override
   Widget build(BuildContext context) {
-    // 2. Extracción limpia y segura gracias al tipado fuerte
     final fotoUrl = reporte.fotoUrl;
     final especie = reporte.especie;
     final color = reporte.colorDominante;
-    final referencias = reporte.referencias;
     final lat = reporte.latitud.toStringAsFixed(4);
     final lng = reporte.longitud.toStringAsFixed(4);
+
+    // Llamada explícita a ambas variables nuevas
+    final caracteristicas = reporte.caracteristicasEspeciales;
+    final notas = reporte.notasAdicionales;
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -49,6 +50,7 @@ class ReportDetailScreen extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  // Ubicación
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -84,6 +86,7 @@ class ReportDetailScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 24),
 
+                  // Datos del animal
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -122,13 +125,31 @@ class ReportDetailScreen extends StatelessWidget {
                   const Divider(color: Color(0xFFEEEEEE), thickness: 1),
                   const SizedBox(height: 24),
 
+                  // Variable Nueva 1: Características Especiales
                   const Text(
-                    'Descripción',
+                    'Características Especiales',
                     style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 8),
                   Text(
-                    referencias,
+                    caracteristicas,
+                    style: const TextStyle(
+                      fontSize: 15,
+                      color: Color(0xFF4A4A4A),
+                      height: 1.5,
+                    ),
+                  ),
+
+                  const SizedBox(height: 24),
+
+                  // Variable Nueva 2: Notas Adicionales
+                  const Text(
+                    'Notas Adicionales',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    notas,
                     style: const TextStyle(
                       fontSize: 15,
                       color: Color(0xFF4A4A4A),
@@ -147,7 +168,7 @@ class ReportDetailScreen extends StatelessWidget {
           padding: const EdgeInsets.all(24.0),
           child: FilledButton(
             onPressed: () {
-              // Lógica futura para aceptar el caso
+              // Lógica para aceptar el caso
             },
             style: FilledButton.styleFrom(
               backgroundColor: const Color(0xFFD32F2F),

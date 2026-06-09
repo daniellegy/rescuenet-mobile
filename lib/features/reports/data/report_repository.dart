@@ -12,6 +12,12 @@ class ReportRepository {
     required double lng,
     required String especie,
     required String color,
+    required String sexo,
+    required String edadAprox,
+    required String tamano,
+    required String razaAprox,
+    required String caracteristicasEspeciales,
+    required String notasAdicionales,
     required String imagePath,
   }) async {
     try {
@@ -20,6 +26,12 @@ class ReportRepository {
         'longitud': lng.toString(),
         'especie': especie,
         'color_dominante': color,
+        'sexo': sexo,
+        'edad_aprox': edadAprox,
+        'tamano': tamano,
+        'raza_aprox': razaAprox,
+        'caracteristicas_especiales': caracteristicasEspeciales,
+        'notas_adicionales': notasAdicionales,
         'foto': await MultipartFile.fromFile(
           imagePath,
           filename: 'reporte.jpg',

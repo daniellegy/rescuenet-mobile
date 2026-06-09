@@ -1,14 +1,13 @@
 import 'dart:io';
-import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import '../../../../core/network/dio_client.dart';
+import '../../data/report_repository.dart';
 
 class CreateReportScreen extends ConsumerStatefulWidget {
   final double lat;
   final double lng;
-  final String imagePath; // Nuevo parámetro para recibir la foto
+  final String imagePath;
 
   const CreateReportScreen({
     super.key,
@@ -27,6 +26,7 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
   final _razaController = TextEditingController();
   final _caracController = TextEditingController();
   final _notasController = TextEditingController();
+
   String? _especie;
   String? _sexo = 'Desconocido';
   String? _edad = 'Cachorro';
@@ -34,49 +34,46 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
   bool _isLoading = false;
 
   Future<void> _submitReport() async {
-    if (!_formKey.currentState!.validate()) {
+    if (!_formKey.currentState!.validate()) return;
+    if (_especie == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Por favor, selecciona una especie.')),
+      );
       return;
     }
 
     setState(() => _isLoading = true);
 
     try {
-      FormData formData = FormData.fromMap({
-        'latitud': widget.lat.toString(),
-        'longitud': widget.lng.toString(),
-        'especie': _especie,
-        'color_dominante': _colorController.text,
-        'sexo': _sexo,
-        'edad_aprox': _edad,
-        'tamano': _tamano,
-        'raza_aprox': _razaController.text,
-        'caracteristicas_especiales': _caracController.text,
-        'notas_adicionales': _notasController.text,
-        'foto': await MultipartFile.fromFile(
-          widget.imagePath,
-          filename: 'reporte.jpg',
-        ),
-      });
+      final repository = ref.read(reportRepositoryProvider);
 
-      final dio = ref.read(dioProvider).instance;
-      final response = await dio.post('/reportes', data: formData);
-
-      if (response.statusCode == 201) {
-        if (mounted) {
-          context.pop();
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Reporte creado con éxito')),
-          );
-        }
-      }
-    } on DioException catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Error: ${e.response?.data['error'] ?? 'Fallo de red'}',
-          ),
-        ),
+      // Llamada limpia al Repositorio usando todos los campos nuevos
+      await repository.createReport(
+        lat: widget.lat,
+        lng: widget.lng,
+        especie: _especie!,
+        color: _colorController.text,
+        sexo: _sexo!,
+        edadAprox: _edad!,
+        tamano: _tamano!,
+        razaAprox: _razaController.text,
+        caracteristicasEspeciales: _caracController.text,
+        notasAdicionales: _notasController.text,
+        imagePath: widget.imagePath,
       );
+
+      if (mounted) {
+        context.pop();
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Reporte creado con éxito')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.toString().replaceAll('Exception: ', ''))),
+        );
+      }
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -86,7 +83,7 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
   void dispose() {
     _colorController.dispose();
     _razaController.dispose();
-    _caracController.dispose(); 
+    _caracController.dispose();
     _notasController.dispose();
     super.dispose();
   }
@@ -104,7 +101,6 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    // Mostramos la imagen que recibimos del mapa
                     ClipRRect(
                       borderRadius: BorderRadius.circular(12),
                       child: Image.file(
@@ -129,7 +125,7 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
                             (e) => DropdownMenuItem(value: e, child: Text(e)),
                           )
                           .toList(),
-                      onChanged: (val) => setState(() => _especie = val!),
+                      onChanged: (val) => setState(() => _especie = val),
                     ),
                     const SizedBox(height: 16),
                     TextFormField(
@@ -139,15 +135,14 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
                         labelText: 'Color Dominante',
                         border: OutlineInputBorder(),
                         prefixIcon: Icon(Icons.color_lens_outlined),
-                        hintText: 'Ej. Naranjoso'
-
+                        hintText: 'Ej. Naranjoso',
                       ),
                       validator: (value) =>
                           value!.isEmpty ? 'Ingresa el color' : null,
                     ),
                     const SizedBox(height: 16),
                     DropdownButtonFormField<String>(
-                      value: _sexo, 
+                      value: _sexo,
                       icon: const Icon(Icons.arrow_drop_down),
                       decoration: const InputDecoration(
                         labelText: 'Sexo',
@@ -158,10 +153,10 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
                             (e) => DropdownMenuItem(value: e, child: Text(e)),
                           )
                           .toList(),
-                      onChanged: (val) => setState(() => _sexo = val!),
+                      onChanged: (val) => setState(() => _sexo = val),
                     ),
                     const SizedBox(height: 16),
-                    DropdownButtonFormField(
+                    DropdownButtonFormField<String>(
                       value: _edad,
                       icon: const Icon(Icons.arrow_drop_down),
                       decoration: const InputDecoration(
@@ -169,26 +164,32 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
                         border: OutlineInputBorder(),
                       ),
                       items: ['Cachorro', 'Adulto', 'Senior']
-                        .map(
-                          (e) => DropdownMenuItem(value: e, child: Text(e)),
-                        )
-                        .toList(),
-                      onChanged: (val) => setState(() => _edad = val!),
+                          .map(
+                            (e) => DropdownMenuItem(value: e, child: Text(e)),
+                          )
+                          .toList(),
+                      onChanged: (val) => setState(() => _edad = val),
                     ),
                     const SizedBox(height: 16),
-                    DropdownButtonFormField(
+                    DropdownButtonFormField<String>(
                       value: _tamano,
                       icon: const Icon(Icons.arrow_drop_down),
                       decoration: const InputDecoration(
                         labelText: 'Tamaño',
                         border: OutlineInputBorder(),
                       ),
-                      items: ['Pequeño: Carga con una mano', 'Mediano: Carga con dos manos', 'Grande: Requiere ayuda para cargar']
-                        .map(
-                          (e) => DropdownMenuItem(value: e, child: Text(e)),
-                        )
-                        .toList(),
-                      onChanged: (val) => setState(() => _tamano = val!),
+                      items:
+                          [
+                                'Pequeño: Carga con una mano',
+                                'Mediano: Carga con dos manos',
+                                'Grande: Requiere ayuda para cargar',
+                              ]
+                              .map(
+                                (e) =>
+                                    DropdownMenuItem(value: e, child: Text(e)),
+                              )
+                              .toList(),
+                      onChanged: (val) => setState(() => _tamano = val),
                     ),
                     const SizedBox(height: 16),
                     TextFormField(
@@ -197,8 +198,7 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
                       decoration: const InputDecoration(
                         labelText: 'Raza Aproximada',
                         border: OutlineInputBorder(),
-                        hintText: 'Ej. Mestizo, Husky'
-
+                        hintText: 'Ej. Mestizo, Husky',
                       ),
                       validator: (value) =>
                           value!.isEmpty ? 'Ingresa la raza' : null,
@@ -210,12 +210,11 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
                       decoration: const InputDecoration(
                         labelText: 'Características Especiales',
                         border: OutlineInputBorder(),
-                        hintText: 'Ej. Sin cola, Heridas. '
-
+                        hintText: 'Ej. Sin cola, Heridas.',
                       ),
                       validator: (value) =>
                           value!.isEmpty ? 'Ingresa las características' : null,
-                    ), 
+                    ),
                     const SizedBox(height: 16),
                     TextFormField(
                       controller: _notasController,
@@ -223,12 +222,11 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
                       decoration: const InputDecoration(
                         labelText: 'Notas Adicionales',
                         border: OutlineInputBorder(),
-                        hintText: 'Ej. Miedoso, Cojea de una pata'
-
+                        hintText: 'Ej. Miedoso, Cojea de una pata',
                       ),
                       validator: (value) =>
                           value!.isEmpty ? 'Ingresa las notas' : null,
-                    ),  
+                    ),
                     const SizedBox(height: 32),
                     FilledButton.icon(
                       onPressed: _submitReport,

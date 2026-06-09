@@ -9,7 +9,6 @@ class HistoryScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // Esto ahora devuelve un AsyncValue<List<ReportModel>>
     final reportesAsync = ref.watch(misReportesProvider);
 
     return Scaffold(
@@ -31,13 +30,15 @@ class HistoryScreen extends ConsumerWidget {
             itemCount: reportes.length,
             separatorBuilder: (_, __) => const SizedBox(height: 12),
             itemBuilder: (context, index) {
-              // Extraemos el objeto modelo
               final reporte = reportes[index];
 
               final fotoUrl = reporte.fotoUrl;
               final especie = reporte.especie;
               final colorDominante = reporte.colorDominante;
-              final referencias = reporte.referencias;
+
+              // Llamada explícita a ambas variables nuevas
+              final caracteristicas = reporte.caracteristicasEspeciales;
+              final notas = reporte.notasAdicionales;
 
               return Card(
                 elevation: 2,
@@ -59,14 +60,18 @@ class HistoryScreen extends ConsumerWidget {
                     '$especie - $colorDominante',
                     style: const TextStyle(fontWeight: FontWeight.w700),
                   ),
-                  subtitle: Text(
-                    referencias,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
+                  // Renderizado de ambas variables dentro del subtítulo
+                  subtitle: Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: Text(
+                      'Señas: $caracteristicas\nNotas: $notas',
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(color: Colors.grey[700], fontSize: 13),
+                    ),
                   ),
                   trailing: const Icon(Icons.chevron_right),
                   onTap: () {
-                    // Enviamos el ReportModel a la siguiente pantalla
                     context.push('/report-detail', extra: reporte);
                   },
                 ),
