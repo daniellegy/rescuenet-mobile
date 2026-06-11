@@ -31,7 +31,7 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
   String? _sexo = 'Desconocido';
   String? _edad = 'Cachorro';
   String? _tamano = 'Pequeño';
-  String? _agresividad;
+  double _agresividad = 1.0; // Variable de la barra (Slider)
   bool _isLoading = false;
 
   Future<void> _submitReport() async {
@@ -48,7 +48,6 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
     try {
       final repository = ref.read(reportRepositoryProvider);
 
-      // Llamada limpia al Repositorio usando todos los campos nuevos
       await repository.createReport(
         lat: widget.lat,
         lng: widget.lng,
@@ -57,7 +56,8 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
         sexo: _sexo!,
         edadAprox: _edad!,
         tamano: _tamano!,
-        agresividad: _agresividad!,
+        agresividad: _agresividad
+            .toInt(), // Corrección: Conversión directa a entero sin '!'
         razaAprox: _razaController.text,
         caracteristicasEspeciales: _caracController.text,
         notasAdicionales: _notasController.text,
@@ -196,21 +196,33 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
                       ],
                       onChanged: (val) => setState(() => _tamano = val),
                     ),
-                    const SizedBox(height: 16),
-                    DropdownButtonFormField<String>(
-                      value: _agresividad,
-                      hint: const Text('Nivel de Agresividad'),
-                      decoration: const InputDecoration(
-                        labelText: 'Agresividad',
-                        border: OutlineInputBorder(),
-                      ),
-                      items: ['Dócil', 'Reacción por miedo', 'Territorial', 'Agresivo']               .map(
-                            (e) => DropdownMenuItem(value: e, child: Text(e)),
-                          )
-                          .toList(),
-                      onChanged: (val) => setState(() => _agresividad = val),
+                    const SizedBox(height: 24),
+
+                    // Corrección: El Dropdown fue reemplazado por este Slider y su texto
+                    const Text(
+                      'Nivel de Agresividad (1: Tranquilo - 10: Muy agresivo)',
+                      style: TextStyle(fontWeight: FontWeight.bold),
                     ),
-                    const SizedBox(height: 16),
+                    Slider(
+                      value: _agresividad,
+                      min: 1,
+                      max: 10,
+                      divisions: 9, // Brinca en números enteros
+                      label: _agresividad.round().toString(),
+                      activeColor: Colors.red,
+                      onChanged: (double value) {
+                        setState(() {
+                          _agresividad = value;
+                        });
+                      },
+                    ),
+                    Text(
+                      'Valor seleccionado: ${_agresividad.round()}',
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(fontSize: 16, color: Colors.red),
+                    ),
+
+                    const SizedBox(height: 24),
                     TextFormField(
                       controller: _razaController,
                       textCapitalization: TextCapitalization.words,

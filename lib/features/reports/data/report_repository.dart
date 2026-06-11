@@ -15,7 +15,7 @@ class ReportRepository {
     required String sexo,
     required String edadAprox,
     required String tamano,
-    required String agresividad,
+    required int agresividad,
     required String razaAprox,
     required String caracteristicasEspeciales,
     required String notasAdicionales,
