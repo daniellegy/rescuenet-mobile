@@ -198,7 +198,7 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
                     ),
                     const SizedBox(height: 24),
 
-                    // Corrección: El Dropdown fue reemplazado por este Slider y su texto
+                    // Corrección: Slider y su texto
                     const Text(
                       'Nivel de Agresividad (1: Tranquilo - 10: Muy agresivo)',
                       style: TextStyle(fontWeight: FontWeight.bold),
@@ -215,11 +215,6 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
                           _agresividad = value;
                         });
                       },
-                    ),
-                    Text(
-                      'Valor seleccionado: ${_agresividad.round()}',
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(fontSize: 16, color: Colors.red),
                     ),
 
                     const SizedBox(height: 24),
