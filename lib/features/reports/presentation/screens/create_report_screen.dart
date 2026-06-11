@@ -199,12 +199,10 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
                     const SizedBox(height: 16),
                     DropdownButtonFormField<String>(
                       value: _agresividad,
-                      hint: const Text('Selecciona Escala de agresividad'),
-                      icon: const Icon(Icons.arrow_drop_down),
+                      hint: const Text('Nivel de Agresividad'),
                       decoration: const InputDecoration(
                         labelText: 'Agresividad',
                         border: OutlineInputBorder(),
-                        prefixIcon: Icon(Icons.pets),
                       ),
                       items: ['Dócil', 'Reacción por miedo', 'Territorial', 'Agresivo']               .map(
                             (e) => DropdownMenuItem(value: e, child: Text(e)),
@@ -219,7 +217,7 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
                       decoration: const InputDecoration(
                         labelText: 'Raza Aproximada',
                         border: OutlineInputBorder(),
-                        hintText: 'Ej. Mestizo, Husky',
+                        hintText: 'Ej. Desconocido, Mestizo, Husky',
                       ),
                       validator: (value) =>
                           value!.isEmpty ? 'Ingresa la raza' : null,
