@@ -31,6 +31,7 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
   String? _sexo = 'Desconocido';
   String? _edad = 'Cachorro';
   String? _tamano = 'Pequeño';
+  String? _agresividad;
   bool _isLoading = false;
 
   Future<void> _submitReport() async {
@@ -56,6 +57,7 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
         sexo: _sexo!,
         edadAprox: _edad!,
         tamano: _tamano!,
+        agresividad: _agresividad!,
         razaAprox: _razaController.text,
         caracteristicasEspeciales: _caracController.text,
         notasAdicionales: _notasController.text,
@@ -178,7 +180,6 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
                         labelText: 'Tamaño',
                         border: OutlineInputBorder(),
                       ),
-                      // Desacoplamos el valor de la base de datos del texto visual
                       items: const [
                         DropdownMenuItem(
                           value: 'Pequeño',
@@ -194,6 +195,22 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
                         ),
                       ],
                       onChanged: (val) => setState(() => _tamano = val),
+                    ),
+                    const SizedBox(height: 16),
+                    DropdownButtonFormField<String>(
+                      value: _agresividad,
+                      hint: const Text('Selecciona Escala de agresividad'),
+                      icon: const Icon(Icons.arrow_drop_down),
+                      decoration: const InputDecoration(
+                        labelText: 'Agresividad',
+                        border: OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.pets),
+                      ),
+                      items: ['Dócil', 'Reacción por miedo', 'Territorial', 'Agresivo']               .map(
+                            (e) => DropdownMenuItem(value: e, child: Text(e)),
+                          )
+                          .toList(),
+                      onChanged: (val) => setState(() => _agresividad = val),
                     ),
                     const SizedBox(height: 16),
                     TextFormField(
