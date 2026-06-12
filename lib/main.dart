@@ -6,6 +6,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'core/routing/app_router.dart';
 import 'features/history/domain/models/report_model.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -82,6 +83,7 @@ class _RescueNetAppState extends ConsumerState<RescueNetApp> {
           ), // Fuerza explícitamente el rojo vivo
           secondary: Colors.redAccent,
         ),
+        textTheme: GoogleFonts.dmSansTextTheme(),
         useMaterial3:
             true, // Si tu diseño original se sigue viendo raro, cambia esto a false
       ),
