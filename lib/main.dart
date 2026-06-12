@@ -1,50 +1,83 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'core/routing/app_router.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'core/routing/app_router.dart';
+import 'features/history/domain/models/report_model.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await dotenv.load(fileName: ".env");
   await Firebase.initializeApp();
 
-  // 1. SOLICITAR PERMISOS AL SISTEMA OPERATIVO
   final messaging = FirebaseMessaging.instance;
   await messaging.requestPermission(alert: true, badge: true, sound: true);
-
-  // 2. OBTENER EL TOKEN ÚNICO DE TU CELULAR (Revisa tu terminal de VS Code)
-  final token = await messaging.getToken();
-  debugPrint('====================================');
-  debugPrint('FCM TOKEN DE ESTE CELULAR:');
-  debugPrint(token);
-  debugPrint('====================================');
 
   runApp(const ProviderScope(child: RescueNetApp()));
 }
 
-// Cambiamos StatelessWidget por ConsumerWidget para leer providers
-class RescueNetApp extends ConsumerWidget {
+class RescueNetApp extends ConsumerStatefulWidget {
   const RescueNetApp({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    // Escuchamos nuestro nuevo routerProvider
-    final appRouter = ref.watch(routerProvider);
+  ConsumerState<RescueNetApp> createState() => _RescueNetAppState();
+}
+
+class _RescueNetAppState extends ConsumerState<RescueNetApp> {
+  @override
+  void initState() {
+    super.initState();
+    _configurarToquesDeNotificacion();
+  }
+
+  void _configurarToquesDeNotificacion() async {
+    // Escenario 1: La app está COMPLETAMENTE CERRADA y el usuario toca la notificación
+    FirebaseMessaging.instance.getInitialMessage().then((message) {
+      if (message != null) _abrirDetallesReporte(message);
+    });
+
+    // Escenario 2: La app está MINIMIZADA (segundo plano) y el usuario toca la notificación
+    FirebaseMessaging.onMessageOpenedApp.listen((message) {
+      _abrirDetallesReporte(message);
+    });
+  }
+
+  void _abrirDetallesReporte(RemoteMessage message) {
+    // Verificamos que el paquete de datos oculto traiga la propiedad 'reporte'
+    if (message.data.containsKey('reporte')) {
+      try {
+        final Map<String, dynamic> reportMap = jsonDecode(
+          message.data['reporte'],
+        );
+        final reporteModel = ReportModel.fromJson(reportMap);
+
+        // Se le da un pequeño retraso (500ms) para garantizar que el GoRouter
+        // ya construyó el mapa de fondo antes de ponerle la pantalla de detalles encima.
+        Future.delayed(const Duration(milliseconds: 500), () {
+          ref.read(routerProvider).push('/report-detail', extra: reporteModel);
+        });
+      } catch (e) {
+        debugPrint("Error decodificando reporte de notificación: $e");
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final router = ref.watch(routerProvider);
 
     return MaterialApp.router(
-      title: 'RescueNet',
+      title: 'Rescue Net',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(
-          seedColor: Colors.redAccent,
-          primary: const Color(0xFFD32F2F),
-          secondary: const Color(0xFF722F37),
+          seedColor: const Color.fromARGB(255, 255, 0, 0),
         ),
         useMaterial3: true,
       ),
-      routerConfig: appRouter, // Aquí pasamos el router en vivo
+      routerConfig: router,
     );
   }
 }
