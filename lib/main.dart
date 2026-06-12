@@ -73,9 +73,17 @@ class _RescueNetAppState extends ConsumerState<RescueNetApp> {
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color.fromARGB(255, 255, 0, 0),
+          seedColor: Colors.red,
+          primary: const Color.fromARGB(
+            255,
+            202,
+            40,
+            28,
+          ), // Fuerza explícitamente el rojo vivo
+          secondary: Colors.redAccent,
         ),
-        useMaterial3: true,
+        useMaterial3:
+            true, // Si tu diseño original se sigue viendo raro, cambia esto a false
       ),
       routerConfig: router,
     );
