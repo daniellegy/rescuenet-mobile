@@ -3,11 +3,24 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'core/routing/app_router.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await dotenv.load(fileName: ".env");
   await Firebase.initializeApp();
+
+  // 1. SOLICITAR PERMISOS AL SISTEMA OPERATIVO
+  final messaging = FirebaseMessaging.instance;
+  await messaging.requestPermission(alert: true, badge: true, sound: true);
+
+  // 2. OBTENER EL TOKEN ÚNICO DE TU CELULAR (Revisa tu terminal de VS Code)
+  final token = await messaging.getToken();
+  debugPrint('====================================');
+  debugPrint('FCM TOKEN DE ESTE CELULAR:');
+  debugPrint(token);
+  debugPrint('====================================');
+
   runApp(const ProviderScope(child: RescueNetApp()));
 }
 
