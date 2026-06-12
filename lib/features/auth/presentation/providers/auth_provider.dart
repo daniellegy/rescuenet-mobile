@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import '../../data/auth_repository.dart';
+import 'package:firebase_messaging/firebase_messaging.dart'; // NUEVO IMPORT
+import '../../../../core/network/dio_client.dart';
 
 enum AppRole { ninguno, reportante, voluntario, refugio, superadmin }
 
@@ -25,16 +26,32 @@ class AuthNotifier extends Notifier<AuthState> {
     await _storage.write(key: 'jwt_token', value: token);
 
     AppRole userRole = AppRole.ninguno;
-    if (rolId == 1) userRole = AppRole.reportante;
-    if (rolId == 2) userRole = AppRole.voluntario;
+    if (rolId == 1) {
+      userRole = AppRole.reportante;
+      // Los reportantes comunes NO reciben las alertas de emergencias de todos
+      await FirebaseMessaging.instance.unsubscribeFromTopic('voluntarios');
+    }
+    if (rolId == 2) {
+      userRole = AppRole.voluntario;
+      // Al ser voluntario, el teléfono queda suscrito a las notificaciones globales
+      await FirebaseMessaging.instance.subscribeToTopic('voluntarios');
+    }
 
     state = AuthState(isLogged: true, role: userRole);
   }
 
   Future<void> login(String email, String password) async {
-    final authRepository = ref.read(authRepositoryProvider);
-    final data = await authRepository.login(email, password);
-    await _processAuthResponse(data);
+    try {
+      // Corrección: Se agregó .instance
+      final dio = ref.read(dioProvider).instance;
+      final response = await dio.post(
+        '/auth/login',
+        data: {'email': email, 'password': password},
+      );
+      if (response.statusCode == 200) await _processAuthResponse(response.data);
+    } catch (e) {
+      throw Exception('Credenciales incorrectas');
+    }
   }
 
   Future<void> register({
@@ -44,15 +61,23 @@ class AuthNotifier extends Notifier<AuthState> {
     required String password,
     required int rolId,
   }) async {
-    final authRepository = ref.read(authRepositoryProvider);
-    final data = await authRepository.register(
-      nombre: nombre,
-      telefono: telefono,
-      email: email,
-      password: password,
-      rolId: rolId,
-    );
-    await _processAuthResponse(data);
+    try {
+      // Corrección: Se agregó .instance
+      final dio = ref.read(dioProvider).instance;
+      final response = await dio.post(
+        '/auth/register',
+        data: {
+          'nombre_completo': nombre,
+          'telefono': telefono,
+          'email': email,
+          'password': password,
+          'rol_id': rolId,
+        },
+      );
+      if (response.statusCode == 201) await _processAuthResponse(response.data);
+    } catch (e) {
+      throw Exception('Error al registrar usuario');
+    }
   }
 
   Future<void> logout() async {
@@ -61,6 +86,6 @@ class AuthNotifier extends Notifier<AuthState> {
   }
 }
 
-final authProvider = NotifierProvider<AuthNotifier, AuthState>(() {
-  return AuthNotifier();
-});
+final authProvider = NotifierProvider<AuthNotifier, AuthState>(
+  () => AuthNotifier(),
+);

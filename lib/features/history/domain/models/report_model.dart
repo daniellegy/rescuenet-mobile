@@ -5,9 +5,11 @@ class ReportModel {
   final String sexo;
   final String edadAprox;
   final String tamano;
+  final int agresividad;
   final String razaAprox;
   final String caracteristicasEspeciales;
   final String notasAdicionales;
+  final String estado;
   final double latitud;
   final double longitud;
   final String? fotoUrl;
@@ -19,9 +21,11 @@ class ReportModel {
     required this.sexo,
     required this.edadAprox,
     required this.tamano,
+    required this.agresividad,
     required this.razaAprox,
     required this.caracteristicasEspeciales,
     required this.notasAdicionales,
+    required this.estado,
     required this.latitud,
     required this.longitud,
     this.fotoUrl,
@@ -35,10 +39,12 @@ class ReportModel {
       sexo: json['sexo'] ?? 'Desconocido',
       edadAprox: json['edad_aprox'] ?? 'Desconocida',
       tamano: json['tamano'] ?? 'No especificado',
+      agresividad: int.tryParse(json['agresividad'].toString()) ?? 1,
       razaAprox: json['raza_aprox'] ?? 'Desconocida',
       caracteristicasEspeciales:
           json['caracteristicas_especiales'] ?? 'Ninguna',
       notasAdicionales: json['notas_adicionales'] ?? 'Sin notas',
+      estado: json['estado'] ?? 'Nuevo',
       latitud: (json['latitud'] as num?)?.toDouble() ?? 0.0,
       longitud: (json['longitud'] as num?)?.toDouble() ?? 0.0,
       fotoUrl: json['foto_url'],

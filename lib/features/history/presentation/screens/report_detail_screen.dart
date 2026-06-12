@@ -1,22 +1,97 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:geocoding/geocoding.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:go_router/go_router.dart';
 import '../../domain/models/report_model.dart';
+import '../../../../core/network/dio_client.dart';
+import '../../../auth/presentation/providers/auth_provider.dart';
 
-class ReportDetailScreen extends StatelessWidget {
+class ReportDetailScreen extends ConsumerStatefulWidget {
   final ReportModel reporte;
-
   const ReportDetailScreen({super.key, required this.reporte});
 
   @override
-  Widget build(BuildContext context) {
-    final fotoUrl = reporte.fotoUrl;
-    final especie = reporte.especie;
-    final color = reporte.colorDominante;
-    final lat = reporte.latitud.toStringAsFixed(4);
-    final lng = reporte.longitud.toStringAsFixed(4);
+  ConsumerState<ReportDetailScreen> createState() => _ReportDetailScreenState();
+}
 
-    // Llamada explícita a ambas variables nuevas
-    final caracteristicas = reporte.caracteristicasEspeciales;
-    final notas = reporte.notasAdicionales;
+class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
+  String _direccion = 'Buscando dirección aproximada...';
+  bool _isLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _obtenerDireccionFisica();
+  }
+
+  // 1. Obtener la calle usando lat y lng
+  Future<void> _obtenerDireccionFisica() async {
+    try {
+      List<Placemark> placemarks = await placemarkFromCoordinates(
+        widget.reporte.latitud,
+        widget.reporte.longitud,
+      );
+      if (placemarks.isNotEmpty) {
+        Placemark place = placemarks.first;
+        if (mounted)
+          setState(
+            () => _direccion =
+                '${place.street}, ${place.subLocality}, ${place.locality}',
+          );
+      }
+    } catch (e) {
+      if (mounted)
+        setState(
+          () => _direccion =
+              'Ubicación GPS fijada. Toca para navegar en el mapa.',
+        );
+    }
+  }
+
+  // 2. Abrir Waze, Google Maps o Apple Maps nativo
+  Future<void> _abrirNavegacionGPS() async {
+    final url = Uri.parse(
+      'https://www.google.com/maps/search/?api=1&query=${widget.reporte.latitud},${widget.reporte.longitud}',
+    );
+    if (!await launchUrl(url, mode: LaunchMode.externalApplication)) {
+      if (mounted)
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('No se pudo abrir la aplicación de mapas'),
+          ),
+        );
+    }
+  }
+
+  // 3. Conexión a la ruta PUT para aceptar el reporte
+  Future<void> _aceptarCaso() async {
+    setState(() => _isLoading = true);
+    try {
+      final dio = ref.read(dioProvider).instance;
+      await dio.put('/reportes/${widget.reporte.id}/aceptar');
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('¡Rescate aceptado exitosamente!')),
+        );
+        context.pop();
+      }
+    } catch (e) {
+      if (mounted)
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Error al aceptar el caso de rescate.')),
+        );
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final rolActual = ref.watch(authProvider).role;
+    final puedeAceptar =
+        rolActual == AppRole.voluntario && widget.reporte.estado == 'Nuevo';
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -24,15 +99,14 @@ class ReportDetailScreen extends StatelessWidget {
         title: const Text('Detalles del Caso'),
         backgroundColor: Colors.white,
         elevation: 0,
-        scrolledUnderElevation: 0,
       ),
       body: SingleChildScrollView(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            if (fotoUrl != null && fotoUrl.isNotEmpty)
+            if (widget.reporte.fotoUrl != null)
               Image.network(
-                fotoUrl,
+                widget.reporte.fotoUrl!,
                 width: double.infinity,
                 height: 250,
                 fit: BoxFit.cover,
@@ -50,48 +124,56 @@ class ReportDetailScreen extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Ubicación
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Icon(
-                        Icons.location_on_outlined,
-                        color: Colors.red,
-                        size: 28,
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text(
-                              'Ubicación del reporte',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w500,
-                              ),
+                  // Widget Navegable
+                  InkWell(
+                    onTap: _abrirNavegacionGPS,
+                    borderRadius: BorderRadius.circular(8),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 8.0),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Icon(
+                            Icons.directions,
+                            color: Colors.blue,
+                            size: 32,
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  'Ir a la ubicación (Toca para navegar)',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.blue,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  _direccion,
+                                  style: TextStyle(
+                                    color: Colors.grey[700],
+                                    fontSize: 14,
+                                  ),
+                                ),
+                              ],
                             ),
-                            const SizedBox(height: 4),
-                            Text(
-                              '$lat, $lng',
-                              style: TextStyle(
-                                color: Colors.grey[600],
-                                fontSize: 14,
-                              ),
-                            ),
-                          ],
-                        ),
+                          ),
+                        ],
                       ),
-                    ],
+                    ),
                   ),
                   const SizedBox(height: 24),
 
-                  // Datos del animal
+                  // Información General
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const Icon(
-                        Icons.access_time,
+                        Icons.info_outline,
                         color: Colors.red,
                         size: 28,
                       ),
@@ -100,16 +182,24 @@ class ReportDetailScreen extends StatelessWidget {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Text(
-                              'Reportado recientemente',
-                              style: TextStyle(
+                            Text(
+                              'Estado Actual: ${widget.reporte.estado}',
+                              style: const TextStyle(
                                 fontSize: 16,
-                                fontWeight: FontWeight.w500,
+                                fontWeight: FontWeight.bold,
                               ),
                             ),
                             const SizedBox(height: 4),
                             Text(
-                              'Especie: $especie • Color: $color',
+                              'Agresividad: Nivel ${widget.reporte.agresividad} / 10',
+                              style: TextStyle(
+                                color: Colors.red[700],
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              'Especie: ${widget.reporte.especie} • Sexo: ${widget.reporte.sexo}',
                               style: TextStyle(
                                 color: Colors.grey[600],
                                 fontSize: 14,
@@ -120,19 +210,17 @@ class ReportDetailScreen extends StatelessWidget {
                       ),
                     ],
                   ),
-
                   const SizedBox(height: 24),
                   const Divider(color: Color(0xFFEEEEEE), thickness: 1),
                   const SizedBox(height: 24),
 
-                  // Variable Nueva 1: Características Especiales
                   const Text(
                     'Características Especiales',
                     style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    caracteristicas,
+                    widget.reporte.caracteristicasEspeciales,
                     style: const TextStyle(
                       fontSize: 15,
                       color: Color(0xFF4A4A4A),
@@ -141,15 +229,13 @@ class ReportDetailScreen extends StatelessWidget {
                   ),
 
                   const SizedBox(height: 24),
-
-                  // Variable Nueva 2: Notas Adicionales
                   const Text(
                     'Notas Adicionales',
                     style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    notas,
+                    widget.reporte.notasAdicionales,
                     style: const TextStyle(
                       fontSize: 15,
                       color: Color(0xFF4A4A4A),
@@ -163,27 +249,33 @@ class ReportDetailScreen extends StatelessWidget {
         ),
       ),
 
-      bottomNavigationBar: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: FilledButton(
-            onPressed: () {
-              // Lógica para aceptar el caso
-            },
-            style: FilledButton.styleFrom(
-              backgroundColor: const Color(0xFFD32F2F),
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
+      // Mostrar Botón solo si el Estado es "Nuevo" y el usuario es Voluntario
+      bottomNavigationBar: puedeAceptar
+          ? SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.all(24.0),
+                child: FilledButton(
+                  onPressed: _isLoading ? null : _aceptarCaso,
+                  style: FilledButton.styleFrom(
+                    backgroundColor: const Color(0xFFD32F2F),
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: _isLoading
+                      ? const CircularProgressIndicator(color: Colors.white)
+                      : const Text(
+                          'Aceptar Rescate',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                ),
               ),
-            ),
-            child: const Text(
-              'Aceptar Caso',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-            ),
-          ),
-        ),
-      ),
+            )
+          : const SizedBox.shrink(),
     );
   }
 }

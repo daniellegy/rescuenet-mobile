@@ -6,10 +6,11 @@ import '../../features/auth/presentation/providers/auth_provider.dart';
 import '../../features/auth/presentation/screens/login_screen.dart';
 import '../../features/auth/presentation/screens/register_screen.dart';
 import '../../features/map/presentation/screens/map_screen.dart';
-import '../../features/reports/presentation/screens/create_report_screen.dart'; // <- Ruta actualizada
+import '../../features/reports/presentation/screens/create_report_screen.dart';
 import '../../features/history/presentation/screens/history_screen.dart';
 import '../../features/history/presentation/screens/report_detail_screen.dart';
-import '../../features/history/domain/models/report_model.dart'; // <- Nuevo import
+import '../../features/history/domain/models/report_model.dart';
+import '../../features/reports/presentation/screens/active_reports_screen.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
   final authStateNotifier = ValueNotifier<AuthState>(ref.read(authProvider));
@@ -65,6 +66,10 @@ final routerProvider = Provider<GoRouter>((ref) {
             imagePath: extra['imagePath'] as String,
           );
         },
+      ),
+      GoRoute(
+        path: '/active-reports',
+        builder: (context, state) => const ActiveReportsScreen(),
       ),
     ],
   );

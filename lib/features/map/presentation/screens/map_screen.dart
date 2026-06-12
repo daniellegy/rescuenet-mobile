@@ -133,31 +133,49 @@ class _MapScreenState extends ConsumerState<MapScreen> {
         shape: const CircularNotchedRectangle(),
         notchMargin: 8.0,
         color: Colors.white,
-        elevation: 8,
-        child: SizedBox(
-          height: 60,
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              IconButton(
-                icon: const Icon(Icons.home_outlined, color: Colors.red),
-                onPressed: () {},
-              ),
-              IconButton(
-                icon: const Icon(Icons.article, color: Colors.red),
-                onPressed: () => context.push('/history'),
-              ),
-              const SizedBox(width: 48),
-              IconButton(
-                icon: const Icon(Icons.favorite_border, color: Colors.grey),
-                onPressed: () {},
-              ),
-              IconButton(
-                icon: const Icon(Icons.person_outline, color: Colors.grey),
-                onPressed: () {},
-              ),
-            ],
-          ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceAround,
+          children: [
+            // 1. Vista Principal (Mapa)
+            IconButton(
+              icon: const Icon(
+                Icons.map,
+                color: Colors.redAccent,
+              ), // Color activo
+              tooltip: 'Mapa',
+              onPressed: () {
+                // Ya estamos en el mapa, no hacemos push para evitar apilar pantallas
+              },
+            ),
+
+            // 2. Historial de Reportes Personales
+            IconButton(
+              icon: const Icon(Icons.history, color: Colors.grey),
+              tooltip: 'Mi Historial',
+              onPressed: () {
+                context.push('/history');
+              },
+            ),
+
+            // Reservado para el FloatingActionButton
+            const SizedBox(width: 48),
+
+            // 3. Reportes Activos
+            IconButton(
+              icon: const Icon(Icons.warning_amber_rounded, color: Colors.grey),
+              tooltip: 'Emergencias Activas',
+              onPressed: () {
+                context.push('/active-reports');
+              },
+            ),
+
+            // 4. Configuración
+            IconButton(
+              icon: const Icon(Icons.settings, color: Colors.grey),
+              tooltip: 'Configuración',
+              onPressed: () {},
+            ),
+          ],
         ),
       ),
     );
