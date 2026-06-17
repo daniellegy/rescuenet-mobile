@@ -6,14 +6,12 @@ import 'package:latlong2/latlong.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:dio/dio.dart'; // Para peticiones HTTP
 
-// Importaciones de Core y Auth (originales de tu código)
+
 import '../../../../core/services/location_service.dart';
 import '../../../../core/services/camera_service.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 
-// NUEVAS importaciones ajustadas a tu arquitectura
 import '../../../../core/network/dio_client.dart'; 
-// Asumimos que ReportModel está en la carpeta history según la imagen
 import '../../../history/domain/models/report_model.dart'; 
 import '../../../history/presentation/screens/report_detail_screen.dart';
 
@@ -46,7 +44,6 @@ class _MapScreenState extends ConsumerState<MapScreen> {
       final response = await dio.get('/reportes/activos'); 
 
       if (response.statusCode == 200) {
-        // --- CÓDIGO CORREGIDO AQUÍ ---
         List<dynamic> data = [];
         
         // Si el backend manda la lista directa: [{...}, {...}]
@@ -87,6 +84,13 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     try {
       final locationService = ref.read(locationServiceProvider);
       final position = await locationService.getCurrentPosition();
+
+      // Validación matemática y geográfica
+      if (position.latitude.isNaN || position.longitude.isNaN || 
+          position.latitude.isInfinite || position.longitude.isInfinite) {
+        throw Exception('El hardware del GPS retornó coordenadas no numéricas.');
+      }
+
       setState(() {
         myPosition = LatLng(position.latitude, position.longitude);
       });
@@ -131,11 +135,26 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   }
 
   // Función auxiliar para construir todos los pines del mapa
+  // Función auxiliar para construir todos los pines del mapa
   List<Marker> _buildMarkers() {
     List<Marker> marcadores = [];
 
-    // 1. Por cada reporte, creamos un marcador interactivo
+    // 1. Filtrado y renderizado de reportes
     for (var reporte in _reportesCercanos) {
+      // Validación estricta: Se excluyen valores nulos matemáticos (NaN/Infinito)
+      if (reporte.latitud.isNaN || reporte.longitud.isNaN || 
+          reporte.latitud.isInfinite || reporte.longitud.isInfinite) {
+        debugPrint('Reporte omitido (ID: ${reporte.id}): Coordenadas NaN');
+        continue; 
+      }
+
+      // Validación estricta: Límites geográficos reales de la Tierra
+      if (reporte.latitud < -90.0 || reporte.latitud > 90.0 || 
+          reporte.longitud < -180.0 || reporte.longitud > 180.0) {
+        debugPrint('Reporte omitido (ID: ${reporte.id}): Coordenadas fuera de rango');
+        continue;
+      }
+
       marcadores.add(
         Marker(
           point: LatLng(reporte.latitud, reporte.longitud),
@@ -143,7 +162,6 @@ class _MapScreenState extends ConsumerState<MapScreen> {
           height: 50,
           child: GestureDetector(
             onTap: () {
-              // Al tocar el icono, navegamos a la pantalla de detalles
               Navigator.push(
                 context,
                 MaterialPageRoute(
@@ -152,7 +170,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
               );
             },
             child: const Icon(
-              Icons.warning_rounded, // Icono para los reportes ("pokeparadas")
+              Icons.warning_rounded,
               color: Colors.orange, 
               size: 40,
             ),
@@ -161,8 +179,9 @@ class _MapScreenState extends ConsumerState<MapScreen> {
       );
     }
 
-    // 2. Al final, agregamos tu propia ubicación (para que quede dibujada por encima)
-    if (myPosition != null) {
+    // 2. Validación y renderizado de la posición propia
+    if (myPosition != null && 
+        !myPosition!.latitude.isNaN && !myPosition!.longitude.isNaN) {
       marcadores.add(
         Marker(
           point: myPosition!,

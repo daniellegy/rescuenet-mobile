@@ -4,6 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../data/report_repository.dart';
 
+import 'location_selector_screen.dart'; 
+
 class CreateReportScreen extends ConsumerStatefulWidget {
   final double lat;
   final double lng;
@@ -31,8 +33,20 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
   String? _sexo = 'Desconocido';
   String? _edad = 'Cachorro';
   String? _tamano = 'Pequeño';
-  double _agresividad = 1.0; // Variable de la barra (Slider)
+  double _agresividad = 1.0; 
   bool _isLoading = false;
+
+  // NUEVO: Variables de estado para la ubicación
+  late double _currentLat;
+  late double _currentLng;
+
+  @override
+  void initState() {
+    super.initState();
+    // Inicializamos con la ubicación por defecto del Geolocator
+    _currentLat = widget.lat;
+    _currentLng = widget.lng;
+  }
 
   Future<void> _submitReport() async {
     if (!_formKey.currentState!.validate()) return;
@@ -49,15 +63,14 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
       final repository = ref.read(reportRepositoryProvider);
 
       await repository.createReport(
-        lat: widget.lat,
-        lng: widget.lng,
+        lat: _currentLat, // Usamos la variable de estado actual
+        lng: _currentLng, // Usamos la variable de estado actual
         especie: _especie!,
         color: _colorController.text,
         sexo: _sexo!,
         edadAprox: _edad!,
         tamano: _tamano!,
-        agresividad: _agresividad
-            .toInt(), // Corrección: Conversión directa a entero sin '!'
+        agresividad: _agresividad.toInt(),
         razaAprox: _razaController.text,
         caracteristicasEspeciales: _caracController.text,
         notasAdicionales: _notasController.text,
@@ -113,6 +126,42 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
                       ),
                     ),
                     const SizedBox(height: 16),
+                    
+                    // NUEVO: Widget interactivo para modificar la ubicación
+                    Container(
+                      decoration: BoxDecoration(
+                        border: Border.all(color: Colors.grey.shade400),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: ListTile(
+                        leading: const Icon(Icons.location_on, color: Colors.red, size: 32),
+                        title: const Text('Ubicación del reporte', style: TextStyle(fontWeight: FontWeight.bold)),
+                        subtitle: const Text('Toca para ajustar el PIN en el mapa'),
+                        trailing: const Icon(Icons.edit_location_alt, color: Colors.blue),
+                        onTap: () async {
+                          // Navegamos a la pantalla del mapa
+                          final result = await Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => LocationSelectorScreen(
+                                initialLat: _currentLat,
+                                initialLng: _currentLng,
+                              ),
+                            ),
+                          );
+
+                          // Si el usuario confirma una ubicación, actualizamos el estado
+                          if (result != null && result is Map<String, double>) {
+                            setState(() {
+                              _currentLat = result['lat']!;
+                              _currentLng = result['lng']!;
+                            });
+                          }
+                        },
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+
                     DropdownButtonFormField<String>(
                       value: _especie,
                       hint: const Text('Selecciona especie'),
@@ -123,9 +172,7 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
                         prefixIcon: Icon(Icons.pets),
                       ),
                       items: ['Perro', 'Gato']
-                          .map(
-                            (e) => DropdownMenuItem(value: e, child: Text(e)),
-                          )
+                          .map((e) => DropdownMenuItem(value: e, child: Text(e)))
                           .toList(),
                       onChanged: (val) => setState(() => _especie = val),
                     ),
@@ -139,8 +186,7 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
                         prefixIcon: Icon(Icons.color_lens_outlined),
                         hintText: 'Ej. Naranjoso',
                       ),
-                      validator: (value) =>
-                          value!.isEmpty ? 'Ingresa el color' : null,
+                      validator: (value) => value!.isEmpty ? 'Ingresa el color' : null,
                     ),
                     const SizedBox(height: 16),
                     DropdownButtonFormField<String>(
@@ -151,9 +197,7 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
                         border: OutlineInputBorder(),
                       ),
                       items: ['Desconocido', 'Macho', 'Hembra']
-                          .map(
-                            (e) => DropdownMenuItem(value: e, child: Text(e)),
-                          )
+                          .map((e) => DropdownMenuItem(value: e, child: Text(e)))
                           .toList(),
                       onChanged: (val) => setState(() => _sexo = val),
                     ),
@@ -166,9 +210,7 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
                         border: OutlineInputBorder(),
                       ),
                       items: ['Cachorro', 'Adulto', 'Senior']
-                          .map(
-                            (e) => DropdownMenuItem(value: e, child: Text(e)),
-                          )
+                          .map((e) => DropdownMenuItem(value: e, child: Text(e)))
                           .toList(),
                       onChanged: (val) => setState(() => _edad = val),
                     ),
@@ -181,24 +223,13 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
                         border: OutlineInputBorder(),
                       ),
                       items: const [
-                        DropdownMenuItem(
-                          value: 'Pequeño',
-                          child: Text('Pequeño: Carga con una mano'),
-                        ),
-                        DropdownMenuItem(
-                          value: 'Mediano',
-                          child: Text('Mediano: Carga con dos manos'),
-                        ),
-                        DropdownMenuItem(
-                          value: 'Grande',
-                          child: Text('Grande: Requiere ayuda para cargar'),
-                        ),
+                        DropdownMenuItem(value: 'Pequeño', child: Text('Pequeño: Carga con una mano')),
+                        DropdownMenuItem(value: 'Mediano', child: Text('Mediano: Carga con dos manos')),
+                        DropdownMenuItem(value: 'Grande', child: Text('Grande: Requiere ayuda para cargar')),
                       ],
                       onChanged: (val) => setState(() => _tamano = val),
                     ),
                     const SizedBox(height: 24),
-
-                    // Corrección: Slider y su texto
                     const Text(
                       'Nivel de Agresividad (1: Tranquilo - 10: Muy agresivo)',
                       style: TextStyle(fontWeight: FontWeight.bold),
@@ -207,7 +238,7 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
                       value: _agresividad,
                       min: 1,
                       max: 10,
-                      divisions: 9, // Brinca en números enteros
+                      divisions: 9,
                       label: _agresividad.round().toString(),
                       activeColor: Colors.red,
                       onChanged: (double value) {
@@ -216,7 +247,6 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
                         });
                       },
                     ),
-
                     const SizedBox(height: 24),
                     TextFormField(
                       controller: _razaController,
@@ -226,8 +256,7 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
                         border: OutlineInputBorder(),
                         hintText: 'Ej. Desconocido, Mestizo, Husky',
                       ),
-                      validator: (value) =>
-                          value!.isEmpty ? 'Ingresa la raza' : null,
+                      validator: (value) => value!.isEmpty ? 'Ingresa la raza' : null,
                     ),
                     const SizedBox(height: 16),
                     TextFormField(
@@ -238,8 +267,7 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
                         border: OutlineInputBorder(),
                         hintText: 'Ej. Sin cola, Heridas.',
                       ),
-                      validator: (value) =>
-                          value!.isEmpty ? 'Ingresa las características' : null,
+                      validator: (value) => value!.isEmpty ? 'Ingresa las características' : null,
                     ),
                     const SizedBox(height: 16),
                     TextFormField(
@@ -250,8 +278,7 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
                         border: OutlineInputBorder(),
                         hintText: 'Ej. Miedoso, Cojea de una pata',
                       ),
-                      validator: (value) =>
-                          value!.isEmpty ? 'Ingresa las notas' : null,
+                      validator: (value) => value!.isEmpty ? 'Ingresa las notas' : null,
                     ),
                     const SizedBox(height: 32),
                     FilledButton.icon(
