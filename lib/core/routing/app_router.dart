@@ -11,6 +11,7 @@ import '../../features/history/presentation/screens/history_screen.dart';
 import '../../features/history/presentation/screens/report_detail_screen.dart';
 import '../../features/history/domain/models/report_model.dart';
 import '../../features/reports/presentation/screens/active_reports_screen.dart';
+import '../../features/settings/presentation/screens/settings_screen.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
   final authStateNotifier = ValueNotifier<AuthState>(ref.read(authProvider));
@@ -71,6 +72,10 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/active-reports',
         builder: (context, state) => const ActiveReportsScreen(),
       ),
+      GoRoute(
+        path: '/settings',
+        builder: (context, state) => const SettingsScreen(),
+      )
     ],
   );
 });
