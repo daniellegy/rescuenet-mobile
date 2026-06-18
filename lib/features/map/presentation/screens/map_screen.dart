@@ -6,7 +6,6 @@ import 'package:latlong2/latlong.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:dio/dio.dart'; // Para peticiones HTTP
 
-
 import '../../../../core/services/location_service.dart';
 import '../../../../core/services/camera_service.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
@@ -44,6 +43,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
       final response = await dio.get('/reportes/activos'); 
 
       if (response.statusCode == 200) {
+        // --- CÓDIGO CORREGIDO AQUÍ ---
         List<dynamic> data = [];
         
         // Si el backend manda la lista directa: [{...}, {...}]
@@ -85,7 +85,6 @@ class _MapScreenState extends ConsumerState<MapScreen> {
       final locationService = ref.read(locationServiceProvider);
       final position = await locationService.getCurrentPosition();
 
-      // Validación matemática y geográfica
       if (position.latitude.isNaN || position.longitude.isNaN || 
           position.latitude.isInfinite || position.longitude.isInfinite) {
         throw Exception('El hardware del GPS retornó coordenadas no numéricas.');
@@ -135,11 +134,9 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   }
 
   // Función auxiliar para construir todos los pines del mapa
-  // Función auxiliar para construir todos los pines del mapa
   List<Marker> _buildMarkers() {
     List<Marker> marcadores = [];
-
-    // 1. Filtrado y renderizado de reportes
+    //1. Filtrado y renderizado de reportes
     for (var reporte in _reportesCercanos) {
       // Validación estricta: Se excluyen valores nulos matemáticos (NaN/Infinito)
       if (reporte.latitud.isNaN || reporte.longitud.isNaN || 
@@ -162,6 +159,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
           height: 50,
           child: GestureDetector(
             onTap: () {
+              // Al tocar el icono, navegamos a la pantalla de detalles
               Navigator.push(
                 context,
                 MaterialPageRoute(
@@ -170,7 +168,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
               );
             },
             child: const Icon(
-              Icons.warning_rounded,
+              Icons.warning_rounded, 
               color: Colors.orange, 
               size: 40,
             ),
@@ -291,7 +289,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
             IconButton(
               icon: const Icon(Icons.settings, color: Colors.grey),
               tooltip: 'Configuración',
-              onPressed: () {},
+              onPressed: () => context.push('/settings'),
             ),
           ],
         ),
