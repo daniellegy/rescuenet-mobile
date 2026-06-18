@@ -8,7 +8,12 @@ enum AppRole { ninguno, reportante, voluntario, refugio, superadmin }
 class AuthState {
   final bool isLogged;
   final AppRole role;
-  AuthState({this.isLogged = false, this.role = AppRole.ninguno});
+  final int? userId;
+  AuthState({
+    this.isLogged = false, 
+    this.role = AppRole.ninguno, 
+    this.userId,
+  });
 }
 
 class AuthNotifier extends Notifier<AuthState> {
@@ -16,12 +21,13 @@ class AuthNotifier extends Notifier<AuthState> {
 
   @override
   AuthState build() {
-    return AuthState(isLogged: false, role: AppRole.ninguno);
+    return AuthState(isLogged: false, role: AppRole.ninguno, userId: null);
   }
 
   Future<void> _processAuthResponse(Map<String, dynamic> data) async {
     final token = data['token'];
     final int rolId = data['usuario']['rol_id'];
+    final int idUsuario = data['usuario']['id'];
 
     await _storage.write(key: 'jwt_token', value: token);
 
@@ -37,7 +43,7 @@ class AuthNotifier extends Notifier<AuthState> {
       await FirebaseMessaging.instance.subscribeToTopic('voluntarios');
     }
 
-    state = AuthState(isLogged: true, role: userRole);
+    state = AuthState(isLogged: true, role: userRole, userId: idUsuario);
   }
 
   Future<void> login(String email, String password) async {
@@ -82,7 +88,7 @@ class AuthNotifier extends Notifier<AuthState> {
 
   Future<void> logout() async {
     await _storage.delete(key: 'jwt_token');
-    state = AuthState(isLogged: false, role: AppRole.ninguno);
+    state = AuthState(isLogged: false, role: AppRole.ninguno, userId: null);
   }
 }
 
