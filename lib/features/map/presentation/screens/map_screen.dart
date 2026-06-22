@@ -182,9 +182,9 @@ class _MapScreenState extends ConsumerState<MapScreen>
                                 // Animación aplicada al marcador del reporte
                                 child: ScaleTransition(
                                   scale: _scaleAnimation,
-                                  child: const Icon(
+                                  child: Icon(
                                     Icons.warning_rounded,
-                                    color: Colors.orange,
+                                    color: reporte.colorUrgencia,
                                     size: 40,
                                   ),
                                 ),

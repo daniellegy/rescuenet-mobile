@@ -29,6 +29,7 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
   final _caracController = TextEditingController();
   final _notasController = TextEditingController();
 
+  String _urgenciaSeleccionada = 'media';
   String? _especie;
   String? _sexo = 'Desconocido';
   String? _edad = 'Cachorro';
@@ -74,6 +75,7 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
         razaAprox: _razaController.text,
         caracteristicasEspeciales: _caracController.text,
         notasAdicionales: _notasController.text,
+        urgencia: _urgenciaSeleccionada,
         imagePath: widget.imagePath,
       );
 
@@ -173,7 +175,6 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
                       ),
                     ),
                     const SizedBox(height: 16),
-
                     DropdownButtonFormField<String>(
                       value: _especie,
                       hint: const Text('Selecciona especie'),
@@ -189,6 +190,45 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
                           )
                           .toList(),
                       onChanged: (val) => setState(() => _especie = val),
+                    ),
+                    const Text(
+                      'Nivel de Urgencia',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 8),
+                    SegmentedButton<String>(
+                      segments: const [
+                        ButtonSegment(value: 'baja', label: Text('Baja')),
+                        ButtonSegment(value: 'media', label: Text('Media')),
+                        ButtonSegment(value: 'alta', label: Text('Alta')),
+                      ],
+                      selected: {_urgenciaSeleccionada},
+                      onSelectionChanged: (Set<String> newSelection) {
+                        setState(() {
+                          _urgenciaSeleccionada = newSelection.first;
+                        });
+                      },
+                      style: ButtonStyle(
+                        backgroundColor: WidgetStateProperty.resolveWith<Color>(
+                          (Set<WidgetState> states) {
+                            if (states.contains(WidgetState.selected)) {
+                              return _urgenciaSeleccionada == 'alta'
+                                  ? Colors.red
+                                  : _urgenciaSeleccionada == 'media'
+                                  ? Colors.orange
+                                  : Colors.amber;
+                            }
+                            return Colors.white;
+                          },
+                        ),
+                        foregroundColor: WidgetStateProperty.resolveWith<Color>(
+                          (Set<WidgetState> states) {
+                            if (states.contains(WidgetState.selected))
+                              return Colors.white;
+                            return Colors.black87;
+                          },
+                        ),
+                      ),
                     ),
                     const SizedBox(height: 16),
                     TextFormField(

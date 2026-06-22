@@ -1,3 +1,5 @@
+import 'package:flutter/material.dart';
+
 class ReportModel {
   final int id;
   final String especie;
@@ -9,6 +11,7 @@ class ReportModel {
   final String razaAprox;
   final String caracteristicasEspeciales;
   final String notasAdicionales;
+  final String urgencia;
   final String estado;
   final double latitud;
   final double longitud;
@@ -25,11 +28,26 @@ class ReportModel {
     required this.razaAprox,
     required this.caracteristicasEspeciales,
     required this.notasAdicionales,
+    required this.urgencia,
     required this.estado,
     required this.latitud,
     required this.longitud,
     this.fotoUrl,
   });
+
+  // Getter centralizado para el color UI basado en la urgencia
+  Color get colorUrgencia {
+    switch (urgencia.toLowerCase()) {
+      case 'alta':
+        return Colors.red;
+      case 'media':
+        return Colors.orange;
+      case 'baja':
+        return Colors.amber;
+      default:
+        return Colors.orange;
+    }
+  }
 
   factory ReportModel.fromJson(Map<String, dynamic> json) {
     return ReportModel(
@@ -44,9 +62,10 @@ class ReportModel {
       caracteristicasEspeciales:
           json['caracteristicas_especiales'] ?? 'Ninguna',
       notasAdicionales: json['notas_adicionales'] ?? 'Sin notas',
+      urgencia: json['urgencia'] ?? 'media', // Valor seguro
       estado: json['estado'] ?? 'Nuevo',
-      latitud: (json['latitud'] as num?)?.toDouble() ?? 0.0,
-      longitud: (json['longitud'] as num?)?.toDouble() ?? 0.0,
+      latitud: double.tryParse(json['latitud'].toString()) ?? 0.0,
+      longitud: double.tryParse(json['longitud'].toString()) ?? 0.0,
       fotoUrl: json['foto_url'],
     );
   }

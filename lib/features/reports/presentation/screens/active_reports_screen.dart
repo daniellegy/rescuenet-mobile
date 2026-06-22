@@ -31,10 +31,14 @@ class ActiveReportsScreen extends ConsumerWidget {
             separatorBuilder: (_, __) => const SizedBox(height: 12),
             itemBuilder: (context, index) {
               final reporte = reportes[index];
+              final colorEmergencia = reporte.colorUrgencia;
               return Card(
                 elevation: 3,
                 shape: RoundedRectangleBorder(
-                  side: const BorderSide(color: Colors.redAccent, width: 1),
+                  side: BorderSide(
+                    color: colorEmergencia,
+                    width: 1.5,
+                  ), // Borde dinámico
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: ListTile(
@@ -49,12 +53,12 @@ class ActiveReportsScreen extends ConsumerWidget {
                             fit: BoxFit.cover,
                           ),
                         )
-                      : const Icon(Icons.warning, color: Colors.red, size: 40),
+                      : Icon(Icons.warning, color: colorEmergencia, size: 40),
                   title: Text(
-                    'Emergencia: ${reporte.especie}',
-                    style: const TextStyle(
+                    'Emergencia: ${reporte.especie} (${reporte.urgencia.toUpperCase()})',
+                    style: TextStyle(
                       fontWeight: FontWeight.bold,
-                      color: Colors.red,
+                      color: colorEmergencia, // Texto dinámico
                     ),
                   ),
                   subtitle: const Text(
@@ -62,7 +66,6 @@ class ActiveReportsScreen extends ConsumerWidget {
                   ),
                   trailing: const Icon(Icons.arrow_forward_ios),
                   onTap: () {
-                    // Refresca la lista de activos si el voluntario aceptó el caso en la pantalla de detalles
                     context
                         .push('/report-detail', extra: reporte)
                         .then((_) => ref.refresh(activeReportsProvider));

@@ -19,6 +19,7 @@ class ReportRepository {
     required String razaAprox,
     required String caracteristicasEspeciales,
     required String notasAdicionales,
+    required String urgencia, // NUEVO
     required String imagePath,
   }) async {
     try {
@@ -34,6 +35,7 @@ class ReportRepository {
         'raza_aprox': razaAprox,
         'caracteristicas_especiales': caracteristicasEspeciales,
         'notas_adicionales': notasAdicionales,
+        'urgencia': urgencia, // SE ENVÍA AQUÍ
         'foto': await MultipartFile.fromFile(
           imagePath,
           filename: 'reporte.jpg',
