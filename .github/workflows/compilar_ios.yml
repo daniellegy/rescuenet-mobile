@@ -1,12 +1,10 @@
 name: Compilar iOS (Sin Firma)
 
-# Esto nos permite activar la compilación manualmente desde un botón en GitHub
 on:
   workflow_dispatch: 
 
 jobs:
   build-ios:
-    # Utilizamos el servidor más reciente de Apple disponible en GitHub
     runs-on: macos-latest 
 
     steps:
@@ -21,8 +19,14 @@ jobs:
       - name: Instalar dependencias
         run: flutter pub get
 
+      - name: Desactivar Firma de Apple forzosamente
+        run: |
+          echo "CODE_SIGNING_REQUIRED=NO" >> ios/Flutter/Release.xcconfig
+          echo "CODE_SIGNING_ALLOWED=NO" >> ios/Flutter/Release.xcconfig
+          echo "CODE_SIGN_IDENTITY=" >> ios/Flutter/Release.xcconfig
+          echo "EXPANDED_CODE_SIGN_IDENTITY=" >> ios/Flutter/Release.xcconfig
+
       - name: Compilar iOS sin firma de Apple
-        # El flag --no-codesign es vital porque no tenemos la licencia de $99
         run: flutter build ios --release --no-codesign
 
       - name: Empaquetar a formato instalable (.ipa)
