@@ -19,26 +19,24 @@ jobs:
       - name: Instalar dependencias
         run: flutter pub get
 
-      - name: Arrancar de raíz las reglas de firma de Apple
-        run: |
-          sed -i '' '/DevelopmentTeam/d' ios/Runner.xcodeproj/project.pbxproj
-          sed -i '' '/ProvisioningStyle/d' ios/Runner.xcodeproj/project.pbxproj
-          sed -i '' '/CODE_SIGN_STYLE/d' ios/Runner.xcodeproj/project.pbxproj
-          echo "CODE_SIGNING_REQUIRED=NO" >> ios/Flutter/Release.xcconfig
-          echo "CODE_SIGNING_ALLOWED=NO" >> ios/Flutter/Release.xcconfig
-          echo "CODE_SIGN_IDENTITY=" >> ios/Flutter/Release.xcconfig
-          echo "EXPANDED_CODE_SIGN_IDENTITY=" >> ios/Flutter/Release.xcconfig
+      - name: Preparar motor de iOS (Sin compilar)
+        # Flutter solo generará los archivos nativos pero se detendrá antes de bloquearnos
+        run: flutter build ios --release --config-only
 
-      - name: Compilar iOS sin firma de Apple
-        run: flutter build ios --release --no-codesign
+      - name: Compilación Nativa Forzada (Bypass de Flutter)
+        # Llamamos al compilador de Apple directamente e inyectamos la anulación de firmas en su núcleo
+        run: |
+          cd ios
+          xcodebuild -workspace Runner.xcworkspace -scheme Runner -configuration Release -sdk iphoneos SYMROOT=$(PWD)/build CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" build
 
       - name: Empaquetar a formato instalable (.ipa)
         run: |
           mkdir Payload
-          mv build/ios/iphoneos/Runner.app Payload/
+          # Extraemos la app de la carpeta donde xcodebuild la arrojó
+          mv ios/build/Release-iphoneos/Runner.app Payload/
           zip -r RescueNet.ipa Payload
 
-      - name: Subir el archivo compilado para descargar
+      - name: Subir el archivo compilado
         uses: actions/upload-artifact@v4
         with:
           name: RescueNet-iOS-IPA
