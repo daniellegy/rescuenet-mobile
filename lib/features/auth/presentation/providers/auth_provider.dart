@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:dio/dio.dart'; // IMPORTANTE: Necesario para capturar DioException
 import '../../../../core/network/dio_client.dart';
 
 enum AppRole { ninguno, reportante, voluntario, refugio, superadmin }
@@ -9,6 +10,7 @@ class AuthState {
   final bool isLogged;
   final AppRole role;
   final int? userId;
+
   AuthState({this.isLogged = false, this.role = AppRole.ninguno, this.userId});
 }
 
@@ -48,8 +50,13 @@ class AuthNotifier extends Notifier<AuthState> {
         data: {'email': email, 'password': password},
       );
       if (response.statusCode == 200) await _processAuthResponse(response.data);
+    } on DioException catch (e) {
+      // Capturamos el mensaje exacto que manda Node.js (ej: "Credenciales inválidas")
+      throw Exception(
+        e.response?.data['error'] ?? 'Error de conexión al iniciar sesión',
+      );
     } catch (e) {
-      throw Exception('Credenciales incorrectas');
+      throw Exception('Ocurrió un error inesperado');
     }
   }
 
@@ -75,8 +82,13 @@ class AuthNotifier extends Notifier<AuthState> {
         },
       );
       if (response.statusCode == 201) await _processAuthResponse(response.data);
+    } on DioException catch (e) {
+      // Capturamos el mensaje exacto (ej: "El correo ya está registrado")
+      throw Exception(
+        e.response?.data['error'] ?? 'Error al registrar usuario',
+      );
     } catch (e) {
-      throw Exception('Error al registrar usuario');
+      throw Exception('Ocurrió un error inesperado');
     }
   }
 
