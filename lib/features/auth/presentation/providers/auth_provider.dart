@@ -1,6 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:firebase_messaging/firebase_messaging.dart'; // NUEVO IMPORT
+import 'package:firebase_messaging/firebase_messaging.dart';
 import '../../../../core/network/dio_client.dart';
 
 enum AppRole { ninguno, reportante, voluntario, refugio, superadmin }
@@ -9,11 +9,7 @@ class AuthState {
   final bool isLogged;
   final AppRole role;
   final int? userId;
-  AuthState({
-    this.isLogged = false, 
-    this.role = AppRole.ninguno, 
-    this.userId,
-  });
+  AuthState({this.isLogged = false, this.role = AppRole.ninguno, this.userId});
 }
 
 class AuthNotifier extends Notifier<AuthState> {
@@ -34,12 +30,10 @@ class AuthNotifier extends Notifier<AuthState> {
     AppRole userRole = AppRole.ninguno;
     if (rolId == 1) {
       userRole = AppRole.reportante;
-      // Los reportantes comunes NO reciben las alertas de emergencias de todos
       await FirebaseMessaging.instance.unsubscribeFromTopic('voluntarios');
     }
     if (rolId == 2) {
       userRole = AppRole.voluntario;
-      // Al ser voluntario, el teléfono queda suscrito a las notificaciones globales
       await FirebaseMessaging.instance.subscribeToTopic('voluntarios');
     }
 
@@ -48,7 +42,6 @@ class AuthNotifier extends Notifier<AuthState> {
 
   Future<void> login(String email, String password) async {
     try {
-      // Corrección: Se agregó .instance
       final dio = ref.read(dioProvider).instance;
       final response = await dio.post(
         '/auth/login',
@@ -66,9 +59,9 @@ class AuthNotifier extends Notifier<AuthState> {
     required String email,
     required String password,
     required int rolId,
+    String? curp,
   }) async {
     try {
-      // Corrección: Se agregó .instance
       final dio = ref.read(dioProvider).instance;
       final response = await dio.post(
         '/auth/register',
@@ -78,6 +71,7 @@ class AuthNotifier extends Notifier<AuthState> {
           'email': email,
           'password': password,
           'rol_id': rolId,
+          'curp': curp,
         },
       );
       if (response.statusCode == 201) await _processAuthResponse(response.data);

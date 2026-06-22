@@ -18,7 +18,7 @@ class LocationSelectorScreen extends StatefulWidget {
 }
 
 class _LocationSelectorScreenState extends State<LocationSelectorScreen> {
-  late MapController _mapController;
+  late final MapController _mapController;
   late double _currentLat;
   late double _currentLng;
 
@@ -42,7 +42,6 @@ class _LocationSelectorScreenState extends State<LocationSelectorScreen> {
       body: Stack(
         alignment: Alignment.center,
         children: [
-          // El mapa al fondo
           FlutterMap(
             mapController: _mapController,
             options: MapOptions(
@@ -50,36 +49,22 @@ class _LocationSelectorScreenState extends State<LocationSelectorScreen> {
               initialZoom: 18.0,
               minZoom: 5.0,
               maxZoom: 22.0,
-              // Capturamos el movimiento del mapa en tiempo real
               onPositionChanged: (MapCamera position, bool hasGesture) {
-                if (position.center != null) {
-                  _currentLat = position.center!.latitude;
-                  _currentLng = position.center!.longitude;
-                }
+                _currentLat = position.center.latitude;
+                _currentLng = position.center.longitude;
               },
             ),
             children: [
               TileLayer(
-                urlTemplate: 'https://api.mapbox.com/styles/v1/mapbox/streets-v12/tiles/{z}/{x}/{y}?access_token=$mapboxToken',
-                additionalOptions: {
-                  'accessToken': mapboxToken,
-                  'id': 'mapbox/streets-v12',
-                },
+                urlTemplate:
+                    'https://api.mapbox.com/styles/v1/mapbox/streets-v12/tiles/{z}/{x}/{y}?access_token=$mapboxToken',
               ),
             ],
           ),
-          
-          // El PIN fijo en el centro exacto de la pantalla
           const Padding(
-            padding: EdgeInsets.only(bottom: 40.0), // Ajuste para que la "punta" del icono sea el centro exacto
-            child: Icon(
-              Icons.location_on,
-              size: 50.0,
-              color: Colors.red,
-            ),
+            padding: EdgeInsets.only(bottom: 40.0),
+            child: Icon(Icons.location_on, size: 50.0, color: Colors.red),
           ),
-          
-          // Letrero indicador flotante
           Positioned(
             top: 20,
             child: Container(
@@ -90,26 +75,27 @@ class _LocationSelectorScreenState extends State<LocationSelectorScreen> {
               ),
               child: const Text(
                 'Mueve el mapa para ajustar el PIN',
-                style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ),
           ),
         ],
       ),
-      
-      // Botón para confirmar la selección y regresar los datos
       floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () {
-          Navigator.pop(context, {
-            'lat': _currentLat,
-            'lng': _currentLng,
-          });
+          Navigator.pop(context, {'lat': _currentLat, 'lng': _currentLng});
         },
         backgroundColor: const Color(0xFFD32F2F),
         foregroundColor: Colors.white,
         icon: const Icon(Icons.check),
-        label: const Text('Confirmar Ubicación', style: TextStyle(fontWeight: FontWeight.bold)),
+        label: const Text(
+          'Confirmar Ubicación',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
       ),
     );
   }
