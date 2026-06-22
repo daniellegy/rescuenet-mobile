@@ -13,6 +13,7 @@ class ReportModel {
   final String notasAdicionales;
   final String urgencia;
   final String estado;
+  final int? usuarioRescatistaId; // NUEVO: Determina si el caso es mío
   final double latitud;
   final double longitud;
   final String? fotoUrl;
@@ -30,12 +31,12 @@ class ReportModel {
     required this.notasAdicionales,
     required this.urgencia,
     required this.estado,
+    this.usuarioRescatistaId,
     required this.latitud,
     required this.longitud,
     this.fotoUrl,
   });
 
-  // Getter centralizado para el color UI basado en la urgencia
   Color get colorUrgencia {
     switch (urgencia.toLowerCase()) {
       case 'alta':
@@ -49,24 +50,33 @@ class ReportModel {
     }
   }
 
+  // NUEVO: Formateador visual para quitar el "En_Proceso" de la UI
+  String get estadoFormateado {
+    return estado.replaceAll('_', ' ');
+  }
+
   factory ReportModel.fromJson(Map<String, dynamic> json) {
     return ReportModel(
-      id: json['id'],
-      especie: json['especie'] ?? 'Desconocida',
-      colorDominante: json['color_dominante'] ?? 'Desconocido',
-      sexo: json['sexo'] ?? 'Desconocido',
-      edadAprox: json['edad_aprox'] ?? 'Desconocida',
-      tamano: json['tamano'] ?? 'No especificado',
-      agresividad: int.tryParse(json['agresividad'].toString()) ?? 1,
-      razaAprox: json['raza_aprox'] ?? 'Desconocida',
+      id: json['id'] as int? ?? 0,
+      especie: json['especie']?.toString() ?? 'Desconocida',
+      colorDominante: json['color_dominante']?.toString() ?? 'Desconocido',
+      sexo: json['sexo']?.toString() ?? 'Desconocido',
+      edadAprox: json['edad_aprox']?.toString() ?? 'Desconocida',
+      tamano: json['tamano']?.toString() ?? 'No especificado',
+      agresividad: int.tryParse(json['agresividad']?.toString() ?? '1') ?? 1,
+      razaAprox: json['raza_aprox']?.toString() ?? 'Desconocida',
       caracteristicasEspeciales:
-          json['caracteristicas_especiales'] ?? 'Ninguna',
-      notasAdicionales: json['notas_adicionales'] ?? 'Sin notas',
-      urgencia: json['urgencia'] ?? 'media', // Valor seguro
-      estado: json['estado'] ?? 'Nuevo',
-      latitud: double.tryParse(json['latitud'].toString()) ?? 0.0,
-      longitud: double.tryParse(json['longitud'].toString()) ?? 0.0,
-      fotoUrl: json['foto_url'],
+          json['caracteristicas_especiales']?.toString() ?? 'Ninguna',
+      notasAdicionales: json['notas_adicionales']?.toString() ?? 'Sin notas',
+      urgencia: json['urgencia']?.toString() ?? 'media',
+      estado: json['estado']?.toString() ?? 'Nuevo',
+      // Mapeo seguro del ID del rescatista
+      usuarioRescatistaId: json['usuario_rescatista_id'] != null
+          ? int.tryParse(json['usuario_rescatista_id'].toString())
+          : null,
+      latitud: double.tryParse(json['latitud']?.toString() ?? '0.0') ?? 0.0,
+      longitud: double.tryParse(json['longitud']?.toString() ?? '0.0') ?? 0.0,
+      fotoUrl: json['foto_url']?.toString(),
     );
   }
 }

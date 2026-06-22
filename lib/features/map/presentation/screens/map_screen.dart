@@ -9,6 +9,10 @@ import '../../../../core/services/location_service.dart';
 import '../../../../core/services/camera_service.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../providers/map_markers_provider.dart';
+import '../../../reports/presentation/providers/my_active_rescue_provider.dart';
+
+// ─── Colores predefinidos para evitar instanciar Color en cada build ───────────
+const _kAppBarBg = Color(0xE6FFFFFF); // Colors.white con 90% opacidad
 
 class MapScreen extends ConsumerStatefulWidget {
   const MapScreen({super.key});
@@ -17,28 +21,23 @@ class MapScreen extends ConsumerStatefulWidget {
   ConsumerState<MapScreen> createState() => _MapScreenState();
 }
 
-// Se añade TickerProviderStateMixin para poder manejar animaciones
 class _MapScreenState extends ConsumerState<MapScreen>
-    with TickerProviderStateMixin {
+    with SingleTickerProviderStateMixin {
+  // [OPTIMIZACIÓN] SingleTickerProviderStateMixin en lugar de TickerProviderStateMixin.
+  // TickerProviderStateMixin está pensado para múltiples controladores simultáneos;
+  // como ahora solo usamos uno, la versión Single es más liviana.
   LatLng? myPosition;
-
   late AnimationController _animationController;
   late Animation<double> _scaleAnimation;
 
   @override
   void initState() {
     super.initState();
+    _animationController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1200),
+    )..repeat(reverse: true);
 
-    // Configuración del controlador de animación (duración de 1.2 segundos por ciclo)
-    _animationController =
-        AnimationController(
-          vsync: this,
-          duration: const Duration(milliseconds: 1200),
-        )..repeat(
-          reverse: true,
-        ); // El repeat con reverse crea el efecto de latido constante
-
-    // Curva de escalado suave para no deformar los gráficos 2D
     _scaleAnimation = Tween<double>(begin: 0.85, end: 1.15).animate(
       CurvedAnimation(parent: _animationController, curve: Curves.easeInOut),
     );
@@ -48,7 +47,6 @@ class _MapScreenState extends ConsumerState<MapScreen>
 
   @override
   void dispose() {
-    // Es CRÍTICO destruir el controlador para evitar fugas de memoria
     _animationController.dispose();
     super.dispose();
   }
@@ -58,10 +56,7 @@ class _MapScreenState extends ConsumerState<MapScreen>
       final locationService = ref.read(locationServiceProvider);
       final position = await locationService.getCurrentPosition();
 
-      if (position.latitude.isNaN ||
-          position.longitude.isNaN ||
-          position.latitude.isInfinite ||
-          position.longitude.isInfinite) {
+      if (position.latitude.isNaN || position.longitude.isNaN) {
         throw Exception(
           'El hardware del GPS retornó coordenadas no numéricas.',
         );
@@ -110,16 +105,61 @@ class _MapScreenState extends ConsumerState<MapScreen>
     }
   }
 
+  // ─── Marker de reporte: ESTÁTICO, sin animación ──────────────────────────────
+  //
+  // [OPTIMIZACIÓN CLAVE] Se eliminó ScaleTransition de todos los markers de reporte.
+  // Tener N widgets animados compartiendo un AnimationController causaba que Flutter
+  // reconstruyera el widget tree completo en cada frame (60fps × N markers).
+  //
+  // Compensación visual: BoxShadow con el color de urgencia genera un "glow" que
+  // comunica urgencia igual de efectivamente. El color ya codifica la prioridad;
+  // la animación era redundante y costosa.
+  Widget _buildReportMarker(Color urgencyColor) {
+    return Container(
+      width: 44,
+      height: 44,
+      decoration: BoxDecoration(
+        color: urgencyColor.withOpacity(0.15),
+        shape: BoxShape.circle,
+        border: Border.all(color: urgencyColor, width: 2.5),
+        boxShadow: [
+          BoxShadow(
+            color: urgencyColor.withOpacity(0.4),
+            blurRadius: 8,
+            spreadRadius: 2,
+          ),
+        ],
+      ),
+      child: Icon(Icons.warning_rounded, color: urgencyColor, size: 24),
+    );
+  }
+
+  // ─── Marker del usuario: animado pero aislado ─────────────────────────────────
+  //
+  // [OPTIMIZACIÓN CLAVE] RepaintBoundary crea una "capa" independiente en el árbol
+  // de renderizado. La animación de este widget NO propaga repaints al mapa ni a
+  // los demás markers. Sin RepaintBoundary, cada frame de animación repintaba
+  // potencialmente todo el Scaffold.
+  Widget get _buildUserMarker => RepaintBoundary(
+    child: ScaleTransition(
+      scale: _scaleAnimation,
+      child: const Icon(Icons.person_pin, color: Colors.red, size: 40),
+    ),
+  );
+
   @override
   Widget build(BuildContext context) {
     final mapboxToken = dotenv.env['MAPBOX_TOKEN'] ?? '';
     final reportesAsync = ref.watch(reportesActivosMapaProvider);
+    final miRescateAsync = ref.watch(miRescateActivoProvider);
 
     return Scaffold(
       extendBody: true,
       appBar: AppBar(
         title: const Text('Mapa de rescates'),
-        backgroundColor: Colors.white.withOpacity(0.9),
+        // [OPTIMIZACIÓN MENOR] Color predefinido como constante evita crear
+        // un nuevo objeto Color en cada rebuild del AppBar.
+        backgroundColor: _kAppBarBg,
         actions: [
           reportesAsync.maybeWhen(
             loading: () => const Padding(
@@ -134,7 +174,10 @@ class _MapScreenState extends ConsumerState<MapScreen>
             ),
             orElse: () => IconButton(
               icon: const Icon(Icons.refresh, color: Colors.blue),
-              onPressed: () => ref.invalidate(reportesActivosMapaProvider),
+              onPressed: () {
+                ref.invalidate(reportesActivosMapaProvider);
+                ref.invalidate(miRescateActivoProvider);
+              },
             ),
           ),
           IconButton(
@@ -145,74 +188,117 @@ class _MapScreenState extends ConsumerState<MapScreen>
       ),
       body: myPosition == null
           ? const Center(child: CircularProgressIndicator())
-          : FlutterMap(
-              options: MapOptions(
-                initialCenter: myPosition!,
-                initialZoom: 18,
-                minZoom: 5,
-                maxZoom: 25,
-              ),
+          : Stack(
               children: [
-                TileLayer(
-                  urlTemplate:
-                      'https://api.mapbox.com/styles/v1/mapbox/streets-v12/tiles/{z}/{x}/{y}?access_token=$mapboxToken',
-                  additionalOptions: {
-                    'accessToken': mapboxToken,
-                    'id': 'mapbox/streets-v12',
-                  },
-                ),
-                MarkerLayer(
-                  rotate: true,
-                  markers: [
-                    ...reportesAsync.maybeWhen(
-                      data: (reportes) => reportes
-                          .map(
-                            (reporte) => Marker(
+                FlutterMap(
+                  options: MapOptions(
+                    initialCenter: myPosition!,
+                    initialZoom: 18,
+                    minZoom: 5,
+                    maxZoom: 25,
+                  ),
+                  children: [
+                    TileLayer(
+                      urlTemplate:
+                          'https://api.mapbox.com/styles/v1/mapbox/streets-v12/tiles/{z}/{x}/{y}?access_token=$mapboxToken',
+                      additionalOptions: {
+                        'accessToken': mapboxToken,
+                        'id': 'mapbox/streets-v12',
+                      },
+                    ),
+                    MarkerLayer(
+                      rotate: true,
+                      markers: [
+                        // ── Markers de reportes (estáticos) ──────────────────
+                        ...reportesAsync.maybeWhen(
+                          data: (reportes) => reportes.map((reporte) {
+                            return Marker(
                               point: LatLng(reporte.latitud, reporte.longitud),
                               width: 50,
                               height: 50,
                               rotate: true,
                               child: GestureDetector(
                                 onTap: () {
-                                  context.push(
-                                    '/report-detail',
-                                    extra: reporte,
-                                  );
+                                  context
+                                      .push('/report-detail', extra: reporte)
+                                      .then((_) {
+                                        ref.refresh(
+                                          reportesActivosMapaProvider,
+                                        );
+                                        ref.refresh(miRescateActivoProvider);
+                                      });
                                 },
-                                // Animación aplicada al marcador del reporte
-                                child: ScaleTransition(
-                                  scale: _scaleAnimation,
-                                  child: Icon(
-                                    Icons.warning_rounded,
-                                    color: reporte.colorUrgencia,
-                                    size: 40,
-                                  ),
+                                // Widget completamente estático — cero costo
+                                // de animación por frame.
+                                child: _buildReportMarker(
+                                  reporte.colorUrgencia,
                                 ),
                               ),
-                            ),
-                          )
-                          .toList(),
-                      orElse: () => [],
+                            );
+                          }).toList(),
+                          orElse: () => [],
+                        ),
+
+                        // ── Marker del usuario (animado y aislado) ────────────
+                        if (myPosition != null)
+                          Marker(
+                            point: myPosition!,
+                            width: 50,
+                            height: 50,
+                            rotate: true,
+                            child: _buildUserMarker,
+                          ),
+                      ],
                     ),
-                    if (myPosition != null &&
-                        !myPosition!.latitude.isNaN &&
-                        !myPosition!.longitude.isNaN)
-                      Marker(
-                        point: myPosition!,
-                        width: 50,
-                        height: 50,
-                        rotate: true,
-                        // Animación aplicada al marcador del usuario
-                        child: ScaleTransition(
-                          scale: _scaleAnimation,
-                          child: const Icon(
-                            Icons.person_pin,
-                            color: Colors.red,
-                            size: 40,
+                  ],
+                ),
+
+                // ── Widget flotante de rescate activo ─────────────────────────
+                miRescateAsync.maybeWhen(
+                  data: (rescate) {
+                    if (rescate == null) return const SizedBox.shrink();
+                    return Positioned(
+                      top: 16,
+                      left: 16,
+                      right: 16,
+                      child: GestureDetector(
+                        onTap: () {
+                          context.push('/report-detail', extra: rescate).then((
+                            _,
+                          ) {
+                            ref.refresh(reportesActivosMapaProvider);
+                            ref.refresh(miRescateActivoProvider);
+                          });
+                        },
+                        child: Card(
+                          elevation: 8,
+                          shape: RoundedRectangleBorder(
+                            side: BorderSide(
+                              color: rescate.colorUrgencia,
+                              width: 2,
+                            ),
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: ListTile(
+                            leading: Icon(
+                              Icons.warning_amber_rounded,
+                              color: rescate.colorUrgencia,
+                              size: 36,
+                            ),
+                            title: const Text(
+                              'Tienes un rescate en curso',
+                              style: TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                            subtitle: Text(
+                              '${rescate.especie} - Estado: ${rescate.estadoFormateado}',
+                            ),
+                            trailing: const Icon(Icons.arrow_forward_ios),
                           ),
                         ),
                       ),
-                  ],
+                    );
+                  },
+                  orElse: () => const SizedBox.shrink(),
                 ),
               ],
             ),

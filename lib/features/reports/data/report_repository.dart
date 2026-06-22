@@ -19,7 +19,7 @@ class ReportRepository {
     required String razaAprox,
     required String caracteristicasEspeciales,
     required String notasAdicionales,
-    required String urgencia, // NUEVO
+    required String urgencia,
     required String imagePath,
   }) async {
     try {
@@ -35,7 +35,7 @@ class ReportRepository {
         'raza_aprox': razaAprox,
         'caracteristicas_especiales': caracteristicasEspeciales,
         'notas_adicionales': notasAdicionales,
-        'urgencia': urgencia, // SE ENVÍA AQUÍ
+        'urgencia': urgencia,
         'foto': await MultipartFile.fromFile(
           imagePath,
           filename: 'reporte.jpg',
@@ -46,6 +46,28 @@ class ReportRepository {
     } on DioException catch (e) {
       throw Exception(
         e.response?.data['error'] ?? 'Error al enviar el reporte',
+      );
+    }
+  }
+
+  // NUEVO METODO PARA ACEPTAR
+  Future<void> acceptReport(int id) async {
+    try {
+      await _dio.put('/reportes/$id/aceptar');
+    } on DioException catch (e) {
+      throw Exception(
+        e.response?.data['error'] ?? 'Error al aceptar el rescate',
+      );
+    }
+  }
+
+  // NUEVO METODO PARA FINALIZAR
+  Future<void> finalizeReport(int id) async {
+    try {
+      await _dio.put('/reportes/$id/finalizar');
+    } on DioException catch (e) {
+      throw Exception(
+        e.response?.data['error'] ?? 'Error al finalizar el rescate',
       );
     }
   }

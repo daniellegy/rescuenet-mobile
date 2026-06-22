@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geocoding/geocoding.dart';
-import 'package:url_launcher/url_launcher.dart';
 import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../domain/models/report_model.dart';
-import '../../../../core/network/dio_client.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
+import '../../../reports/data/report_repository.dart';
+import '../../../reports/presentation/providers/active_reports_provider.dart';
+import '../../../reports/presentation/providers/my_active_rescue_provider.dart';
+import '../providers/history_provider.dart';
 
 class ReportDetailScreen extends ConsumerStatefulWidget {
   final ReportModel reporte;
@@ -25,7 +28,6 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
     _obtenerDireccionFisica();
   }
 
-  // 1. Obtener la calle usando lat y lng
   Future<void> _obtenerDireccionFisica() async {
     try {
       List<Placemark> placemarks = await placemarkFromCoordinates(
@@ -34,54 +36,92 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
       );
       if (placemarks.isNotEmpty) {
         Placemark place = placemarks.first;
-        if (mounted)
+        if (mounted) {
           setState(
             () => _direccion =
                 '${place.street}, ${place.subLocality}, ${place.locality}',
           );
+        }
       }
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         setState(
           () => _direccion =
-              'Ubicación GPS fijada. Toca para navegar en el mapa.',
+              'Coordenadas: ${widget.reporte.latitud}, ${widget.reporte.longitud}',
         );
+      }
     }
   }
 
-  // 2. Abrir Waze, Google Maps o Apple Maps nativo
-  Future<void> _abrirNavegacionGPS() async {
-    final url = Uri.parse(
-      'https://www.google.com/maps/search/?api=1&query=${widget.reporte.latitud},${widget.reporte.longitud}',
+  Future<void> _abrirEnMapaNativo() async {
+    final lat = widget.reporte.latitud;
+    final lng = widget.reporte.longitud;
+
+    // URL universal oficial: Funciona en Android, iOS y navegadores web
+    final Uri url = Uri.parse(
+      'https://www.google.com/maps/search/?api=1&query=$lat,$lng',
     );
-    if (!await launchUrl(url, mode: LaunchMode.externalApplication)) {
-      if (mounted)
+
+    try {
+      if (await canLaunchUrl(url)) {
+        // externalApplication fuerza a que se abra la app de Google Maps (o Waze) en lugar del navegador interno
+        await launchUrl(url, mode: LaunchMode.externalApplication);
+      } else {
+        throw Exception(
+          'No se encontró una aplicación de mapas en el dispositivo.',
+        );
+      }
+    } catch (e) {
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('No se pudo abrir la aplicación de mapas'),
+          SnackBar(
+            content: Text(e.toString().replaceAll('Exception: ', '')),
+            backgroundColor: Colors.redAccent,
           ),
         );
+      }
     }
   }
 
-  // 3. Conexión a la ruta PUT para aceptar el reporte
-  Future<void> _aceptarCaso() async {
+  Future<void> _ejecutarAccion(bool esAceptar) async {
     setState(() => _isLoading = true);
     try {
-      final dio = ref.read(dioProvider).instance;
-      await dio.put('/reportes/${widget.reporte.id}/aceptar');
+      if (esAceptar) {
+        await ref
+            .read(reportRepositoryProvider)
+            .acceptReport(widget.reporte.id);
+      } else {
+        await ref
+            .read(reportRepositoryProvider)
+            .finalizeReport(widget.reporte.id);
+      }
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('¡Rescate aceptado exitosamente!')),
+          SnackBar(
+            content: Text(
+              esAceptar
+                  ? 'Rescate aceptado. ¡Ve con cuidado!'
+                  : 'Rescate finalizado. ¡Buen trabajo!',
+            ),
+            backgroundColor: Colors.green,
+          ),
         );
+        ref.invalidate(activeReportsProvider);
+        ref.invalidate(miRescateActivoProvider);
+        ref.invalidate(misReportesProvider);
+
         context.pop();
       }
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Error al aceptar el caso de rescate.')),
+          SnackBar(
+            content: Text(e.toString().replaceAll('Exception: ', '')),
+            backgroundColor: Colors.red,
+          ),
         );
+      }
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -89,158 +129,176 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final rolActual = ref.watch(authProvider).role;
-    final puedeAceptar =
-        rolActual == AppRole.voluntario && widget.reporte.estado == 'Nuevo';
+    final authState = ref.watch(authProvider);
+    final esVoluntario = authState.role == AppRole.voluntario;
+    final esMiRescate = widget.reporte.usuarioRescatistaId == authState.userId;
+    final estaNuevo = widget.reporte.estado == 'Nuevo';
+    final estaEnProceso = widget.reporte.estado == 'En_Proceso';
 
     return Scaffold(
-      backgroundColor: Colors.white,
       appBar: AppBar(
-        title: const Text('Detalles del Caso'),
+        title: const Text('Detalles de Emergencia'),
         backgroundColor: Colors.white,
-        elevation: 0,
       ),
       body: SingleChildScrollView(
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             if (widget.reporte.fotoUrl != null)
               Image.network(
                 widget.reporte.fotoUrl!,
-                width: double.infinity,
                 height: 250,
                 fit: BoxFit.cover,
-              )
-            else
-              Container(
-                width: double.infinity,
-                height: 250,
-                color: Colors.grey[300],
-                child: const Icon(Icons.pets, size: 80, color: Colors.grey),
+                errorBuilder: (context, error, stackTrace) => const SizedBox(
+                  height: 250,
+                  child: Center(
+                    child: Icon(
+                      Icons.broken_image,
+                      size: 50,
+                      color: Colors.grey,
+                    ),
+                  ),
+                ),
               ),
-
             Padding(
-              padding: const EdgeInsets.all(24.0),
+              padding: const EdgeInsets.all(20.0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Widget Navegable
-                  InkWell(
-                    onTap: _abrirNavegacionGPS,
-                    borderRadius: BorderRadius.circular(8),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 8.0),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Icon(
-                            Icons.directions,
-                            color: Colors.blue,
-                            size: 32,
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text(
-                                  'Ir a la ubicación (Toca para navegar)',
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.blue,
-                                  ),
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  _direccion,
-                                  style: TextStyle(
-                                    color: Colors.grey[700],
-                                    fontSize: 14,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-
-                  // Información General
                   Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Icon(
-                        Icons.info_outline,
-                        color: Colors.red,
-                        size: 28,
+                      Text(
+                        widget.reporte.especie,
+                        style: const TextStyle(
+                          fontSize: 26,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Estado Actual: ${widget.reporte.estado}',
-                              style: const TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              'Agresividad: Nivel ${widget.reporte.agresividad} / 10',
-                              style: TextStyle(
-                                color: Colors.red[700],
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              'Especie: ${widget.reporte.especie} • Sexo: ${widget.reporte.sexo}',
-                              style: TextStyle(
-                                color: Colors.grey[600],
-                                fontSize: 14,
-                              ),
-                            ),
-                          ],
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 6,
+                        ),
+                        decoration: BoxDecoration(
+                          color: widget.reporte.colorUrgencia.withOpacity(0.2),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(
+                            color: widget.reporte.colorUrgencia,
+                          ),
+                        ),
+                        child: Text(
+                          widget.reporte.estadoFormateado.toUpperCase(),
+                          style: TextStyle(
+                            color: widget.reporte.colorUrgencia,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 12,
+                          ),
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 24),
-                  const Divider(color: Color(0xFFEEEEEE), thickness: 1),
-                  const SizedBox(height: 24),
-
+                  const SizedBox(height: 16),
                   const Text(
-                    'Características Especiales',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    'Ubicación aproximada:',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: Colors.grey,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+
+                  // CONTENEDOR AZUL PARA LA UBICACIÓN CON FORMATO BOTÓN
+                  Material(
+                    color: Colors.blue.shade50,
+                    borderRadius: BorderRadius.circular(12),
+                    child: InkWell(
+                      onTap: _abrirEnMapaNativo,
+                      borderRadius: BorderRadius.circular(12),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          vertical: 14.0,
+                          horizontal: 16.0,
+                        ),
+                        decoration: BoxDecoration(
+                          border: Border.all(color: Colors.blue.shade200),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.location_on,
+                              color: Colors.blue.shade700,
+                              size: 28,
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                _direccion,
+                                style: TextStyle(
+                                  fontSize: 15,
+                                  color: Colors.blue.shade800,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                            Icon(
+                              Icons.navigation_rounded,
+                              color: Colors.blue.shade700,
+                              size: 24,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+
+                  const Divider(height: 32),
+                  _buildDetailRow(
+                    Icons.palette,
+                    'Color',
+                    widget.reporte.colorDominante,
+                  ),
+                  _buildDetailRow(Icons.pets, 'Raza', widget.reporte.razaAprox),
+                  _buildDetailRow(
+                    Icons.transgender,
+                    'Sexo',
+                    widget.reporte.sexo,
+                  ),
+                  _buildDetailRow(
+                    Icons.cake,
+                    'Edad Aprox.',
+                    widget.reporte.edadAprox,
+                  ),
+                  _buildDetailRow(
+                    Icons.straighten,
+                    'Tamaño',
+                    widget.reporte.tamano,
+                  ),
+                  _buildDetailRow(
+                    Icons.mood_bad,
+                    'Agresividad',
+                    '${widget.reporte.agresividad}/10',
+                  ),
+                  const Divider(height: 32),
+                  const Text(
+                    'Señas particulares:',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                   ),
                   const SizedBox(height: 8),
                   Text(
                     widget.reporte.caracteristicasEspeciales,
-                    style: const TextStyle(
-                      fontSize: 15,
-                      color: Color(0xFF4A4A4A),
-                      height: 1.5,
-                    ),
+                    style: const TextStyle(fontSize: 15, height: 1.5),
                   ),
-
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 16),
                   const Text(
-                    'Notas Adicionales',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    'Notas adicionales:',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                   ),
                   const SizedBox(height: 8),
                   Text(
                     widget.reporte.notasAdicionales,
-                    style: const TextStyle(
-                      fontSize: 15,
-                      color: Color(0xFF4A4A4A),
-                      height: 1.5,
-                    ),
+                    style: const TextStyle(fontSize: 15, height: 1.5),
                   ),
                 ],
               ),
@@ -248,34 +306,92 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
           ],
         ),
       ),
+      bottomNavigationBar: _buildBottomBar(
+        esVoluntario,
+        estaNuevo,
+        estaEnProceso,
+        esMiRescate,
+      ),
+    );
+  }
 
-      // Mostrar Botón solo si el Estado es "Nuevo" y el usuario es Voluntario
-      bottomNavigationBar: puedeAceptar
-          ? SafeArea(
-              child: Padding(
-                padding: const EdgeInsets.all(24.0),
-                child: FilledButton(
-                  onPressed: _isLoading ? null : _aceptarCaso,
-                  style: FilledButton.styleFrom(
-                    backgroundColor: const Color(0xFFD32F2F),
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
+  Widget? _buildBottomBar(
+    bool esVoluntario,
+    bool estaNuevo,
+    bool estaEnProceso,
+    bool esMiRescate,
+  ) {
+    if (!esVoluntario) return const SizedBox.shrink();
+
+    if (estaNuevo) {
+      return _bottomButtonContainer(
+        'Aceptar Rescate',
+        Colors.red,
+        () => _ejecutarAccion(true),
+      );
+    } else if (estaEnProceso && esMiRescate) {
+      return _bottomButtonContainer(
+        'Finalizar Rescate',
+        Colors.green,
+        () => _ejecutarAccion(false),
+      );
+    }
+
+    return const SizedBox.shrink();
+  }
+
+  Widget _bottomButtonContainer(
+    String text,
+    Color color,
+    VoidCallback onPressed,
+  ) {
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.all(24.0),
+        child: FilledButton(
+          onPressed: _isLoading ? null : onPressed,
+          style: FilledButton.styleFrom(
+            backgroundColor: color,
+            padding: const EdgeInsets.symmetric(vertical: 16),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+          child: _isLoading
+              ? const SizedBox(
+                  width: 24,
+                  height: 24,
+                  child: CircularProgressIndicator(
+                    color: Colors.white,
+                    strokeWidth: 2,
                   ),
-                  child: _isLoading
-                      ? const CircularProgressIndicator(color: Colors.white)
-                      : const Text(
-                          'Aceptar Rescate',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
+                )
+              : Text(
+                  text,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
-              ),
-            )
-          : const SizedBox.shrink(),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDetailRow(IconData icon, String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12.0),
+      child: Row(
+        children: [
+          Icon(icon, size: 20, color: Colors.grey[600]),
+          const SizedBox(width: 12),
+          Text(
+            '$label: ',
+            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+          ),
+          Expanded(child: Text(value, style: const TextStyle(fontSize: 15))),
+        ],
+      ),
     );
   }
 }
