@@ -66,5 +66,22 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>RescueNet necesita acceso a tu ubicación para mostrarte en el mapa de rescates.</string>
+	<key>NSLocationAlwaysUsageDescription</key>
+	<string>RescueNet necesita tu ubicación para mantener el rastreo durante la emergencia.</string>
+
+	<key>NSCameraUsageDescription</key>
+	<string>RescueNet necesita acceso a la cámara para documentar el estado del animal rescatado.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>RescueNet necesita acceso a la galería para adjuntar fotos al reporte.</string>
+
+	<key>LSApplicationQueriesSchemes</key>
+	<array>
+		<string>comgooglemaps</string>
+		<string>waze</string>
+		<string>http</string>
+		<string>https</string>
+	</array>
 </dict>
 </plist>

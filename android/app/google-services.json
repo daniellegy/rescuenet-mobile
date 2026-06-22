@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "656904327216",
+    "project_id": "rescuenet-f677d",
+    "storage_bucket": "rescuenet-f677d.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:656904327216:android:afd1df8ad137805a45ddf5",
+        "android_client_info": {
+          "package_name": "com.latidotermico.rescuenet"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDI_2jfHyYTmGCzj-cjgEWtQ-zGxanXLEk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

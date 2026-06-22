@@ -11,19 +11,49 @@ class LoginScreen extends ConsumerStatefulWidget {
 }
 
 class _LoginScreenState extends ConsumerState<LoginScreen> {
-  // Llave maestra para validar el formulario
   final _formKey = GlobalKey<FormState>();
 
-  // Controladores para extraer el texto
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
 
+  // Nuevo estado para controlar la carga y evitar clics duplicados
+  bool _isLoading = false;
+
   @override
   void dispose() {
-    // Es vital limpiar los controladores para liberar memoria
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
+  }
+
+  // Lógica separada y asíncrona para manejar el proceso
+  Future<void> _handleLogin() async {
+    if (_formKey.currentState!.validate()) {
+      setState(() => _isLoading = true);
+
+      try {
+        await ref
+            .read(authProvider.notifier)
+            .login(_emailController.text, _passwordController.text);
+        // Si el login es exitoso, GoRouter redirigirá automáticamente
+        // gracias al refreshListenable en app_router.dart
+      } catch (e) {
+        if (mounted) {
+          // Mostramos el error capturado en pantalla sin crashear la app
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(e.toString().replaceAll('Exception: ', '')),
+              backgroundColor: Colors.redAccent,
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+      } finally {
+        if (mounted) {
+          setState(() => _isLoading = false);
+        }
+      }
+    }
   }
 
   @override
@@ -33,7 +63,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24.0),
           child: Form(
-            key: _formKey, // Conectamos la llave al formulario
+            key: _formKey,
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -66,7 +96,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     if (!value.contains('@') || !value.contains('.')) {
                       return 'Ingresa un correo válido';
                     }
-                    return null; // Nulo significa que todo está bien
+                    return null;
                   },
                 ),
                 const SizedBox(height: 16),
@@ -86,28 +116,28 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   },
                 ),
                 const SizedBox(height: 32),
+
+                // Botón interactivo que reacciona a la carga
                 FilledButton(
-                  onPressed: () {
-                    // Validamos todo el formulario de golpe
-                    if (_formKey.currentState!.validate()) {
-                      // Si todo está bien, llamamos a Riverpod con los datos reales
-                      ref
-                          .read(authProvider.notifier)
-                          .login(
-                            _emailController.text,
-                            _passwordController.text,
-                          );
-                    }
-                  },
+                  onPressed: _isLoading ? null : _handleLogin,
                   style: FilledButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 16),
                   ),
-                  child: const Text(
-                    'Iniciar Sesión',
-                    style: TextStyle(fontSize: 16),
-                  ),
+                  child: _isLoading
+                      ? const SizedBox(
+                          height: 20,
+                          width: 20,
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 2,
+                          ),
+                        )
+                      : const Text(
+                          'Iniciar Sesión',
+                          style: TextStyle(fontSize: 16),
+                        ),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 10),
                 TextButton(
                   onPressed: () {
                     context.push('/register');

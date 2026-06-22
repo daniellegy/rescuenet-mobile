@@ -1,0 +1,38 @@
+name: Compilar iOS (Sin Firma)
+
+# Esto nos permite activar la compilación manualmente desde un botón en GitHub
+on:
+  workflow_dispatch: 
+
+jobs:
+  build-ios:
+    # Utilizamos el servidor más reciente de Apple disponible en GitHub
+    runs-on: macos-latest 
+
+    steps:
+      - name: Clonar el repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+
+      - name: Instalar dependencias
+        run: flutter pub get
+
+      - name: Compilar iOS sin firma de Apple
+        # El flag --no-codesign es vital porque no tenemos la licencia de $99
+        run: flutter build ios --release --no-codesign
+
+      - name: Empaquetar a formato instalable (.ipa)
+        run: |
+          mkdir Payload
+          mv build/ios/iphoneos/Runner.app Payload/
+          zip -r RescueNet.ipa Payload
+
+      - name: Subir el archivo compilado para descargar
+        uses: actions/upload-artifact@v4
+        with:
+          name: RescueNet-iOS-IPA
+          path: RescueNet.ipa

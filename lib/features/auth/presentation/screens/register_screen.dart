@@ -1,29 +1,30 @@
 import 'package:flutter/material.dart';
 import 'package:mask_text_input_formatter/mask_text_input_formatter.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../providers/auth_provider.dart';
 
-class RegisterScreen extends StatefulWidget {
+class RegisterScreen extends ConsumerStatefulWidget {
   const RegisterScreen({super.key});
 
   @override
-  State<RegisterScreen> createState() => _RegisterScreenState();
+  ConsumerState<RegisterScreen> createState() => _RegisterScreenState();
 }
 
-class _RegisterScreenState extends State<RegisterScreen> {
+class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   final _formKey = GlobalKey<FormState>();
 
   final _nameController = TextEditingController();
   final _phoneController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
-  final _confirmPasswordController =
-      TextEditingController(); // Nuevo controlador
+  final _confirmPasswordController = TextEditingController();
+  final _curpController = TextEditingController();
 
   String _selectedRole = 'Cliente';
 
-  // Configuración de la máscara para el teléfono
   final _phoneMaskFormatter = MaskTextInputFormatter(
     mask: '(###) ###-####',
-    filter: {"#": RegExp(r'[0-9]')}, // Solo permite números
+    filter: {"#": RegExp(r'[0-9]')},
     type: MaskAutoCompletionType.lazy,
   );
 
@@ -33,7 +34,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
     _phoneController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
-    _confirmPasswordController.dispose(); // No olvides limpiarlo
+    _confirmPasswordController.dispose();
+    _curpController.dispose();
     super.dispose();
   }
 
@@ -63,10 +65,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 // 1. NOMBRE COMPLETO
                 TextFormField(
                   controller: _nameController,
-                  textCapitalization:
-                      TextCapitalization.words, // Mayúsculas automáticas
-                  textInputAction:
-                      TextInputAction.next, // Botón "Siguiente" en el teclado
+                  textCapitalization: TextCapitalization.words,
+                  textInputAction: TextInputAction.next,
                   decoration: const InputDecoration(
                     labelText: 'Nombre Completo',
                     prefixIcon: Icon(Icons.person),
@@ -76,7 +76,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     if (value == null || value.trim().isEmpty) {
                       return 'El nombre es obligatorio';
                     }
-                    // Regex para asegurar que solo sean letras y espacios
                     if (!RegExp(r'^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$').hasMatch(value)) {
                       return 'Ingresa un nombre válido (sin números)';
                     }
@@ -90,9 +89,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   controller: _phoneController,
                   keyboardType: TextInputType.phone,
                   textInputAction: TextInputAction.next,
-                  inputFormatters: [
-                    _phoneMaskFormatter,
-                  ], // Inyectamos la máscara
+                  inputFormatters: [_phoneMaskFormatter],
                   decoration: const InputDecoration(
                     labelText: 'Teléfono',
                     hintText: '(LADA) 123-4567',
@@ -103,7 +100,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     if (value == null || value.isEmpty) {
                       return 'El teléfono es obligatorio';
                     }
-                    // Verificamos la longitud de la máscara sin contar los símbolos
                     if (_phoneMaskFormatter.getUnmaskedText().length < 10) {
                       return 'Faltan números (deben ser 10 dígitos)';
                     }
@@ -112,7 +108,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 ),
                 const SizedBox(height: 16),
 
-                // 3. CORREO ELECTRÓNICO (Regex mejorado)
+                // 3. CORREO ELECTRÓNICO
                 TextFormField(
                   controller: _emailController,
                   keyboardType: TextInputType.emailAddress,
@@ -126,7 +122,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     if (value == null || value.isEmpty) {
                       return 'El correo es obligatorio';
                     }
-                    // Expresión regular oficial para correos
                     final emailRegex = RegExp(
                       r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$',
                     );
@@ -164,8 +159,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 TextFormField(
                   controller: _confirmPasswordController,
                   obscureText: true,
-                  textInputAction:
-                      TextInputAction.done, // Botón "Hecho" en el teclado
+                  textInputAction: TextInputAction.next,
                   decoration: const InputDecoration(
                     labelText: 'Confirmar Contraseña',
                     prefixIcon: Icon(Icons.lock_outline),
@@ -175,7 +169,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     if (value == null || value.isEmpty) {
                       return 'Confirma tu contraseña';
                     }
-                    // Comprobamos que coincida con el primer campo
                     if (value != _passwordController.text) {
                       return 'Las contraseñas no coinciden';
                     }
@@ -209,20 +202,58 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   },
                 ),
 
+                // 7. CAMPO DINÁMICO: CURP (Solo si es Voluntario)
+                if (_selectedRole == 'Voluntario') ...[
+                  const SizedBox(height: 16),
+                  TextFormField(
+                    controller: _curpController,
+                    textCapitalization: TextCapitalization.characters,
+                    textInputAction: TextInputAction.done,
+                    maxLength: 18,
+                    decoration: const InputDecoration(
+                      labelText: 'CURP',
+                      prefixIcon: Icon(Icons.badge),
+                      border: OutlineInputBorder(),
+                      counterText: "",
+                    ),
+                    validator: (value) {
+                      if (_selectedRole == 'Voluntario') {
+                        if (value == null || value.trim().isEmpty) {
+                          return 'El CURP es obligatorio para voluntarios';
+                        }
+                        if (value.trim().length != 18) {
+                          return 'El CURP debe tener exactamente 18 caracteres';
+                        }
+                      }
+                      return null;
+                    },
+                  ),
+                ],
+
                 const SizedBox(height: 32),
 
                 // BOTÓN DE REGISTRO
                 FilledButton(
-                  onPressed: () {
+                  onPressed: () async {
                     if (_formKey.currentState!.validate()) {
-                      // Si pasa las validaciones, imprimimos en consola
-                      print('✅ Formulario perfecto:');
-                      print('Nombre: ${_nameController.text}');
-                      print(
-                        'Teléfono crudo (sin formato): ${_phoneMaskFormatter.getUnmaskedText()}',
-                      );
-                      print('Correo: ${_emailController.text}');
-                      print('Rol: $_selectedRole');
+                      try {
+                        await ref
+                            .read(authProvider.notifier)
+                            .register(
+                              nombre: _nameController.text,
+                              telefono: _phoneMaskFormatter.getUnmaskedText(),
+                              email: _emailController.text,
+                              password: _passwordController.text,
+                              rolId: _selectedRole == 'Voluntario' ? 2 : 1,
+                              curp: _selectedRole == 'Voluntario'
+                                  ? _curpController.text.trim().toUpperCase()
+                                  : null,
+                            );
+                      } catch (e) {
+                        ScaffoldMessenger.of(
+                          context,
+                        ).showSnackBar(SnackBar(content: Text(e.toString())));
+                      }
                     }
                   },
                   style: FilledButton.styleFrom(
