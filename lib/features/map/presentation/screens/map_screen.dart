@@ -4,15 +4,11 @@ import 'package:go_router/go_router.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:dio/dio.dart'; // Para peticiones HTTP
 
 import '../../../../core/services/location_service.dart';
 import '../../../../core/services/camera_service.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
-
-import '../../../../core/network/dio_client.dart'; 
-import '../../../history/domain/models/report_model.dart'; 
-import '../../../history/presentation/screens/report_detail_screen.dart';
+import '../providers/map_markers_provider.dart';
 
 class MapScreen extends ConsumerStatefulWidget {
   const MapScreen({super.key});
@@ -23,61 +19,11 @@ class MapScreen extends ConsumerStatefulWidget {
 
 class _MapScreenState extends ConsumerState<MapScreen> {
   LatLng? myPosition;
-  
-  // Variables para guardar los reportes que vienen del servidor
-  List<ReportModel> _reportesCercanos = [];
-  bool _cargandoReportes = false;
 
   @override
   void initState() {
     super.initState();
     _fetchCurrentLocation();
-    _fetchReportes(); // Descargamos los reportes al abrir el mapa
-  }
-
-// Función para pedir los reportes al backend
-  Future<void> _fetchReportes() async {
-    setState(() => _cargandoReportes = true);
-    try {
-      final dio = ref.read(dioProvider).instance;
-      final response = await dio.get('/reportes/activos'); 
-
-      if (response.statusCode == 200) {
-        // --- CÓDIGO CORREGIDO AQUÍ ---
-        List<dynamic> data = [];
-        
-        // Si el backend manda la lista directa: [{...}, {...}]
-        if (response.data is List) {
-          data = response.data;
-        } 
-        // Si el backend lo manda envuelto: {"data": [{...}, {...}]}
-        else if (response.data is Map && response.data.containsKey('data')) {
-          data = response.data['data'];
-        }
-
-        List<ReportModel> reportesValidos = [];
-        
-        for (var jsonItem in data) {
-          try {
-            reportesValidos.add(ReportModel.fromJson(jsonItem));
-          } catch (e) {
-            debugPrint('Error de parseo en un reporte: $e');
-          }
-        }
-
-        setState(() {
-          _reportesCercanos = reportesValidos;
-        });
-        
-        debugPrint('¡Éxito! Total de marcadores listos para dibujar: ${_reportesCercanos.length}');
-      }
-    } on DioException catch (e) {
-      debugPrint('Error de red: ${e.message}');
-    } catch (e) {
-      debugPrint('Error general: $e');
-    } finally {
-      if (mounted) setState(() => _cargandoReportes = false);
-    }
   }
 
   Future<void> _fetchCurrentLocation() async {
@@ -85,9 +31,13 @@ class _MapScreenState extends ConsumerState<MapScreen> {
       final locationService = ref.read(locationServiceProvider);
       final position = await locationService.getCurrentPosition();
 
-      if (position.latitude.isNaN || position.longitude.isNaN || 
-          position.latitude.isInfinite || position.longitude.isInfinite) {
-        throw Exception('El hardware del GPS retornó coordenadas no numéricas.');
+      if (position.latitude.isNaN ||
+          position.longitude.isNaN ||
+          position.latitude.isInfinite ||
+          position.longitude.isInfinite) {
+        throw Exception(
+          'El hardware del GPS retornó coordenadas no numéricas.',
+        );
       }
 
       setState(() {
@@ -133,73 +83,10 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     }
   }
 
-  // Función auxiliar para construir todos los pines del mapa
-  List<Marker> _buildMarkers() {
-    List<Marker> marcadores = [];
-    //1. Filtrado y renderizado de reportes
-    for (var reporte in _reportesCercanos) {
-      // Validación estricta: Se excluyen valores nulos matemáticos (NaN/Infinito)
-      if (reporte.latitud.isNaN || reporte.longitud.isNaN || 
-          reporte.latitud.isInfinite || reporte.longitud.isInfinite) {
-        debugPrint('Reporte omitido (ID: ${reporte.id}): Coordenadas NaN');
-        continue; 
-      }
-
-      // Validación estricta: Límites geográficos reales de la Tierra
-      if (reporte.latitud < -90.0 || reporte.latitud > 90.0 || 
-          reporte.longitud < -180.0 || reporte.longitud > 180.0) {
-        debugPrint('Reporte omitido (ID: ${reporte.id}): Coordenadas fuera de rango');
-        continue;
-      }
-
-      marcadores.add(
-        Marker(
-          point: LatLng(reporte.latitud, reporte.longitud),
-          width: 50,
-          height: 50,
-          child: GestureDetector(
-            onTap: () {
-              // Al tocar el icono, navegamos a la pantalla de detalles
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => ReportDetailScreen(reporte: reporte),
-                ),
-              );
-            },
-            child: const Icon(
-              Icons.warning_rounded, 
-              color: Colors.orange, 
-              size: 40,
-            ),
-          ),
-        ),
-      );
-    }
-
-    // 2. Validación y renderizado de la posición propia
-    if (myPosition != null && 
-        !myPosition!.latitude.isNaN && !myPosition!.longitude.isNaN) {
-      marcadores.add(
-        Marker(
-          point: myPosition!,
-          width: 50,
-          height: 50,
-          child: const Icon(
-            Icons.person_pin,
-            color: Colors.red,
-            size: 40,
-          ),
-        ),
-      );
-    }
-
-    return marcadores;
-  }
-
   @override
   Widget build(BuildContext context) {
     final mapboxToken = dotenv.env['MAPBOX_TOKEN'] ?? '';
+    final reportesAsync = ref.watch(reportesActivosMapaProvider);
 
     return Scaffold(
       extendBody: true,
@@ -207,23 +94,22 @@ class _MapScreenState extends ConsumerState<MapScreen> {
         title: const Text('Mapa de rescates'),
         backgroundColor: Colors.white.withOpacity(0.9),
         actions: [
-          // Botón de recargar para buscar nuevos reportes manualmente
-          if (_cargandoReportes)
-            const Padding(
+          reportesAsync.maybeWhen(
+            loading: () => const Padding(
               padding: EdgeInsets.symmetric(horizontal: 16.0),
               child: Center(
                 child: SizedBox(
-                  width: 20, 
-                  height: 20, 
-                  child: CircularProgressIndicator(strokeWidth: 2)
-                )
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
               ),
-            )
-          else
-            IconButton(
-              icon: const Icon(Icons.refresh, color: Colors.blue),
-              onPressed: _fetchReportes,
             ),
+            orElse: () => IconButton(
+              icon: const Icon(Icons.refresh, color: Colors.blue),
+              onPressed: () => ref.invalidate(reportesActivosMapaProvider),
+            ),
+          ),
           IconButton(
             icon: const Icon(Icons.logout, color: Colors.red),
             onPressed: () => ref.read(authProvider.notifier).logout(),
@@ -248,9 +134,47 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                     'id': 'mapbox/streets-v12',
                   },
                 ),
-                // Pintamos todos los marcadores (el tuyo + los reportes)
                 MarkerLayer(
-                  markers: _buildMarkers(), 
+                  markers: [
+                    ...reportesAsync.maybeWhen(
+                      data: (reportes) => reportes
+                          .map(
+                            (reporte) => Marker(
+                              point: LatLng(reporte.latitud, reporte.longitud),
+                              width: 50,
+                              height: 50,
+                              child: GestureDetector(
+                                onTap: () {
+                                  context.push(
+                                    '/report-detail',
+                                    extra: reporte,
+                                  );
+                                },
+                                child: const Icon(
+                                  Icons.warning_rounded,
+                                  color: Colors.orange,
+                                  size: 40,
+                                ),
+                              ),
+                            ),
+                          )
+                          .toList(),
+                      orElse: () => [],
+                    ),
+                    if (myPosition != null &&
+                        !myPosition!.latitude.isNaN &&
+                        !myPosition!.longitude.isNaN)
+                      Marker(
+                        point: myPosition!,
+                        width: 50,
+                        height: 50,
+                        child: const Icon(
+                          Icons.person_pin,
+                          color: Colors.red,
+                          size: 40,
+                        ),
+                      ),
+                  ],
                 ),
               ],
             ),
