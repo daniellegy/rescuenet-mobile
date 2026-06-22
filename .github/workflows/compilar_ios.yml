@@ -19,8 +19,11 @@ jobs:
       - name: Instalar dependencias
         run: flutter pub get
 
-      - name: Desactivar Firma de Apple forzosamente
+      - name: Arrancar de raíz las reglas de firma de Apple
         run: |
+          sed -i '' '/DevelopmentTeam/d' ios/Runner.xcodeproj/project.pbxproj
+          sed -i '' '/ProvisioningStyle/d' ios/Runner.xcodeproj/project.pbxproj
+          sed -i '' '/CODE_SIGN_STYLE/d' ios/Runner.xcodeproj/project.pbxproj
           echo "CODE_SIGNING_REQUIRED=NO" >> ios/Flutter/Release.xcconfig
           echo "CODE_SIGNING_ALLOWED=NO" >> ios/Flutter/Release.xcconfig
           echo "CODE_SIGN_IDENTITY=" >> ios/Flutter/Release.xcconfig
