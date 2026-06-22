@@ -11,8 +11,7 @@ import '../../../auth/presentation/providers/auth_provider.dart';
 import '../providers/map_markers_provider.dart';
 import '../../../reports/presentation/providers/my_active_rescue_provider.dart';
 
-// ─── Colores predefinidos para evitar instanciar Color en cada build ───────────
-const _kAppBarBg = Color(0xE6FFFFFF); // Colors.white con 90% opacidad
+const _kAppBarBg = Color(0xE6FFFFFF);
 
 class MapScreen extends ConsumerStatefulWidget {
   const MapScreen({super.key});
@@ -21,33 +20,20 @@ class MapScreen extends ConsumerStatefulWidget {
   ConsumerState<MapScreen> createState() => _MapScreenState();
 }
 
-class _MapScreenState extends ConsumerState<MapScreen>
-    with SingleTickerProviderStateMixin {
-  // [OPTIMIZACIÓN] SingleTickerProviderStateMixin en lugar de TickerProviderStateMixin.
-  // TickerProviderStateMixin está pensado para múltiples controladores simultáneos;
-  // como ahora solo usamos uno, la versión Single es más liviana.
+class _MapScreenState extends ConsumerState<MapScreen> {
   LatLng? myPosition;
-  late AnimationController _animationController;
-  late Animation<double> _scaleAnimation;
+  late final MapController _mapController;
 
   @override
   void initState() {
     super.initState();
-    _animationController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1200),
-    )..repeat(reverse: true);
-
-    _scaleAnimation = Tween<double>(begin: 0.85, end: 1.15).animate(
-      CurvedAnimation(parent: _animationController, curve: Curves.easeInOut),
-    );
-
+    _mapController = MapController();
     _fetchCurrentLocation();
   }
 
   @override
   void dispose() {
-    _animationController.dispose();
+    _mapController.dispose();
     super.dispose();
   }
 
@@ -105,15 +91,6 @@ class _MapScreenState extends ConsumerState<MapScreen>
     }
   }
 
-  // ─── Marker de reporte: ESTÁTICO, sin animación ──────────────────────────────
-  //
-  // [OPTIMIZACIÓN CLAVE] Se eliminó ScaleTransition de todos los markers de reporte.
-  // Tener N widgets animados compartiendo un AnimationController causaba que Flutter
-  // reconstruyera el widget tree completo en cada frame (60fps × N markers).
-  //
-  // Compensación visual: BoxShadow con el color de urgencia genera un "glow" que
-  // comunica urgencia igual de efectivamente. El color ya codifica la prioridad;
-  // la animación era redundante y costosa.
   Widget _buildReportMarker(Color urgencyColor) {
     return Container(
       width: 44,
@@ -134,17 +111,8 @@ class _MapScreenState extends ConsumerState<MapScreen>
     );
   }
 
-  // ─── Marker del usuario: animado pero aislado ─────────────────────────────────
-  //
-  // [OPTIMIZACIÓN CLAVE] RepaintBoundary crea una "capa" independiente en el árbol
-  // de renderizado. La animación de este widget NO propaga repaints al mapa ni a
-  // los demás markers. Sin RepaintBoundary, cada frame de animación repintaba
-  // potencialmente todo el Scaffold.
-  Widget get _buildUserMarker => RepaintBoundary(
-    child: ScaleTransition(
-      scale: _scaleAnimation,
-      child: const Icon(Icons.person_pin, color: Colors.red, size: 40),
-    ),
+  Widget get _buildUserMarker => const RepaintBoundary(
+    child: Icon(Icons.person_pin, color: Colors.red, size: 40),
   );
 
   @override
@@ -157,8 +125,6 @@ class _MapScreenState extends ConsumerState<MapScreen>
       extendBody: true,
       appBar: AppBar(
         title: const Text('Mapa de rescates'),
-        // [OPTIMIZACIÓN MENOR] Color predefinido como constante evita crear
-        // un nuevo objeto Color en cada rebuild del AppBar.
         backgroundColor: _kAppBarBg,
         actions: [
           reportesAsync.maybeWhen(
@@ -190,70 +156,76 @@ class _MapScreenState extends ConsumerState<MapScreen>
           ? const Center(child: CircularProgressIndicator())
           : Stack(
               children: [
-                FlutterMap(
-                  options: MapOptions(
-                    initialCenter: myPosition!,
-                    initialZoom: 18,
-                    minZoom: 5,
-                    maxZoom: 25,
-                  ),
-                  children: [
-                    TileLayer(
-                      urlTemplate:
-                          'https://api.mapbox.com/styles/v1/mapbox/streets-v12/tiles/{z}/{x}/{y}?access_token=$mapboxToken',
-                      additionalOptions: {
-                        'accessToken': mapboxToken,
-                        'id': 'mapbox/streets-v12',
-                      },
+                RepaintBoundary(
+                  child: FlutterMap(
+                    mapController: _mapController,
+                    options: MapOptions(
+                      initialCenter: myPosition!,
+                      initialZoom: 18,
+                      minZoom: 5,
+                      maxZoom: 25,
+                      // La interacción queda limpia y libre de bucles
+                      interactionOptions: const InteractionOptions(
+                        flags: InteractiveFlag.all & ~InteractiveFlag.rotate,
+                        enableMultiFingerGestureRace: false,
+                      ),
                     ),
-                    MarkerLayer(
-                      rotate: true,
-                      markers: [
-                        // ── Markers de reportes (estáticos) ──────────────────
-                        ...reportesAsync.maybeWhen(
-                          data: (reportes) => reportes.map((reporte) {
-                            return Marker(
-                              point: LatLng(reporte.latitud, reporte.longitud),
+                    children: [
+                      TileLayer(
+                        urlTemplate:
+                            'https://api.mapbox.com/styles/v1/mapbox/streets-v12/tiles/{z}/{x}/{y}?access_token=$mapboxToken',
+                        additionalOptions: {
+                          'accessToken': mapboxToken,
+                          'id': 'mapbox/streets-v12',
+                        },
+                        evictErrorTileStrategy: EvictErrorTileStrategy.dispose,
+                        errorTileCallback: (tile, error, stackTrace) {},
+                      ),
+                      MarkerLayer(
+                        rotate: true,
+                        markers: [
+                          ...reportesAsync.maybeWhen(
+                            data: (reportes) => reportes.map((reporte) {
+                              return Marker(
+                                point: LatLng(
+                                  reporte.latitud,
+                                  reporte.longitud,
+                                ),
+                                width: 50,
+                                height: 50,
+                                rotate: true,
+                                child: GestureDetector(
+                                  onTap: () {
+                                    context
+                                        .push('/report-detail', extra: reporte)
+                                        .then((_) {
+                                          ref.refresh(
+                                            reportesActivosMapaProvider,
+                                          );
+                                          ref.refresh(miRescateActivoProvider);
+                                        });
+                                  },
+                                  child: _buildReportMarker(
+                                    reporte.colorUrgencia,
+                                  ),
+                                ),
+                              );
+                            }).toList(),
+                            orElse: () => [],
+                          ),
+                          if (myPosition != null)
+                            Marker(
+                              point: myPosition!,
                               width: 50,
                               height: 50,
                               rotate: true,
-                              child: GestureDetector(
-                                onTap: () {
-                                  context
-                                      .push('/report-detail', extra: reporte)
-                                      .then((_) {
-                                        ref.refresh(
-                                          reportesActivosMapaProvider,
-                                        );
-                                        ref.refresh(miRescateActivoProvider);
-                                      });
-                                },
-                                // Widget completamente estático — cero costo
-                                // de animación por frame.
-                                child: _buildReportMarker(
-                                  reporte.colorUrgencia,
-                                ),
-                              ),
-                            );
-                          }).toList(),
-                          orElse: () => [],
-                        ),
-
-                        // ── Marker del usuario (animado y aislado) ────────────
-                        if (myPosition != null)
-                          Marker(
-                            point: myPosition!,
-                            width: 50,
-                            height: 50,
-                            rotate: true,
-                            child: _buildUserMarker,
-                          ),
-                      ],
-                    ),
-                  ],
+                              child: _buildUserMarker,
+                            ),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
-
-                // ── Widget flotante de rescate activo ─────────────────────────
                 miRescateAsync.maybeWhen(
                   data: (rescate) {
                     if (rescate == null) return const SizedBox.shrink();
