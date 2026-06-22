@@ -17,13 +17,40 @@ class MapScreen extends ConsumerStatefulWidget {
   ConsumerState<MapScreen> createState() => _MapScreenState();
 }
 
-class _MapScreenState extends ConsumerState<MapScreen> {
+// Se añade TickerProviderStateMixin para poder manejar animaciones
+class _MapScreenState extends ConsumerState<MapScreen>
+    with TickerProviderStateMixin {
   LatLng? myPosition;
+
+  late AnimationController _animationController;
+  late Animation<double> _scaleAnimation;
 
   @override
   void initState() {
     super.initState();
+
+    // Configuración del controlador de animación (duración de 1.2 segundos por ciclo)
+    _animationController =
+        AnimationController(
+          vsync: this,
+          duration: const Duration(milliseconds: 1200),
+        )..repeat(
+          reverse: true,
+        ); // El repeat con reverse crea el efecto de latido constante
+
+    // Curva de escalado suave para no deformar los gráficos 2D
+    _scaleAnimation = Tween<double>(begin: 0.85, end: 1.15).animate(
+      CurvedAnimation(parent: _animationController, curve: Curves.easeInOut),
+    );
+
     _fetchCurrentLocation();
+  }
+
+  @override
+  void dispose() {
+    // Es CRÍTICO destruir el controlador para evitar fugas de memoria
+    _animationController.dispose();
+    super.dispose();
   }
 
   Future<void> _fetchCurrentLocation() async {
@@ -135,6 +162,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                   },
                 ),
                 MarkerLayer(
+                  rotate: true,
                   markers: [
                     ...reportesAsync.maybeWhen(
                       data: (reportes) => reportes
@@ -143,6 +171,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                               point: LatLng(reporte.latitud, reporte.longitud),
                               width: 50,
                               height: 50,
+                              rotate: true,
                               child: GestureDetector(
                                 onTap: () {
                                   context.push(
@@ -150,10 +179,14 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                                     extra: reporte,
                                   );
                                 },
-                                child: const Icon(
-                                  Icons.warning_rounded,
-                                  color: Colors.orange,
-                                  size: 40,
+                                // Animación aplicada al marcador del reporte
+                                child: ScaleTransition(
+                                  scale: _scaleAnimation,
+                                  child: const Icon(
+                                    Icons.warning_rounded,
+                                    color: Colors.orange,
+                                    size: 40,
+                                  ),
                                 ),
                               ),
                             ),
@@ -168,10 +201,15 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                         point: myPosition!,
                         width: 50,
                         height: 50,
-                        child: const Icon(
-                          Icons.person_pin,
-                          color: Colors.red,
-                          size: 40,
+                        rotate: true,
+                        // Animación aplicada al marcador del usuario
+                        child: ScaleTransition(
+                          scale: _scaleAnimation,
+                          child: const Icon(
+                            Icons.person_pin,
+                            color: Colors.red,
+                            size: 40,
+                          ),
                         ),
                       ),
                   ],
