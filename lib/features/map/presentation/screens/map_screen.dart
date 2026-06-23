@@ -124,7 +124,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     return Scaffold(
       extendBody: true,
       appBar: AppBar(
-        title: const Text('Mapa de rescates'),
+        title: const Text('Mapa de rescate'),
         backgroundColor: _kAppBarBg,
         actions: [
           reportesAsync.maybeWhen(

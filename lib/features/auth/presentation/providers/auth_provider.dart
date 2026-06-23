@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:dio/dio.dart'; // IMPORTANTE: Necesario para capturar DioException
+import 'dart:convert';
 import '../../../../core/network/dio_client.dart';
 
 enum AppRole { ninguno, reportante, voluntario, refugio, superadmin }
@@ -22,6 +23,78 @@ class AuthNotifier extends Notifier<AuthState> {
     return AuthState(isLogged: false, role: AppRole.ninguno, userId: null);
   }
 
+  AppRole _roleFromRolId(int rolId) {
+    if (rolId == 1) return AppRole.reportante;
+    if (rolId == 2) return AppRole.voluntario;
+    return AppRole.ninguno;
+  }
+// mantener sesion iniciada al reiniciar la app
+  Map<String, dynamic> _decodeJwtPayload(String token) {
+    final parts = token.split('.');
+    if (parts.length != 3) {
+      throw const FormatException('Token JWT inválido');
+    }
+
+    final normalizedPayload = base64Url.normalize(parts[1]);
+    final decodedPayload = utf8.decode(base64Url.decode(normalizedPayload));
+    final payload = jsonDecode(decodedPayload);
+
+    if (payload is! Map) {
+      throw const FormatException('El payload del token no es un objeto JSON');
+    }
+
+    return Map<String, dynamic>.from(payload as Map);
+  }
+
+  Future<void> restoreSession() async {
+    final token = await _storage.read(key: 'jwt_token');
+
+    if (token == null || token.isEmpty) {
+      state = AuthState(isLogged: false, role: AppRole.ninguno, userId: null);
+      return;
+    }
+
+    try {
+      final payload = _decodeJwtPayload(token);
+      final usuario = payload['usuario'];
+
+      if (usuario is! Map) {
+        throw const FormatException('El token no contiene datos de usuario');
+      }
+
+      final userId = usuario['id'];
+      final rolId = usuario['rol_id'];
+      final exp = payload['exp'];
+
+      if (exp is int) {
+        final expirationDate = DateTime.fromMillisecondsSinceEpoch(exp * 1000);
+        if (expirationDate.isBefore(DateTime.now())) {
+          await logout();
+          return;
+        }
+      }
+
+      if (userId is! int || rolId is! int) {
+        throw const FormatException('El token no contiene id o rol válidos');
+      }
+
+      state = AuthState(
+        isLogged: true,
+        role: _roleFromRolId(rolId),
+        userId: userId,
+      );
+
+      if (state.role == AppRole.voluntario) {
+        await FirebaseMessaging.instance.subscribeToTopic('voluntarios');
+      } else if (state.role == AppRole.reportante) {
+        await FirebaseMessaging.instance.unsubscribeFromTopic('voluntarios');
+      }
+    } catch (_) {
+      await _storage.delete(key: 'jwt_token');
+      state = AuthState(isLogged: false, role: AppRole.ninguno, userId: null);
+    }
+  }
+//
   Future<void> _processAuthResponse(Map<String, dynamic> data) async {
     final token = data['token'];
     final int rolId = data['usuario']['rol_id'];

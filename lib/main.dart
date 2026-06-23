@@ -5,6 +5,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'core/routing/app_router.dart';
+import 'features/auth/presentation/providers/auth_provider.dart';
 import 'features/history/domain/models/report_model.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -16,7 +17,15 @@ void main() async {
   final messaging = FirebaseMessaging.instance;
   await messaging.requestPermission(alert: true, badge: true, sound: true);
 
-  runApp(const ProviderScope(child: RescueNetApp()));
+  final container = ProviderContainer();
+  await container.read(authProvider.notifier).restoreSession();
+
+  runApp(
+    UncontrolledProviderScope(
+      container: container,
+      child: const RescueNetApp(),
+    ),
+  );
 }
 
 class RescueNetApp extends ConsumerStatefulWidget {
