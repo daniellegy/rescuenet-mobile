@@ -1,9 +1,16 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/network/dio_client.dart';
+import '../../../auth/presentation/providers/auth_provider.dart';
 
 class UserProfileNotifier extends AsyncNotifier<Map<String, dynamic>> {
   @override
   Future<Map<String, dynamic>> build() async {
+    final authState = ref.watch(authProvider);
+
+    if (!authState.isLogged) {
+      return {};
+    }
+
     final dio = ref.read(dioProvider).instance;
 
     try {
@@ -33,7 +40,7 @@ class UserProfileNotifier extends AsyncNotifier<Map<String, dynamic>> {
       if (telefono != null) datosAActualizar['telefono'] = telefono;
       if (email != null) datosAActualizar['email'] = email;
       if (role != null) datosAActualizar['role'] = role;
-      if (curp != null) datosAActualizar['curp'] = curp; // AÑADIDO
+      if (curp != null) datosAActualizar['curp'] = curp;
 
       final response = await dio.put('/auth/perfil', data: datosAActualizar);
       if (response.statusCode == 200) {
