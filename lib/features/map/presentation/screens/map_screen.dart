@@ -277,6 +277,24 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                   },
                   orElse: () => const SizedBox.shrink(),
                 ),
+                Positioned(
+                  bottom: 110,
+                  right: 16,
+                  child: FloatingActionButton(
+                    mini: true,
+                    backgroundColor: Colors.white,
+                    foregroundColor: Colors.blueAccent,
+                    elevation: 4,
+                    child: const Icon(Icons.my_location),
+                    onPressed: () {
+                      if (myPosition != null) {
+                        _mapController.move(myPosition!, 18);
+                      } else {
+                        _fetchCurrentLocation();
+                      }
+                    },
+                  ),
+                ),
               ],
             ),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
