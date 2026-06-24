@@ -91,7 +91,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     }
   }
 
-  Widget _buildReportMarker(Color urgencyColor) {
+  Widget _buildReportMarker(Color urgencyColor, {bool isInProgress = false}) {
     return Container(
       width: 44,
       height: 44,
@@ -107,13 +107,17 @@ class _MapScreenState extends ConsumerState<MapScreen> {
           ),
         ],
       ),
-      child: Icon(Icons.warning_rounded, color: urgencyColor, size: 24),
+      child: Icon(
+        isInProgress ? Icons.hourglass_top_rounded : Icons.warning_rounded,
+        color: urgencyColor,
+        size: 24,
+      ),
     );
   }
 
   Widget get _buildUserMarker => const RepaintBoundary(
-    child: Icon(Icons.person_pin, color: Colors.red, size: 40),
-  );
+        child: Icon(Icons.person_pin, color: Colors.red, size: 40),
+      );
 
   @override
   Widget build(BuildContext context) {
@@ -164,7 +168,6 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                       initialZoom: 18,
                       minZoom: 5,
                       maxZoom: 25,
-                      // La interacción queda limpia y libre de bucles
                       interactionOptions: const InteractionOptions(
                         flags: InteractiveFlag.all & ~InteractiveFlag.rotate,
                         enableMultiFingerGestureRace: false,
@@ -186,6 +189,9 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                         markers: [
                           ...reportesAsync.maybeWhen(
                             data: (reportes) => reportes.map((reporte) {
+                              final bool estaEnProceso = 
+                                  reporte.estado.toString().trim().toUpperCase() == 'EN_PROCESO';
+
                               return Marker(
                                 point: LatLng(
                                   reporte.latitud,
@@ -199,14 +205,13 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                                     context
                                         .push('/report-detail', extra: reporte)
                                         .then((_) {
-                                          ref.refresh(
-                                            reportesActivosMapaProvider,
-                                          );
-                                          ref.refresh(miRescateActivoProvider);
-                                        });
+                                      ref.refresh(reportesActivosMapaProvider);
+                                      ref.refresh(miRescateActivoProvider);
+                                    });
                                   },
                                   child: _buildReportMarker(
                                     reporte.colorUrgencia,
+                                    isInProgress: estaEnProceso,
                                   ),
                                 ),
                               );
