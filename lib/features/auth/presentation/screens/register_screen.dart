@@ -22,6 +22,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
   String _selectedRole = 'Cliente';
 
+  bool _isPasswordVisible = false;
+  bool _isConfirmPasswordVisible = false;
+
   final _phoneMaskFormatter = MaskTextInputFormatter(
     mask: '(###) ###-####',
     filter: {"#": RegExp(r'[0-9]')},
@@ -136,11 +139,21 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                 // 4. CONTRASEÑA
                 TextFormField(
                   controller: _passwordController,
-                  obscureText: true,
+                  obscureText: !_isPasswordVisible,
                   textInputAction: TextInputAction.next,
-                  decoration: const InputDecoration(
+                  decoration: InputDecoration(
                     labelText: 'Contraseña',
                     prefixIcon: Icon(Icons.lock),
+                    suffixIcon: IconButton(
+                      icon: Icon(
+                        _isPasswordVisible ? Icons.visibility : Icons.visibility_off,
+                      ),
+                      onPressed: () {
+                        setState(() {
+                          _isPasswordVisible = !_isPasswordVisible;
+                        });
+                      },
+                    ),
                     border: OutlineInputBorder(),
                   ),
                   validator: (value) {
@@ -158,11 +171,21 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                 // 5. CONFIRMAR CONTRASEÑA
                 TextFormField(
                   controller: _confirmPasswordController,
-                  obscureText: true,
+                  obscureText: !_isConfirmPasswordVisible,
                   textInputAction: TextInputAction.next,
-                  decoration: const InputDecoration(
+                  decoration: InputDecoration(
                     labelText: 'Confirmar Contraseña',
                     prefixIcon: Icon(Icons.lock_outline),
+                    suffixIcon: IconButton(
+                      icon: Icon(
+                        _isConfirmPasswordVisible ? Icons.visibility : Icons.visibility_off,
+                      ),
+                      onPressed: () {
+                        setState(() {
+                          _isConfirmPasswordVisible = !_isConfirmPasswordVisible;
+                        });
+                      },
+                    ),
                     border: OutlineInputBorder(),
                   ),
                   validator: (value) {
