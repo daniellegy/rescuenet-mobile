@@ -116,8 +116,8 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   }
 
   Widget get _buildUserMarker => const RepaintBoundary(
-        child: Icon(Icons.person_pin, color: Colors.red, size: 40),
-      );
+    child: Icon(Icons.person_pin, color: Colors.red, size: 40),
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -166,8 +166,14 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                     options: MapOptions(
                       initialCenter: myPosition!,
                       initialZoom: 18,
-                      minZoom: 5,
-                      maxZoom: 25,
+                      minZoom: 10,
+                      maxZoom: 22,
+                      cameraConstraint: CameraConstraint.contain(
+                        bounds: LatLngBounds(
+                          const LatLng(-90.0, -180.0),
+                          const LatLng(90.0, 180.0),
+                        ),
+                      ),
                       interactionOptions: const InteractionOptions(
                         flags: InteractiveFlag.all & ~InteractiveFlag.rotate,
                         enableMultiFingerGestureRace: false,
@@ -189,8 +195,12 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                         markers: [
                           ...reportesAsync.maybeWhen(
                             data: (reportes) => reportes.map((reporte) {
-                              final bool estaEnProceso = 
-                                  reporte.estado.toString().trim().toUpperCase() == 'EN_PROCESO';
+                              final bool estaEnProceso =
+                                  reporte.estado
+                                      .toString()
+                                      .trim()
+                                      .toUpperCase() ==
+                                  'EN_PROCESO';
 
                               return Marker(
                                 point: LatLng(
@@ -205,9 +215,11 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                                     context
                                         .push('/report-detail', extra: reporte)
                                         .then((_) {
-                                      ref.refresh(reportesActivosMapaProvider);
-                                      ref.refresh(miRescateActivoProvider);
-                                    });
+                                          ref.refresh(
+                                            reportesActivosMapaProvider,
+                                          );
+                                          ref.refresh(miRescateActivoProvider);
+                                        });
                                   },
                                   child: _buildReportMarker(
                                     reporte.colorUrgencia,
