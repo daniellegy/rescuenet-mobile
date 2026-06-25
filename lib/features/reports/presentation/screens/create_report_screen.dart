@@ -6,6 +6,53 @@ import '../../data/report_repository.dart';
 
 import 'location_selector_screen.dart';
 
+final List<String> _razasPerros = [
+  'Mestizo',
+  'Pitbull',
+  'Husky',
+  'Poodle',
+  'Chihuahua',
+  'Pastor Alemán',
+  'Labrador',
+  'Pug',
+  'Schnauzer',
+  'Otro'
+];
+
+final List<String> _razasGatos = [
+  'Mestizo Pelo Corto',
+  'Mestizo Pelo Largo',
+  'Siamés',
+  'Carey / Calicó',
+  'Persa / Angora',
+  'Otro gato de raza'
+];
+
+final List<String> _silvestresPuebla = [
+  'Tlacuache',
+  'Cacomixtle',
+  'Ardilla gris',
+  'Ave de presa (Búho/Lechuza)',
+  'Ave pequeña',
+  'Murciélago',
+  'Reptil / Serpiente',
+  'Zorro gris',
+  'Conejo silvestre',
+  'Otro'
+];
+
+final List<String> _coloresGenerales = [
+  'Negro',
+  'Blanco',
+  'Gris',
+  'Café / Marrón',
+  'Atigrado',
+  'Miel / Canela',
+  'Manchado / Bicolor',
+  'Crema / Arena',
+  'Otro'
+];
+
 class CreateReportScreen extends ConsumerStatefulWidget {
   final double lat;
   final double lng;
@@ -24,27 +71,28 @@ class CreateReportScreen extends ConsumerStatefulWidget {
 
 class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _colorController = TextEditingController();
-  final _razaController = TextEditingController();
+
   final _caracController = TextEditingController();
   final _notasController = TextEditingController();
 
   String _urgenciaSeleccionada = 'media';
   String? _especie;
+
+  String? _razaSeleccionada; 
+  String? _colorSeleccionado;
+  
   String? _sexo = 'Desconocido';
   String? _edad = 'Cachorro';
   String? _tamano = 'Pequeño';
   double _agresividad = 1.0;
   bool _isLoading = false;
 
-  // NUEVO: Variables de estado para la ubicación
   late double _currentLat;
   late double _currentLng;
 
   @override
   void initState() {
     super.initState();
-    // Inicializamos con la ubicación por defecto del Geolocator
     _currentLat = widget.lat;
     _currentLng = widget.lng;
   }
@@ -54,6 +102,20 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
     if (_especie == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Por favor, selecciona una especie.')),
+      );
+      return;
+    }
+    
+    if (_razaSeleccionada == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Por favor, selecciona una raza o tipo de animal.')),
+      );
+      return;
+    }
+
+    if (_colorSeleccionado == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Por favor, selecciona un color dominante.')),
       );
       return;
     }
@@ -67,12 +129,13 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
         lat: _currentLat, // Usamos la variable de estado actual
         lng: _currentLng, // Usamos la variable de estado actual
         especie: _especie!,
-        color: _colorController.text,
+        color: _colorSeleccionado!,
         sexo: _sexo!,
         edadAprox: _edad!,
         tamano: _tamano!,
         agresividad: _agresividad.toInt(),
-        razaAprox: _razaController.text,
+        
+        razaAprox: _razaSeleccionada!, 
         caracteristicasEspeciales: _caracController.text,
         notasAdicionales: _notasController.text,
         urgencia: _urgenciaSeleccionada,
@@ -98,8 +161,6 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
 
   @override
   void dispose() {
-    _colorController.dispose();
-    _razaController.dispose();
     _caracController.dispose();
     _notasController.dispose();
     super.dispose();
@@ -129,7 +190,6 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
                     ),
                     const SizedBox(height: 16),
 
-                    // NUEVO: Widget interactivo para modificar la ubicación
                     Container(
                       decoration: BoxDecoration(
                         border: Border.all(color: Colors.grey.shade400),
@@ -184,13 +244,50 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
                         border: OutlineInputBorder(),
                         prefixIcon: Icon(Icons.pets),
                       ),
-                      items: ['Perro', 'Gato']
+                      items: ['Perro', 'Gato', 'Silvestre']
                           .map(
-                            (e) => DropdownMenuItem(value: e, child: Text(e)),
+                            (e) => DropdownMenuItem(
+                              value: e, 
+                              child: Text(e == 'Silvestre' ? 'Animal Silvestre' : e),
+                            ),
                           )
                           .toList(),
-                      onChanged: (val) => setState(() => _especie = val),
+                      onChanged: (val) {
+                        setState(() {
+                          _especie = val;
+                          _razaSeleccionada = null; 
+                        });
+                      },
                     ),
+                    const SizedBox(height: 16),
+
+                    if (_especie != null) ...[
+                      DropdownButtonFormField<String>(
+                        value: _razaSeleccionada,
+                        icon: const Icon(Icons.arrow_drop_down),
+                        decoration: InputDecoration(
+                          labelText: _especie == 'Silvestre'
+                              ? 'Especie / Tipo de animal'
+                              : 'Raza Aproximada',
+                          border: const OutlineInputBorder(),
+                          prefixIcon: const Icon(Icons.search),
+                        ),
+                        items: (_especie == 'Perro'
+                                ? _razasPerros
+                                : _especie == 'Gato'
+                                    ? _razasGatos
+                                    : _silvestresPuebla)
+                            .map(
+                              (e) => DropdownMenuItem(value: e, child: Text(e)),
+                            )
+                            .toList(),
+                        onChanged: (val) => setState(() => _razaSeleccionada = val),
+                        validator: (value) =>
+                            value == null ? 'Por favor selecciona una opción' : null,
+                      ),
+                      const SizedBox(height: 16),
+                    ],
+
                     const Text(
                       'Nivel de Urgencia',
                       style: TextStyle(fontWeight: FontWeight.bold),
@@ -231,17 +328,24 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
                       ),
                     ),
                     const SizedBox(height: 16),
-                    TextFormField(
-                      controller: _colorController,
-                      textCapitalization: TextCapitalization.words,
+                    DropdownButtonFormField<String>(
+                      isExpanded: true,
+                      value: _colorSeleccionado,
+                      hint: const Text('Selecciona Color Dominante'),
+                      icon: const Icon(Icons.arrow_drop_down),
                       decoration: const InputDecoration(
                         labelText: 'Color Dominante',
                         border: OutlineInputBorder(),
                         prefixIcon: Icon(Icons.color_lens_outlined),
-                        hintText: 'Ej. Naranjoso',
                       ),
+                      items: _coloresGenerales
+                          .map(
+                            (e) => DropdownMenuItem(value: e, child: Text(e)),
+                          )
+                          .toList(),
+                      onChanged: (val) => setState(() => _colorSeleccionado = val),
                       validator: (value) =>
-                          value!.isEmpty ? 'Ingresa el color' : null,
+                          value == null ? 'Por favor selecciona un color' : null,
                     ),
                     const SizedBox(height: 16),
                     DropdownButtonFormField<String>(
@@ -316,18 +420,7 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
                       },
                     ),
                     const SizedBox(height: 24),
-                    TextFormField(
-                      controller: _razaController,
-                      textCapitalization: TextCapitalization.words,
-                      decoration: const InputDecoration(
-                        labelText: 'Raza Aproximada',
-                        border: OutlineInputBorder(),
-                        hintText: 'Ej. Desconocido, Mestizo, Husky',
-                      ),
-                      validator: (value) =>
-                          value!.isEmpty ? 'Ingresa la raza' : null,
-                    ),
-                    const SizedBox(height: 16),
+                    
                     TextFormField(
                       controller: _caracController,
                       textCapitalization: TextCapitalization.words,
@@ -344,12 +437,12 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
                       controller: _notasController,
                       textCapitalization: TextCapitalization.words,
                       decoration: const InputDecoration(
-                        labelText: 'Notas Adicionales',
+                        labelText: 'Descripción del entorno',
                         border: OutlineInputBorder(),
-                        hintText: 'Ej. Miedoso, Cojea de una pata',
+                        hintText: 'Ej. Frente a tienda, escuela',
                       ),
                       validator: (value) =>
-                          value!.isEmpty ? 'Ingresa las notas' : null,
+                          value!.isEmpty ? 'Ingresa la descripción' : null,
                     ),
                     const SizedBox(height: 32),
                     FilledButton.icon(
