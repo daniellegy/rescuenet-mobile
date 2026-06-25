@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -23,6 +24,7 @@ class MapScreen extends ConsumerStatefulWidget {
 class _MapScreenState extends ConsumerState<MapScreen> {
   LatLng? myPosition;
   late final MapController _mapController;
+  String _filtroUrgencia = 'todos'; // Estados: 'todos', 'alta', 'media', 'baja'
 
   @override
   void initState() {
@@ -96,12 +98,12 @@ class _MapScreenState extends ConsumerState<MapScreen> {
       width: 44,
       height: 44,
       decoration: BoxDecoration(
-        color: urgencyColor.withOpacity(0.15),
+        color: urgencyColor.withValues(alpha: 0.15),
         shape: BoxShape.circle,
         border: Border.all(color: urgencyColor, width: 2.5),
         boxShadow: [
           BoxShadow(
-            color: urgencyColor.withOpacity(0.4),
+            color: urgencyColor.withValues(alpha: 0.4),
             blurRadius: 8,
             spreadRadius: 2,
           ),
@@ -112,6 +114,67 @@ class _MapScreenState extends ConsumerState<MapScreen> {
         color: urgencyColor,
         size: 24,
       ),
+    );
+  }
+
+  // BARRA FLOTANTE VERTICAL
+  Widget _buildVerticalFilterSelector() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.9),
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.1),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _buildFilterChip('Todos', 'todos', Colors.blue),
+          const SizedBox(height: 8),
+          _buildFilterChip('Alta', 'alta', Colors.red),
+          const SizedBox(height: 8),
+          _buildFilterChip('Media', 'media', Colors.orange),
+          const SizedBox(height: 8),
+          _buildFilterChip('Baja', 'baja', Colors.amber),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFilterChip(String label, String value, Color color) {
+    final bool isSelected = _filtroUrgencia == value;
+    return ChoiceChip(
+      label: SizedBox(
+        width: 46, // Ancho fijo para mantener la simetría de la columna
+        child: Center(
+          child: Text(
+            label,
+            style: TextStyle(
+              color: isSelected ? Colors.white : Colors.black87,
+              fontSize: 12,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ),
+      ),
+      selected: isSelected,
+      selectedColor: color,
+      backgroundColor: Colors.transparent,
+      showCheckmark: false,
+      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+      onSelected: (bool selected) {
+        if (selected) {
+          setState(() {
+            _filtroUrgencia = value;
+          });
+        }
+      },
     );
   }
 
@@ -166,8 +229,8 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                     options: MapOptions(
                       initialCenter: myPosition!,
                       initialZoom: 18,
-                      minZoom: 10,
-                      maxZoom: 22,
+                      minZoom: 5,
+                      maxZoom: 19,
                       cameraConstraint: CameraConstraint.contain(
                         bounds: LatLngBounds(
                           const LatLng(-90.0, -180.0),
@@ -188,46 +251,61 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                           'id': 'mapbox/streets-v12',
                         },
                         evictErrorTileStrategy: EvictErrorTileStrategy.dispose,
-                        errorTileCallback: (tile, error, stackTrace) {},
                       ),
                       MarkerLayer(
                         rotate: true,
                         markers: [
                           ...reportesAsync.maybeWhen(
-                            data: (reportes) => reportes.map((reporte) {
-                              final bool estaEnProceso =
-                                  reporte.estado
-                                      .toString()
-                                      .trim()
-                                      .toUpperCase() ==
-                                  'EN_PROCESO';
+                            data: (reportes) {
+                              return reportes
+                                  .where((r) {
+                                    if (_filtroUrgencia == 'todos') {
+                                      return true;
+                                    }
+                                    return r.urgencia.toLowerCase() ==
+                                        _filtroUrgencia;
+                                  })
+                                  .map((reporte) {
+                                    final bool estaEnProceso =
+                                        reporte.estado
+                                            .toString()
+                                            .trim()
+                                            .toUpperCase() ==
+                                        'EN_PROCESO';
 
-                              return Marker(
-                                point: LatLng(
-                                  reporte.latitud,
-                                  reporte.longitud,
-                                ),
-                                width: 50,
-                                height: 50,
-                                rotate: true,
-                                child: GestureDetector(
-                                  onTap: () {
-                                    context
-                                        .push('/report-detail', extra: reporte)
-                                        .then((_) {
-                                          ref.refresh(
-                                            reportesActivosMapaProvider,
-                                          );
-                                          ref.refresh(miRescateActivoProvider);
-                                        });
-                                  },
-                                  child: _buildReportMarker(
-                                    reporte.colorUrgencia,
-                                    isInProgress: estaEnProceso,
-                                  ),
-                                ),
-                              );
-                            }).toList(),
+                                    return Marker(
+                                      point: LatLng(
+                                        reporte.latitud,
+                                        reporte.longitud,
+                                      ),
+                                      width: 50,
+                                      height: 50,
+                                      rotate: true,
+                                      child: GestureDetector(
+                                        onTap: () {
+                                          context
+                                              .push(
+                                                '/report-detail',
+                                                extra: reporte,
+                                              )
+                                              .then((_) {
+                                                ref.invalidate(
+                                                  reportesActivosMapaProvider,
+                                                );
+                                                ref.invalidate(
+                                                  miRescateActivoProvider,
+                                                );
+                                              });
+                                        },
+                                        child: _buildReportMarker(
+                                          reporte.colorUrgencia,
+                                          isInProgress: estaEnProceso,
+                                        ),
+                                      ),
+                                    );
+                                  })
+                                  .toList();
+                            },
                             orElse: () => [],
                           ),
                           if (myPosition != null)
@@ -243,6 +321,166 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                     ],
                   ),
                 ),
+
+                // RADAR PERIFÉRICO CORREGIDO
+                reportesAsync.maybeWhen(
+                  data: (reportes) {
+                    final reportesFiltrados = reportes.where((r) {
+                      if (_filtroUrgencia == 'todos') return true;
+                      return r.urgencia.toLowerCase() == _filtroUrgencia;
+                    }).toList();
+
+                    return LayoutBuilder(
+                      builder: (context, constraints) {
+                        return StreamBuilder<MapEvent>(
+                          stream: _mapController.mapEventStream,
+                          builder: (context, snapshot) {
+                            if (!mounted) return const SizedBox.shrink();
+
+                            final camera = _mapController.camera;
+                            final width = constraints.maxWidth;
+                            final height = constraints.maxHeight;
+
+                            if (width == 0 || height == 0)
+                              return const SizedBox.shrink();
+
+                            final center = Offset(width / 2, height / 2);
+
+                            const topMargin = 24.0;
+                            const sideMargin = 24.0;
+                            const bottomMargin = 130.0;
+
+                            final minX = sideMargin;
+                            final maxX = width - sideMargin;
+                            final minY = topMargin;
+                            final maxY = height - bottomMargin;
+
+                            return Stack(
+                              // CLAVE DE LA CORRECCIÓN: Evita el colapso a 0x0 cuando hay SizedBox.shrink
+                              fit: StackFit.expand,
+                              children: reportesFiltrados.map((reporte) {
+                                final pos = LatLng(
+                                  reporte.latitud,
+                                  reporte.longitud,
+                                );
+
+                                if (camera.visibleBounds.contains(pos)) {
+                                  return const SizedBox.shrink();
+                                }
+
+                                final lat1 =
+                                    camera.center.latitude * math.pi / 180;
+                                final lng1 =
+                                    camera.center.longitude * math.pi / 180;
+                                final lat2 = pos.latitude * math.pi / 180;
+                                final lng2 = pos.longitude * math.pi / 180;
+
+                                final dLng = lng2 - lng1;
+                                final y = math.sin(dLng) * math.cos(lat2);
+                                final x =
+                                    math.cos(lat1) * math.sin(lat2) -
+                                    math.sin(lat1) *
+                                        math.cos(lat2) *
+                                        math.cos(dLng);
+
+                                final bearing = math.atan2(y, x);
+                                final dx = math.sin(bearing);
+                                final dy = -math.cos(bearing);
+
+                                if (dx.abs() < 0.0001 && dy.abs() < 0.0001) {
+                                  return const SizedBox.shrink();
+                                }
+
+                                double t = double.infinity;
+
+                                if (dx.abs() > 0.0001) {
+                                  if (dx > 0)
+                                    t = math.min(t, (maxX - center.dx) / dx);
+                                  if (dx < 0)
+                                    t = math.min(t, (minX - center.dx) / dx);
+                                }
+
+                                if (dy.abs() > 0.0001) {
+                                  if (dy > 0)
+                                    t = math.min(t, (maxY - center.dy) / dy);
+                                  if (dy < 0)
+                                    t = math.min(t, (minY - center.dy) / dy);
+                                }
+
+                                if (t == double.infinity || t.isNaN) {
+                                  return const SizedBox.shrink();
+                                }
+
+                                final indicatorX = center.dx + t * dx;
+                                final indicatorY = center.dy + t * dy;
+
+                                if (indicatorX.isNaN || indicatorY.isNaN) {
+                                  return const SizedBox.shrink();
+                                }
+
+                                final bool estaEnProceso =
+                                    reporte.estado
+                                        .toString()
+                                        .trim()
+                                        .toUpperCase() ==
+                                    'EN_PROCESO';
+
+                                return Positioned(
+                                  left: indicatorX - 18,
+                                  top: indicatorY - 18,
+                                  child: Transform.rotate(
+                                    angle: bearing,
+                                    child: GestureDetector(
+                                      onTap: () {
+                                        _mapController.move(pos, 17);
+                                      },
+                                      child: Container(
+                                        padding: const EdgeInsets.all(6),
+                                        decoration: BoxDecoration(
+                                          color: reporte.colorUrgencia,
+                                          shape: BoxShape.circle,
+                                          boxShadow: [
+                                            BoxShadow(
+                                              color: reporte.colorUrgencia
+                                                  .withValues(alpha: 0.6),
+                                              blurRadius: 8,
+                                              spreadRadius: 2,
+                                            ),
+                                          ],
+                                          border: Border.all(
+                                            color: Colors.white,
+                                            width: 2,
+                                          ),
+                                        ),
+                                        child: Icon(
+                                          estaEnProceso
+                                              ? Icons.hourglass_top_rounded
+                                              : Icons.arrow_upward_rounded,
+                                          color: Colors.white,
+                                          size: 18,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              }).toList(),
+                            );
+                          },
+                        );
+                      },
+                    );
+                  },
+                  orElse: () => const SizedBox.shrink(),
+                ),
+
+                // FILTRO UBICADO EN LATERAL DERECHO
+                Positioned(
+                  top: 100, // Debajo de la tarjeta de alerta si esta aparece
+                  right: 16,
+                  child: _buildVerticalFilterSelector(),
+                ),
+
+                // TARJETA DE RESCATE ACTIVO EN LA PARTE SUPERIOR
                 miRescateAsync.maybeWhen(
                   data: (rescate) {
                     if (rescate == null) return const SizedBox.shrink();
@@ -255,8 +493,8 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                           context.push('/report-detail', extra: rescate).then((
                             _,
                           ) {
-                            ref.refresh(reportesActivosMapaProvider);
-                            ref.refresh(miRescateActivoProvider);
+                            ref.invalidate(reportesActivosMapaProvider);
+                            ref.invalidate(miRescateActivoProvider);
                           });
                         },
                         child: Card(
