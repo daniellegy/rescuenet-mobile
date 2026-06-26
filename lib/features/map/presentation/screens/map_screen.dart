@@ -25,6 +25,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   LatLng? myPosition;
   late final MapController _mapController;
   String _filtroUrgencia = 'todos'; // Estados: 'todos', 'alta', 'media', 'baja'
+  bool _showUrgencyMenu = false;
 
   @override
   void initState() {
@@ -475,9 +476,33 @@ class _MapScreenState extends ConsumerState<MapScreen> {
 
                 // FILTRO UBICADO EN LATERAL DERECHO
                 Positioned(
-                  top: 100, // Debajo de la tarjeta de alerta si esta aparece
+                  bottom: 160, 
                   right: 16,
-                  child: _buildVerticalFilterSelector(),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      FloatingActionButton(
+                        heroTag: 'toggle_filter_btn', // Evita conflictos de hero tags con el botón de cámara
+                        mini: true,
+                        backgroundColor: Colors.white,
+                        foregroundColor: Colors.blueGrey,
+                        elevation: 4,
+                        onPressed: () {
+                          setState(() {
+                            _showUrgencyMenu = !_showUrgencyMenu;
+                          });
+                        },
+                        child: Icon(
+                          _showUrgencyMenu ? Icons.close_rounded : Icons.filter_list_rounded,
+                        ),
+                      ),
+                      // El menú solo se renderiza si _showUrgencyMenu es true
+                      if (_showUrgencyMenu) ...[
+                        const SizedBox(height: 12),
+                        _buildVerticalFilterSelector(),
+                      ],
+                    ],
+                  ),
                 ),
 
                 // TARJETA DE RESCATE ACTIVO EN LA PARTE SUPERIOR
