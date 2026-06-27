@@ -21,6 +21,7 @@ class ReportRepository {
     required String notasAdicionales,
     required String urgencia,
     required String imagePath,
+    int? radio,
   }) async {
     try {
       FormData formData = FormData.fromMap({
@@ -36,6 +37,7 @@ class ReportRepository {
         'caracteristicas_especiales': caracteristicasEspeciales,
         'notas_adicionales': notasAdicionales,
         'urgencia': urgencia,
+        'radio': (radio ?? 500).toString(),
         'foto': await MultipartFile.fromFile(
           imagePath,
           filename: 'reporte.jpg',
