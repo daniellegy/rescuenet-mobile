@@ -12,6 +12,7 @@ import '../../features/history/presentation/screens/report_detail_screen.dart';
 import '../../features/history/domain/models/report_model.dart';
 import '../../features/reports/presentation/screens/active_reports_screen.dart';
 import '../../features/settings/presentation/screens/settings_screen.dart';
+import '../../features/history/presentation/screens/search_radar.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
   final authStateNotifier = ValueNotifier<AuthState>(ref.read(authProvider));
@@ -55,6 +56,13 @@ final routerProvider = Provider<GoRouter>((ref) {
           final reporteData =
               state.extra as ReportModel; // <- Ahora usa el modelo
           return ReportDetailScreen(reporte: reporteData);
+        },
+      ),
+      GoRoute(
+        path: '/search-radar',
+        builder: (context, state) {
+          final reporteData = state.extra as ReportModel; // Extrae el modelo que mandamos por extra
+          return SearchRadarScreen(reporte: reporteData); // Inyecta el reporte al Radar
         },
       ),
       GoRoute(
