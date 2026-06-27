@@ -76,6 +76,7 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
   final _notasController = TextEditingController();
 
   String _urgenciaSeleccionada = 'media';
+  int _radioSeleccionado = 500;
   String? _especie;
 
   String? _razaSeleccionada; 
@@ -140,6 +141,7 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
         notasAdicionales: _notasController.text,
         urgencia: _urgenciaSeleccionada,
         imagePath: widget.imagePath,
+        radio: _radioSeleccionado,
       );
 
       if (mounted) {
@@ -314,6 +316,42 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
                                   : _urgenciaSeleccionada == 'media'
                                   ? Colors.orange
                                   : Colors.amber;
+                            }
+                            return Colors.white;
+                          },
+                        ),
+                        foregroundColor: WidgetStateProperty.resolveWith<Color>(
+                          (Set<WidgetState> states) {
+                            if (states.contains(WidgetState.selected))
+                              return Colors.white;
+                            return Colors.black87;
+                          },
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    const Text(
+                      'Radio de Búsqueda Recomendado',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 8),
+                    SegmentedButton<int>(
+                      segments: const [
+                        ButtonSegment(value: 200, label: Text('200m\nCerrado', textAlign: TextAlign.center)),
+                        ButtonSegment(value: 500, label: Text('500m\nColonia', textAlign: TextAlign.center)),
+                        ButtonSegment(value: 800, label: Text('800m\nAmplio', textAlign: TextAlign.center)),
+                      ],
+                      selected: {_radioSeleccionado},
+                      onSelectionChanged: (Set<int> newSelection) {
+                        setState(() {
+                          _radioSeleccionado = newSelection.first;
+                        });
+                      },
+                      style: ButtonStyle(
+                        backgroundColor: WidgetStateProperty.resolveWith<Color>(
+                          (Set<WidgetState> states) {
+                            if (states.contains(WidgetState.selected)) {
+                              return Colors.blue.shade700;
                             }
                             return Colors.white;
                           },
