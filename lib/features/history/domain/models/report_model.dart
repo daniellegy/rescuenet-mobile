@@ -17,6 +17,7 @@ class ReportModel {
   final double latitud;
   final double longitud;
   final String? fotoUrl;
+  final int? radio;
 
   ReportModel({
     required this.id,
@@ -35,6 +36,7 @@ class ReportModel {
     required this.latitud,
     required this.longitud,
     this.fotoUrl,
+    this.radio,
   });
 
   Color get colorUrgencia {
@@ -77,6 +79,7 @@ class ReportModel {
       latitud: double.tryParse(json['latitud']?.toString() ?? '0.0') ?? 0.0,
       longitud: double.tryParse(json['longitud']?.toString() ?? '0.0') ?? 0.0,
       fotoUrl: json['foto_url']?.toString(),
+      radio: json['radio'] != null ? json['radio'] as int : null,
     );
   }
 }
