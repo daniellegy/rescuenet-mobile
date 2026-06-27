@@ -280,6 +280,11 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
                     'Agresividad',
                     '${widget.reporte.agresividad}/10',
                   ),
+                  _buildDetailRow(
+                    Icons.track_changes, // Icono de radar/mira
+                    'Radio de Búsqueda',
+                    '${widget.reporte.radio ?? 500} metros',
+                  ),
                   const Divider(height: 32),
                   const Text(
                     'Señas particulares:',
@@ -300,6 +305,31 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
                     widget.reporte.notasAdicionales,
                     style: const TextStyle(fontSize: 15, height: 1.5),
                   ),
+                  if (esVoluntario && estaNuevo) ...[
+                    const SizedBox(height: 24),
+                    FilledButton.icon(
+                      onPressed: () {
+                        context.push('/search-radar', extra: widget.reporte);
+                      },
+                      style: FilledButton.styleFrom(
+                        backgroundColor: Colors.blue.shade700,
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        minimumSize: const Size(double.infinity, 50), // Todo el ancho disponible
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      icon: const Icon(Icons.radar_rounded, color: Colors.white),
+                      label: const Text(
+                        'Iniciar Ruta de Búsqueda',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ),
