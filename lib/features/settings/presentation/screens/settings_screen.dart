@@ -93,17 +93,19 @@ class SettingsScreen extends ConsumerWidget {
       trailing: isSelected
           ? const Icon(Icons.check_circle, color: Colors.green)
           : const Icon(Icons.circle_outlined),
-      onTap: () {
-        Navigator.pop(context); // Cierra el modal de opciones
+      onTap: () async {
+        Navigator.pop(context);
+        if (rolTarget == rolActual) return;
 
-        if (rolTarget == rolActual) return; // No hace nada si elige el mismo
+        if (rolTarget == 2) {
+          final acepto = await _mostrarManifiestoVoluntario(context);
+          if (!acepto) return;
+        }
 
-        // INTERCEPCIÓN LOGICA: Si quiere ser voluntario y no tiene CURP
         if (rolTarget == 2 &&
             (curpActual == null || curpActual.trim().isEmpty)) {
           _mostrarDialogoRegistroCurp(context, ref);
         } else {
-          // Si es un cambio normal (o ya tiene CURP), procede directamente
           _procesarCambioDeRol(context, ref, rolTarget, titulo, null);
         }
       },
@@ -296,6 +298,33 @@ class SettingsScreen extends ConsumerWidget {
         );
       },
     );
+  }
+
+  Future<bool> _mostrarManifiestoVoluntario(BuildContext context) async {
+    return await showDialog<bool>(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => AlertDialog(
+            title: const Text(
+              'Manifiesto de Voluntario',
+              style: TextStyle(fontSize: 18),
+            ),
+            content: const Text(
+              'Declaro que los gastos derivados corren por mi cuenta u originados por financiamiento colectivo ajeno a la app.',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('Cancelar'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.pop(context, true),
+                child: const Text('Acepto la responsabilidad'),
+              ),
+            ],
+          ),
+        ) ??
+        false;
   }
 
   @override

@@ -13,16 +13,21 @@ class ReportModel {
   final String notasAdicionales;
   final String urgencia;
   final String estado;
-  final int? usuarioRescatistaId;
-  final int usuarioReportadorId;
   final double latitud;
   final double longitud;
   final String? fotoUrl;
-  final int? radio;
-
+  final String? fotoEvidenciaUrl;
+  final DateTime? fechaCreacion;
+  final int? usuarioReportadorId;
+  final int? usuarioRescatistaId;
   final String? nombreReportador;
   final String? nombreRescatista;
-  final DateTime? fechaCreacion;
+  final bool? animalAvistado;
+  final String? lugarTraslado;
+  final String? destinoFinal;
+  final String? condicionRescate;
+  final double? costoRescate;
+  final int? radio;
 
   ReportModel({
     required this.id,
@@ -37,16 +42,61 @@ class ReportModel {
     required this.notasAdicionales,
     required this.urgencia,
     required this.estado,
-    this.usuarioRescatistaId,
-    required this.usuarioReportadorId,
     required this.latitud,
     required this.longitud,
     this.fotoUrl,
-    this.radio,
+    this.fotoEvidenciaUrl,
+    this.fechaCreacion,
+    this.usuarioReportadorId,
+    this.usuarioRescatistaId,
     this.nombreReportador,
     this.nombreRescatista,
-    this.fechaCreacion,
+    this.animalAvistado,
+    this.lugarTraslado,
+    this.destinoFinal,
+    this.condicionRescate,
+    this.costoRescate,
+    this.radio,
   });
+
+  factory ReportModel.fromJson(Map<String, dynamic> json) {
+    return ReportModel(
+      id: json['id'],
+      especie: json['especie'] ?? 'Desconocida',
+      colorDominante: json['color_dominante'] ?? 'Desconocido',
+      sexo: json['sexo'] ?? 'Desconocido',
+      edadAprox: json['edad_aprox'] ?? 'Desconocida',
+      tamano: json['tamano'] ?? 'Desconocido',
+      agresividad: json['agresividad'] ?? 1,
+      razaAprox: json['raza_aprox'] ?? 'Desconocida',
+      caracteristicasEspeciales:
+          json['caracteristicas_especiales'] ?? 'Ninguna',
+      notasAdicionales: json['notas_adicionales'] ?? 'Ninguna',
+      urgencia: json['urgencia'] ?? 'media',
+      estado: json['estado'] ?? 'Nuevo',
+      latitud: (json['latitud'] as num).toDouble(),
+      longitud: (json['longitud'] as num).toDouble(),
+      fotoUrl: json['foto_url'],
+      fotoEvidenciaUrl: json['foto_evidencia_url'],
+      fechaCreacion: json['fecha_creacion'] != null
+          ? DateTime.parse(json['fecha_creacion'])
+          : null,
+      usuarioReportadorId: json['usuario_reportador_id'],
+      usuarioRescatistaId: json['usuario_rescatista_id'],
+      nombreReportador: json['nombre_reportador'],
+      nombreRescatista: json['nombre_rescatista'],
+      animalAvistado: json['animal_avistado'],
+      lugarTraslado: json['lugar_traslado'],
+      destinoFinal: json['destino_final'],
+      condicionRescate: json['condicion_rescate'],
+      costoRescate: json['costo_rescate'] != null
+          ? double.tryParse(json['costo_rescate'].toString())
+          : null,
+      radio: json['radio'],
+    );
+  }
+
+  String get estadoFormateado => estado.replaceAll('_', ' ');
 
   Color get colorUrgencia {
     switch (urgencia.toLowerCase()) {
@@ -55,64 +105,31 @@ class ReportModel {
       case 'media':
         return Colors.orange;
       case 'baja':
-        return Colors.amber;
+        return Colors.yellow;
       default:
-        return Colors.orange;
+        return Colors.blue;
+    }
+  }
+
+  int get pesoUrgencia {
+    switch (urgencia.toLowerCase()) {
+      case 'alta':
+        return 3;
+      case 'media':
+        return 2;
+      case 'baja':
+        return 1;
+      default:
+        return 0;
     }
   }
 
   String get tiempoTranscurrido {
     if (fechaCreacion == null) return 'hace un momento';
-    final ahora = DateTime.now();
-    Duration diferencia = ahora.difference(fechaCreacion!);
-    if (diferencia.isNegative) {
-      diferencia = diferencia.abs();
-    }
-
-    if (diferencia.inDays > 1) return 'hace ${diferencia.inDays} días';
-    if (diferencia.inDays == 1) return 'hace 1 día';
-    if (diferencia.inHours >= 1) return 'hace ${diferencia.inHours} hrs';
-    if (diferencia.inMinutes >= 1) return 'hace ${diferencia.inMinutes} min';
-
+    final diferencia = DateTime.now().difference(fechaCreacion!);
+    if (diferencia.inDays > 0) return 'hace ${diferencia.inDays} d';
+    if (diferencia.inHours > 0) return 'hace ${diferencia.inHours} h';
+    if (diferencia.inMinutes > 0) return 'hace ${diferencia.inMinutes} min';
     return 'hace un momento';
-  }
-
-  String get estadoFormateado {
-    return estado.replaceAll('_', ' ');
-  }
-
-  factory ReportModel.fromJson(Map<String, dynamic> json) {
-    return ReportModel(
-      id: json['id'] as int? ?? 0,
-      especie: json['especie']?.toString() ?? 'Desconocida',
-      colorDominante: json['color_dominante']?.toString() ?? 'Desconocido',
-      sexo: json['sexo']?.toString() ?? 'Desconocido',
-      edadAprox: json['edad_aprox']?.toString() ?? 'Desconocida',
-      tamano: json['tamano']?.toString() ?? 'No especificado',
-      agresividad: int.tryParse(json['agresividad']?.toString() ?? '1') ?? 1,
-      razaAprox: json['raza_aprox']?.toString() ?? 'Desconocida',
-      caracteristicasEspeciales:
-          json['caracteristicas_especiales']?.toString() ?? 'Ninguna',
-      notasAdicionales: json['notas_adicionales']?.toString() ?? 'Sin notas',
-      urgencia: json['urgencia']?.toString() ?? 'media',
-      estado: json['estado']?.toString() ?? 'Nuevo',
-      usuarioRescatistaId: json['usuario_rescatista_id'] != null
-          ? int.tryParse(json['usuario_rescatista_id'].toString())
-          : null,
-      usuarioReportadorId:
-          int.tryParse(json['usuario_reportador_id']?.toString() ?? '0') ?? 0,
-      latitud: double.tryParse(json['latitud']?.toString() ?? '0.0') ?? 0.0,
-      longitud: double.tryParse(json['longitud']?.toString() ?? '0.0') ?? 0.0,
-      fotoUrl: json['foto_url']?.toString(),
-      radio: json['radio'] != null ? json['radio'] as int : null,
-      // MAPEAMOS LOS NOMBRES
-      nombreReportador: json['nombre_reportador']?.toString(),
-      nombreRescatista: json['nombre_rescatista']?.toString(),
-      fechaCreacion: json['fecha_creacion'] != null
-          ? DateTime.tryParse(json['fecha_creacion'].toString())
-          : json['creado_el'] != null
-          ? DateTime.tryParse(json['creado_el'].toString())
-          : null,
-    );
   }
 }

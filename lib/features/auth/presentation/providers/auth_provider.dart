@@ -3,6 +3,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'dart:convert';
 import '../../data/auth_repository.dart';
+import '../../../../core/network/dio_client.dart';
 
 enum AppRole { ninguno, reportante, voluntario, refugio, superadmin }
 
@@ -139,6 +140,7 @@ class AuthNotifier extends Notifier<AuthState> {
 
   Future<void> logout() async {
     await _storage.delete(key: 'jwt_token');
+    ref.read(dioProvider).clearTokenCache();
     state = AuthState(isLogged: false, role: AppRole.ninguno, userId: null);
   }
 }

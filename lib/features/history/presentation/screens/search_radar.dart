@@ -5,7 +5,7 @@ import 'package:latlong2/latlong.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:geolocator/geolocator.dart';
 
-import '../../domain/models/report_model.dart'; // Verifica que apunte correctamente a tu modelo
+import '../../domain/models/report_model.dart';
 
 class SearchRadarScreen extends StatefulWidget {
   final ReportModel reporte;
@@ -32,6 +32,8 @@ class _SearchRadarScreenState extends State<SearchRadarScreen> {
   @override
   void dispose() {
     _positionStreamSubscription?.cancel();
+    _positionStreamSubscription = null;
+
     _mapController.dispose();
     super.dispose();
   }
@@ -43,20 +45,21 @@ class _SearchRadarScreenState extends State<SearchRadarScreen> {
       if (permission == LocationPermission.denied) return;
     }
 
-    _positionStreamSubscription = Geolocator.getPositionStream(
-      locationSettings: const LocationSettings(
-        accuracy: LocationAccuracy.high,
-        distanceFilter: 5, 
-      ),
-    ).listen((Position position) {
-      if (mounted) {
-        final userLatLng = LatLng(position.latitude, position.longitude);
-        setState(() {
-          _currentPosition = userLatLng;
+    _positionStreamSubscription =
+        Geolocator.getPositionStream(
+          locationSettings: const LocationSettings(
+            accuracy: LocationAccuracy.high,
+            distanceFilter: 15,
+          ),
+        ).listen((Position position) {
+          if (mounted) {
+            final userLatLng = LatLng(position.latitude, position.longitude);
+            setState(() {
+              _currentPosition = userLatLng;
+            });
+            _calcularMetricas(position);
+          }
         });
-        _calcularMetricas(position);
-      }
-    });
   }
 
   void _calcularMetricas(Position posicionUsuario) {
@@ -67,8 +70,7 @@ class _SearchRadarScreenState extends State<SearchRadarScreen> {
       widget.reporte.longitud,
     );
 
-    // Ahora lee el radio del reporte. Si es null, usa 500 por defecto.
-    final double radioReporte = (widget.reporte.radio ?? 500).toDouble(); 
+    final double radioReporte = (widget.reporte.radio ?? 500).toDouble();
 
     setState(() {
       _distanciaEnMetros = distancia;
@@ -79,7 +81,10 @@ class _SearchRadarScreenState extends State<SearchRadarScreen> {
   @override
   Widget build(BuildContext context) {
     final mapboxToken = dotenv.env['MAPBOX_TOKEN'] ?? '';
-    final targetReport = LatLng(widget.reporte.latitud, widget.reporte.longitud);
+    final targetReport = LatLng(
+      widget.reporte.latitud,
+      widget.reporte.longitud,
+    );
 
     return Scaffold(
       appBar: AppBar(
@@ -110,8 +115,7 @@ class _SearchRadarScreenState extends State<SearchRadarScreen> {
                   'id': 'mapbox/streets-v12',
                 },
               ),
-              
-              // POLYLINES CORREGIDA: Línea guía continua sólida para evitar fallos de versión
+
               PolylineLayer(
                 polylines: [
                   if (_currentPosition != null && !_estaDentroDelRadar)
@@ -127,7 +131,7 @@ class _SearchRadarScreenState extends State<SearchRadarScreen> {
                 circles: [
                   CircleMarker(
                     point: targetReport,
-                    radius: (widget.reporte.radio ?? 500).toDouble(), 
+                    radius: (widget.reporte.radio ?? 500).toDouble(),
                     useRadiusInMeter: true,
                     color: Colors.blue.withOpacity(0.15),
                     borderColor: Colors.blue.shade700,
@@ -146,7 +150,10 @@ class _SearchRadarScreenState extends State<SearchRadarScreen> {
                       decoration: BoxDecoration(
                         color: widget.reporte.colorUrgencia.withOpacity(0.2),
                         shape: BoxShape.circle,
-                        border: Border.all(color: widget.reporte.colorUrgencia, width: 2.5),
+                        border: Border.all(
+                          color: widget.reporte.colorUrgencia,
+                          width: 2.5,
+                        ),
                       ),
                       child: Icon(
                         Icons.warning_rounded,
@@ -188,23 +195,26 @@ class _SearchRadarScreenState extends State<SearchRadarScreen> {
             ),
           ),
 
-          // =======================================================
-          // INTERFAZ INFERIOR CONTEXTUAL CORREGIDA (SIn ERRORES DE CONST)
-          // =======================================================
           Positioned(
             bottom: 24,
             left: 16,
             right: 16,
             child: Card(
               elevation: 8,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
               color: _estaDentroDelRadar ? Colors.green.shade50 : Colors.white,
               child: Padding(
                 padding: const EdgeInsets.all(18.0),
                 child: _estaDentroDelRadar
                     ? Row(
                         children: [
-                          Icon(Icons.check_circle_rounded, color: Colors.green.shade700, size: 32),
+                          Icon(
+                            Icons.check_circle_rounded,
+                            color: Colors.green.shade700,
+                            size: 32,
+                          ),
                           const SizedBox(width: 14),
                           const Expanded(
                             child: Column(
@@ -214,15 +224,18 @@ class _SearchRadarScreenState extends State<SearchRadarScreen> {
                                 Text(
                                   '¡Estás en la zona!',
                                   style: TextStyle(
-                                    fontWeight: FontWeight.bold, 
-                                    fontSize: 17, 
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 17,
                                     color: Colors.green,
                                   ),
                                 ),
                                 SizedBox(height: 2),
                                 Text(
                                   'Te encuentras dentro del radar de localización del animal.',
-                                  style: TextStyle(fontSize: 13, color: Colors.black87), // CORREGIDO AQUÍ
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    color: Colors.black87,
+                                  ),
                                 ),
                               ],
                             ),
@@ -234,11 +247,17 @@ class _SearchRadarScreenState extends State<SearchRadarScreen> {
                         children: [
                           Row(
                             children: [
-                              Icon(Icons.navigation_rounded, color: Colors.blue.shade700),
+                              Icon(
+                                Icons.navigation_rounded,
+                                color: Colors.blue.shade700,
+                              ),
                               const SizedBox(width: 8),
                               const Text(
                                 'Distancia al objetivo:',
-                                style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 15,
+                                ),
                               ),
                             ],
                           ),
@@ -247,8 +266,8 @@ class _SearchRadarScreenState extends State<SearchRadarScreen> {
                                 ? '${(_distanciaEnMetros / 1000).toStringAsFixed(2)} km'
                                 : '${_distanciaEnMetros.round()} m',
                             style: TextStyle(
-                              fontWeight: FontWeight.bold, 
-                              fontSize: 18, 
+                              fontWeight: FontWeight.bold,
+                              fontSize: 18,
                               color: Colors.blue.shade800,
                             ),
                           ),

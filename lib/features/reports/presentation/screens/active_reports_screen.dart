@@ -27,12 +27,6 @@ class _ActiveReportsScreenState extends ConsumerState<ActiveReportsScreen> {
   List<ReportModel> _ordenarReportes(List<ReportModel> reportes) {
     List<ReportModel> lista = List.from(reportes);
 
-    int pesoUrgencia(String u) {
-      if (u.toLowerCase() == 'alta') return 3;
-      if (u.toLowerCase() == 'media') return 2;
-      return 1;
-    }
-
     switch (_ordenActual) {
       case FiltroOrden.masRecientes:
         lista.sort(
@@ -49,16 +43,10 @@ class _ActiveReportsScreenState extends ConsumerState<ActiveReportsScreen> {
         );
         break;
       case FiltroOrden.urgenciaAlta:
-        lista.sort(
-          (a, b) =>
-              pesoUrgencia(b.urgencia).compareTo(pesoUrgencia(a.urgencia)),
-        );
+        lista.sort((a, b) => b.pesoUrgencia.compareTo(a.pesoUrgencia));
         break;
       case FiltroOrden.urgenciaBaja:
-        lista.sort(
-          (a, b) =>
-              pesoUrgencia(a.urgencia).compareTo(pesoUrgencia(b.urgencia)),
-        );
+        lista.sort((a, b) => a.pesoUrgencia.compareTo(b.pesoUrgencia));
         break;
       case FiltroOrden.urgenciaMedia:
         lista.sort((a, b) {
@@ -137,19 +125,16 @@ class _ActiveReportsScreenState extends ConsumerState<ActiveReportsScreen> {
               return Card(
                 margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 elevation: 2,
-                clipBehavior: Clip
-                    .antiAlias, // Evita que el contenedor desborde los bordes redondeados
+                clipBehavior: Clip.antiAlias,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Container(
                   decoration: BoxDecoration(
-                    color: reporte.colorUrgencia.withOpacity(
-                      0.05,
-                    ), // Fondo sutil tintado
+                    color: reporte.colorUrgencia.withValues(alpha: 0.05),
                     border: Border(
                       left: BorderSide(
-                        color: reporte.colorUrgencia, // Borde sólido indicador
+                        color: reporte.colorUrgencia,
                         width: 6.0,
                       ),
                     ),
@@ -190,8 +175,7 @@ class _ActiveReportsScreenState extends ConsumerState<ActiveReportsScreen> {
                     ),
                     trailing: Icon(
                       Icons.arrow_forward_ios,
-                      color: reporte
-                          .colorUrgencia, // Flecha del color de la urgencia
+                      color: reporte.colorUrgencia,
                     ),
                     onTap: () => context.push('/report-detail', extra: reporte),
                   ),

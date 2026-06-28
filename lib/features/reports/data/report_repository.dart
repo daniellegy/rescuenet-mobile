@@ -67,15 +67,65 @@ class ReportRepository {
     }
   }
 
-  Future<void> finalizeReport(int id) async {
+  // NUEVO: Método para abortar rescate
+  Future<void> abortReport(int id) async {
     try {
-      await _dio.put('/reportes/$id/finalizar');
+      await _dio.put('/reportes/$id/abortar');
+    } on DioException catch (e) {
+      throw AppException(
+        e.response?.data['error'] ?? 'Error al abortar el rescate',
+      );
+    } catch (e) {
+      throw AppException('Ocurrió un error inesperado');
+    }
+  }
+
+  Future<void> updateProgress(
+    int id, {
+    bool? animalAvistado,
+    String? lugarTraslado,
+  }) async {
+    try {
+      await _dio.put(
+        '/reportes/$id/progreso',
+        data: {
+          if (animalAvistado != null) 'animal_avistado': animalAvistado,
+          if (lugarTraslado != null) 'lugar_traslado': lugarTraslado,
+        },
+      );
+    } on DioException catch (e) {
+      throw AppException(
+        e.response?.data['error'] ?? 'Error al guardar progreso',
+      );
+    } catch (e) {
+      throw AppException('Ocurrió un error inesperado al guardar progreso');
+    }
+  }
+
+  Future<void> finalizeReport(
+    int id,
+    Map<String, dynamic> detalles,
+    String? evidenciaPath,
+  ) async {
+    try {
+      FormData formData = FormData.fromMap({
+        'condicion': detalles['condicion'],
+        'destino': detalles['destino'],
+        'costo': detalles['costo'].toString(),
+        'conclusion': detalles['conclusion'],
+        if (evidenciaPath != null)
+          'evidencia': await MultipartFile.fromFile(
+            evidenciaPath,
+            filename: 'evidencia.jpg',
+          ),
+      });
+      await _dio.put('/reportes/$id/finalizar', data: formData);
     } on DioException catch (e) {
       throw AppException(
         e.response?.data['error'] ?? 'Error al finalizar el rescate',
       );
     } catch (e) {
-      throw AppException('Ocurrió un error inesperado');
+      throw AppException('Ocurrió un error inesperado al finalizar');
     }
   }
 }

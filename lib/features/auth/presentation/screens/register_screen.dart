@@ -12,7 +12,6 @@ class RegisterScreen extends ConsumerStatefulWidget {
 
 class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   final _formKey = GlobalKey<FormState>();
-
   final _nameController = TextEditingController();
   final _phoneController = TextEditingController();
   final _emailController = TextEditingController();
@@ -21,7 +20,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   final _curpController = TextEditingController();
 
   String _selectedRole = 'Cliente';
-
   bool _isPasswordVisible = false;
   bool _isConfirmPasswordVisible = false;
 
@@ -40,6 +38,77 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     _confirmPasswordController.dispose();
     _curpController.dispose();
     super.dispose();
+  }
+
+  // Lógica del manifiesto
+  Future<bool> _mostrarManifiestoVoluntario() async {
+    return await showDialog<bool>(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => AlertDialog(
+            title: const Row(
+              children: [
+                Icon(Icons.gavel_rounded, color: Colors.brown),
+                SizedBox(width: 8),
+                Text(
+                  'Manifiesto de Voluntario',
+                  style: TextStyle(fontSize: 18),
+                ),
+              ],
+            ),
+            content: const Text(
+              'Declaro que los gastos derivados corren por mi cuenta u originados por financiamiento colectivo ajeno a la app. Al aceptar, asumo la responsabilidad ética y operativa de los rescates que acepte.',
+              style: TextStyle(fontSize: 15, height: 1.4),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text(
+                  'Cancelar',
+                  style: TextStyle(color: Colors.grey),
+                ),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.pop(context, true),
+                style: FilledButton.styleFrom(
+                  backgroundColor: Colors.redAccent,
+                ),
+                child: const Text('Acepto la responsabilidad'),
+              ),
+            ],
+          ),
+        ) ??
+        false;
+  }
+
+  Future<void> _ejecutarRegistro() async {
+    if (_formKey.currentState!.validate()) {
+      if (_selectedRole == 'Voluntario') {
+        final acepto = await _mostrarManifiestoVoluntario();
+        if (!acepto) return;
+      }
+
+      try {
+        await ref
+            .read(authProvider.notifier)
+            .register(
+              nombre: _nameController.text,
+              telefono: _phoneMaskFormatter.getUnmaskedText(),
+              email: _emailController.text,
+              password: _passwordController.text,
+              rolId: _selectedRole == 'Voluntario' ? 2 : 1,
+              curp: _selectedRole == 'Voluntario'
+                  ? _curpController.text.trim().toUpperCase()
+                  : null,
+            );
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text(e.toString())));
+        }
+      }
+    }
   }
 
   @override
@@ -64,8 +133,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                   style: TextStyle(fontSize: 16, color: Colors.grey),
                 ),
                 const SizedBox(height: 32),
-
-                // 1. NOMBRE COMPLETO
                 TextFormField(
                   controller: _nameController,
                   textCapitalization: TextCapitalization.words,
@@ -76,18 +143,14 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                     border: OutlineInputBorder(),
                   ),
                   validator: (value) {
-                    if (value == null || value.trim().isEmpty) {
+                    if (value == null || value.trim().isEmpty)
                       return 'El nombre es obligatorio';
-                    }
-                    if (!RegExp(r'^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$').hasMatch(value)) {
+                    if (!RegExp(r'^[a-zA-Z \s]+$').hasMatch(value))
                       return 'Ingresa un nombre válido (sin números)';
-                    }
                     return null;
                   },
                 ),
                 const SizedBox(height: 16),
-
-                // 2. TELÉFONO ENMASCARADO
                 TextFormField(
                   controller: _phoneController,
                   keyboardType: TextInputType.phone,
@@ -100,18 +163,14 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                     border: OutlineInputBorder(),
                   ),
                   validator: (value) {
-                    if (value == null || value.isEmpty) {
+                    if (value == null || value.isEmpty)
                       return 'El teléfono es obligatorio';
-                    }
-                    if (_phoneMaskFormatter.getUnmaskedText().length < 10) {
+                    if (_phoneMaskFormatter.getUnmaskedText().length < 10)
                       return 'Faltan números (deben ser 10 dígitos)';
-                    }
                     return null;
                   },
                 ),
                 const SizedBox(height: 16),
-
-                // 3. CORREO ELECTRÓNICO
                 TextFormField(
                   controller: _emailController,
                   keyboardType: TextInputType.emailAddress,
@@ -122,85 +181,74 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                     border: OutlineInputBorder(),
                   ),
                   validator: (value) {
-                    if (value == null || value.isEmpty) {
+                    if (value == null || value.isEmpty)
                       return 'El correo es obligatorio';
-                    }
                     final emailRegex = RegExp(
                       r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$',
                     );
-                    if (!emailRegex.hasMatch(value)) {
+                    if (!emailRegex.hasMatch(value))
                       return 'Ingresa un formato de correo válido';
-                    }
                     return null;
                   },
                 ),
                 const SizedBox(height: 16),
-
-                // 4. CONTRASEÑA
                 TextFormField(
                   controller: _passwordController,
                   obscureText: !_isPasswordVisible,
                   textInputAction: TextInputAction.next,
                   decoration: InputDecoration(
                     labelText: 'Contraseña',
-                    prefixIcon: Icon(Icons.lock),
+                    prefixIcon: const Icon(Icons.lock),
                     suffixIcon: IconButton(
                       icon: Icon(
-                        _isPasswordVisible ? Icons.visibility : Icons.visibility_off,
+                        _isPasswordVisible
+                            ? Icons.visibility
+                            : Icons.visibility_off,
                       ),
-                      onPressed: () {
-                        setState(() {
-                          _isPasswordVisible = !_isPasswordVisible;
-                        });
-                      },
+                      onPressed: () => setState(
+                        () => _isPasswordVisible = !_isPasswordVisible,
+                      ),
                     ),
-                    border: OutlineInputBorder(),
+                    border: const OutlineInputBorder(),
                   ),
                   validator: (value) {
-                    if (value == null || value.isEmpty) {
+                    if (value == null || value.isEmpty)
                       return 'La contraseña es obligatoria';
-                    }
-                    if (value.length < 6) {
+                    if (value.length < 6)
                       return 'Debe tener al menos 6 caracteres';
-                    }
                     return null;
                   },
                 ),
                 const SizedBox(height: 16),
-
-                // 5. CONFIRMAR CONTRASEÑA
                 TextFormField(
                   controller: _confirmPasswordController,
                   obscureText: !_isConfirmPasswordVisible,
                   textInputAction: TextInputAction.next,
                   decoration: InputDecoration(
                     labelText: 'Confirmar Contraseña',
-                    prefixIcon: Icon(Icons.lock_outline),
+                    prefixIcon: const Icon(Icons.lock_outline),
                     suffixIcon: IconButton(
                       icon: Icon(
-                        _isConfirmPasswordVisible ? Icons.visibility : Icons.visibility_off,
+                        _isConfirmPasswordVisible
+                            ? Icons.visibility
+                            : Icons.visibility_off,
                       ),
-                      onPressed: () {
-                        setState(() {
-                          _isConfirmPasswordVisible = !_isConfirmPasswordVisible;
-                        });
-                      },
+                      onPressed: () => setState(
+                        () => _isConfirmPasswordVisible =
+                            !_isConfirmPasswordVisible,
+                      ),
                     ),
-                    border: OutlineInputBorder(),
+                    border: const OutlineInputBorder(),
                   ),
                   validator: (value) {
-                    if (value == null || value.isEmpty) {
+                    if (value == null || value.isEmpty)
                       return 'Confirma tu contraseña';
-                    }
-                    if (value != _passwordController.text) {
+                    if (value != _passwordController.text)
                       return 'Las contraseñas no coinciden';
-                    }
                     return null;
                   },
                 ),
                 const SizedBox(height: 16),
-
-                // 6. SELECTOR DE ROL
                 DropdownButtonFormField<String>(
                   value: _selectedRole,
                   decoration: const InputDecoration(
@@ -218,14 +266,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                       child: Text('Quiero ser Voluntario de rescate'),
                     ),
                   ],
-                  onChanged: (String? newValue) {
-                    setState(() {
-                      _selectedRole = newValue!;
-                    });
-                  },
+                  onChanged: (String? newValue) =>
+                      setState(() => _selectedRole = newValue!),
                 ),
-
-                // 7. CAMPO DINÁMICO: CURP (Solo si es Voluntario)
                 if (_selectedRole == 'Voluntario') ...[
                   const SizedBox(height: 16),
                   TextFormField(
@@ -241,44 +284,18 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                     ),
                     validator: (value) {
                       if (_selectedRole == 'Voluntario') {
-                        if (value == null || value.trim().isEmpty) {
+                        if (value == null || value.trim().isEmpty)
                           return 'El CURP es obligatorio para voluntarios';
-                        }
-                        if (value.trim().length != 18) {
+                        if (value.trim().length != 18)
                           return 'El CURP debe tener exactamente 18 caracteres';
-                        }
                       }
                       return null;
                     },
                   ),
                 ],
-
                 const SizedBox(height: 32),
-
-                // BOTÓN DE REGISTRO
                 FilledButton(
-                  onPressed: () async {
-                    if (_formKey.currentState!.validate()) {
-                      try {
-                        await ref
-                            .read(authProvider.notifier)
-                            .register(
-                              nombre: _nameController.text,
-                              telefono: _phoneMaskFormatter.getUnmaskedText(),
-                              email: _emailController.text,
-                              password: _passwordController.text,
-                              rolId: _selectedRole == 'Voluntario' ? 2 : 1,
-                              curp: _selectedRole == 'Voluntario'
-                                  ? _curpController.text.trim().toUpperCase()
-                                  : null,
-                            );
-                      } catch (e) {
-                        ScaffoldMessenger.of(
-                          context,
-                        ).showSnackBar(SnackBar(content: Text(e.toString())));
-                      }
-                    }
-                  },
+                  onPressed: _ejecutarRegistro,
                   style: FilledButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 16),
                   ),

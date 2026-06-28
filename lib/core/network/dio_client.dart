@@ -6,6 +6,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 class DioClient {
   final Dio _dio;
   final _storage = const FlutterSecureStorage();
+  String? _inMemoryToken;
 
   DioClient()
     : _dio = Dio(
@@ -19,7 +20,6 @@ class DioClient {
           },
         ),
       ) {
-    // 1. Interceptor nativo de Dio para debugear en consola (NUEVO)
     _dio.interceptors.add(
       LogInterceptor(
         request: true,
@@ -31,20 +31,23 @@ class DioClient {
       ),
     );
 
-    // 2. Tu interceptor para el Token
     _dio.interceptors.add(
       InterceptorsWrapper(
         onRequest: (options, handler) async {
           if (!options.path.contains('/login') &&
               !options.path.contains('/register')) {
-            final token = await _storage.read(key: 'jwt_token');
-            if (token != null) {
-              options.headers['Authorization'] = 'Bearer $token';
+            _inMemoryToken ??= await _storage.read(key: 'jwt_token');
+            if (_inMemoryToken != null) {
+              options.headers['Authorization'] = 'Bearer $_inMemoryToken';
             }
           }
           return handler.next(options);
         },
-        onError: (DioException e, handler) {
+        onError: (DioException e, handler) async {
+          if (e.response?.statusCode == 401) {
+            _inMemoryToken = null;
+            await _storage.delete(key: 'jwt_token');
+          }
           return handler.next(e);
         },
       ),
@@ -52,6 +55,10 @@ class DioClient {
   }
 
   Dio get instance => _dio;
+
+  void clearTokenCache() {
+    _inMemoryToken = null;
+  }
 }
 
 final dioProvider = Provider<DioClient>((ref) {

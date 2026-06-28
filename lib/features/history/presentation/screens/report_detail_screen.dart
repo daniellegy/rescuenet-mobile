@@ -9,6 +9,7 @@ import '../../../reports/data/report_repository.dart';
 import '../../../reports/presentation/providers/active_reports_provider.dart';
 import '../../../reports/presentation/providers/my_active_rescue_provider.dart';
 import '../providers/history_provider.dart';
+import '../../../reports/presentation/providers/rescue_stepper_provider.dart';
 
 class ReportDetailScreen extends ConsumerStatefulWidget {
   final ReportModel reporte;
@@ -21,6 +22,7 @@ class ReportDetailScreen extends ConsumerStatefulWidget {
 class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
   String _direccion = 'Buscando dirección aproximada...';
   bool _isLoading = false;
+  int _currentPhotoIndex = 0; // Para el Slider
 
   @override
   void initState() {
@@ -36,94 +38,117 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
       );
       if (placemarks.isNotEmpty) {
         Placemark place = placemarks.first;
-        if (mounted) {
+        if (mounted)
           setState(
             () => _direccion =
                 '${place.street}, ${place.subLocality}, ${place.locality}',
           );
-        }
       }
     } catch (e) {
-      if (mounted) {
+      if (mounted)
         setState(
           () => _direccion =
               'Coordenadas: ${widget.reporte.latitud}, ${widget.reporte.longitud}',
         );
-      }
     }
   }
 
   Future<void> _abrirEnMapaNativo() async {
-    final lat = widget.reporte.latitud;
-    final lng = widget.reporte.longitud;
-
-    // URL universal oficial: Funciona en Android, iOS y navegadores web
-    final Uri url = Uri.parse(
-      'https://www.google.com/maps/search/?api=1&query=$lat,$lng',
-    );
-
+    final double lat = widget.reporte.latitud;
+    final double lng = widget.reporte.longitud;
+    final Uri url = Uri.parse('https://maps.google.com/?q=$lat,$lng');
     try {
       if (await canLaunchUrl(url)) {
-        // externalApplication fuerza a que se abra la app de Google Maps (o Waze) en lugar del navegador interno
         await launchUrl(url, mode: LaunchMode.externalApplication);
       } else {
-        throw Exception(
-          'No se encontró una aplicación de mapas en el dispositivo.',
-        );
+        throw Exception('No se encontró aplicación de mapas.');
       }
     } catch (e) {
-      if (mounted) {
+      if (mounted)
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(e.toString()),
             backgroundColor: Colors.redAccent,
           ),
         );
-      }
     }
   }
 
-  Future<void> _ejecutarAccion(bool esAceptar) async {
+  Future<void> _ejecutarAceptar() async {
     setState(() => _isLoading = true);
     try {
-      if (esAceptar) {
-        await ref
-            .read(reportRepositoryProvider)
-            .acceptReport(widget.reporte.id);
-      } else {
-        await ref
-            .read(reportRepositoryProvider)
-            .finalizeReport(widget.reporte.id);
-      }
-
+      await ref.read(reportRepositoryProvider).acceptReport(widget.reporte.id);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              esAceptar
-                  ? 'Rescate aceptado. ¡Ve con cuidado!'
-                  : 'Rescate finalizado. ¡Buen trabajo!',
-            ),
+          const SnackBar(
+            content: Text('Rescate aceptado. ¡Ve con cuidado!'),
             backgroundColor: Colors.green,
           ),
         );
         ref.invalidate(activeReportsProvider);
         ref.invalidate(miRescateActivoProvider);
         ref.invalidate(misReportesProvider);
-
-        context.pop();
+        context.go('/map'); // Redirige al mapa en lugar de atras
       }
     } catch (e) {
-      if (mounted) {
+      if (mounted)
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(e.toString().replaceAll('Exception: ', '')),
-            backgroundColor: Colors.red,
-          ),
+          SnackBar(content: Text(e.toString()), backgroundColor: Colors.red),
         );
-      }
     } finally {
       if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _confirmarYAbortar() async {
+    final confirmar = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('¿Estás seguro de abortar?'),
+        content: const Text(
+          'El reporte volverá a estar activo para que otro voluntario pueda tomarlo y tu progreso en el asistente se perderá.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('No, mantener'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: FilledButton.styleFrom(backgroundColor: Colors.red),
+            child: const Text('Sí, abortar'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmar == true) {
+      setState(() => _isLoading = true);
+      try {
+        await ref.read(reportRepositoryProvider).abortReport(widget.reporte.id);
+        ref
+            .read(rescueStepperProvider.notifier)
+            .reset(); // Limpia estado global del stepper
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Rescate abortado.'),
+              backgroundColor: Colors.orange,
+            ),
+          );
+          ref.invalidate(activeReportsProvider);
+          ref.invalidate(miRescateActivoProvider);
+          ref.invalidate(misReportesProvider);
+          context.pop();
+        }
+      } catch (e) {
+        if (mounted)
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(e.toString()), backgroundColor: Colors.red),
+          );
+      } finally {
+        if (mounted) setState(() => _isLoading = false);
+      }
     }
   }
 
@@ -135,6 +160,11 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
     final estaNuevo = widget.reporte.estado == 'Nuevo';
     final estaEnProceso = widget.reporte.estado == 'En_Proceso';
 
+    List<String> photos = [];
+    if (widget.reporte.fotoUrl != null) photos.add(widget.reporte.fotoUrl!);
+    if (widget.reporte.fotoEvidenciaUrl != null)
+      photos.add(widget.reporte.fotoEvidenciaUrl!);
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Detalles de Emergencia'),
@@ -144,21 +174,51 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            if (widget.reporte.fotoUrl != null)
-              Image.network(
-                widget.reporte.fotoUrl!,
-                height: 250,
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) => const SizedBox(
-                  height: 250,
-                  child: Center(
-                    child: Icon(
-                      Icons.broken_image,
-                      size: 50,
-                      color: Colors.grey,
+            if (photos.isNotEmpty)
+              Stack(
+                alignment: Alignment.bottomCenter,
+                children: [
+                  SizedBox(
+                    height: 250,
+                    child: PageView.builder(
+                      itemCount: photos.length,
+                      onPageChanged: (index) =>
+                          setState(() => _currentPhotoIndex = index),
+                      itemBuilder: (context, index) => Image.network(
+                        photos[index],
+                        fit: BoxFit.cover,
+                        errorBuilder: (c, e, s) => const Center(
+                          child: Icon(
+                            Icons.broken_image,
+                            size: 50,
+                            color: Colors.grey,
+                          ),
+                        ),
+                      ),
                     ),
                   ),
-                ),
+                  if (photos.length > 1)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 12.0),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: List.generate(
+                          photos.length,
+                          (index) => Container(
+                            margin: const EdgeInsets.symmetric(horizontal: 4),
+                            width: 8,
+                            height: 8,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: _currentPhotoIndex == index
+                                  ? Colors.white
+                                  : Colors.white54,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
               ),
             Padding(
               padding: const EdgeInsets.all(20.0),
@@ -181,7 +241,9 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
                           vertical: 6,
                         ),
                         decoration: BoxDecoration(
-                          color: widget.reporte.colorUrgencia.withOpacity(0.2),
+                          color: widget.reporte.colorUrgencia.withValues(
+                            alpha: 0.2,
+                          ),
                           borderRadius: BorderRadius.circular(20),
                           border: Border.all(
                             color: widget.reporte.colorUrgencia,
@@ -198,37 +260,64 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 6),
-                  // FILA DE FECHA/TIEMPO TRANSCURRIDO
-                  Row(
-                    children: [
-                      Icon(
-                        Icons.access_time_rounded,
-                        size: 16,
-                        color: Colors.grey.shade600,
+                  const SizedBox(height: 16),
+
+                  // SECCIÓN DINÁMICA DE SEGUIMIENTO (Req 8)
+                  if (!estaNuevo) ...[
+                    Card(
+                      elevation: 0,
+                      color: Colors.blueGrey.shade50,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        side: BorderSide(color: Colors.blueGrey.shade200),
                       ),
-                      const SizedBox(width: 6),
-                      Text(
-                        'Reportado ${widget.reporte.tiempoTranscurrido}',
-                        style: TextStyle(
-                          color: Colors.grey.shade600,
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
+                      child: Padding(
+                        padding: const EdgeInsets.all(16.0),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Seguimiento en Tiempo Real',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                                color: Colors.blueGrey,
+                              ),
+                            ),
+                            const Divider(),
+                            _buildPhaseRow(
+                              Icons.visibility,
+                              'Avistamiento',
+                              widget.reporte.animalAvistado == true
+                                  ? 'Voluntario en zona (Avistado)'
+                                  : (widget.reporte.animalAvistado == false
+                                        ? 'No encontrado en área'
+                                        : 'En camino / Pendiente'),
+                            ),
+                            _buildPhaseRow(
+                              Icons.directions_car,
+                              'Traslado a',
+                              widget.reporte.lugarTraslado ?? 'Pendiente',
+                            ),
+                            _buildPhaseRow(
+                              Icons.house,
+                              'Destino Final',
+                              widget.reporte.destinoFinal ?? 'Pendiente',
+                            ),
+                            _buildPhaseRow(
+                              Icons.attach_money,
+                              'Costo',
+                              widget.reporte.costoRescate != null
+                                  ? '\$${widget.reporte.costoRescate} MXN'
+                                  : 'Calculando al finalizar...',
+                            ),
+                          ],
                         ),
                       ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  const Text(
-                    'Ubicación aproximada:',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: Colors.grey,
                     ),
-                  ),
-                  const SizedBox(height: 8),
+                    const SizedBox(height: 16),
+                  ],
 
-                  // CONTENEDOR AZUL PARA LA UBICACIÓN CON FORMATO BOTÓN
                   Material(
                     color: Colors.blue.shade50,
                     borderRadius: BorderRadius.circular(12),
@@ -273,26 +362,17 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
                     ),
                   ),
                   const Divider(height: 32),
-
-                  // SECCIÓN DE NOMBRES
-                  const Text(
-                    'Personas Involucradas:',
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                  ),
-                  const SizedBox(height: 12),
                   _buildPersonRow(
                     Icons.person_pin_circle_rounded,
                     'Reportado por',
-                    widget.reporte.nombreReportador ??
-                        'Ciudadano (Validando...)',
+                    widget.reporte.nombreReportador ?? 'Ciudadano',
                   ),
-                  if (widget.reporte.nombreRescatista != null &&
-                      widget.reporte.nombreRescatista!.isNotEmpty)
+                  if (widget.reporte.nombreRescatista != null)
                     _buildPersonRow(
                       Icons.volunteer_activism_rounded,
                       widget.reporte.estado == 'Rescatado'
-                          ? 'Rescate completado por'
-                          : 'Rescatista asignado',
+                          ? 'Completado por'
+                          : 'Rescatista',
                       widget.reporte.nombreRescatista!,
                     ),
                   const Divider(height: 32),
@@ -322,22 +402,7 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
                     'Agresividad',
                     '${widget.reporte.agresividad}/10',
                   ),
-                  _buildDetailRow(
-                    Icons.track_changes, // Icono de radar/mira
-                    'Radio de Búsqueda',
-                    '${widget.reporte.radio ?? 500} metros',
-                  ),
                   const Divider(height: 32),
-                  const Text(
-                    'Señas particulares:',
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    widget.reporte.caracteristicasEspeciales,
-                    style: const TextStyle(fontSize: 15, height: 1.5),
-                  ),
-                  const SizedBox(height: 16),
                   const Text(
                     'Notas adicionales:',
                     style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
@@ -347,22 +412,16 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
                     widget.reporte.notasAdicionales,
                     style: const TextStyle(fontSize: 15, height: 1.5),
                   ),
+
                   if (esVoluntario && estaNuevo) ...[
                     const SizedBox(height: 24),
                     FilledButton.icon(
-                      onPressed: () {
-                        context.push('/search-radar', extra: widget.reporte);
-                      },
+                      onPressed: () =>
+                          context.push('/search-radar', extra: widget.reporte),
                       style: FilledButton.styleFrom(
                         backgroundColor: Colors.blue.shade700,
                         padding: const EdgeInsets.symmetric(vertical: 16),
-                        minimumSize: const Size(
-                          double.infinity,
-                          50,
-                        ), // Todo el ancho disponible
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
+                        minimumSize: const Size(double.infinity, 50),
                       ),
                       icon: const Icon(
                         Icons.radar_rounded,
@@ -370,11 +429,7 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
                       ),
                       label: const Text(
                         'Iniciar Ruta de Búsqueda',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
+                        style: TextStyle(fontSize: 16, color: Colors.white),
                       ),
                     ),
                   ],
@@ -402,58 +457,62 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
     if (!esVoluntario) return const SizedBox.shrink();
 
     if (estaNuevo) {
-      return _bottomButtonContainer(
-        'Aceptar Rescate',
-        Colors.red,
-        () => _ejecutarAccion(true),
+      return SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: FilledButton(
+            onPressed: _isLoading ? null : _ejecutarAceptar,
+            style: FilledButton.styleFrom(
+              backgroundColor: Colors.green,
+              padding: const EdgeInsets.symmetric(vertical: 16),
+            ),
+            child: _isLoading
+                ? const CircularProgressIndicator(color: Colors.white)
+                : const Text('Aceptar Rescate', style: TextStyle(fontSize: 16)),
+          ),
+        ),
       );
     } else if (estaEnProceso && esMiRescate) {
-      return _bottomButtonContainer(
-        'Finalizar Rescate',
-        Colors.green,
-        () => _ejecutarAccion(false),
+      return SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+          child: Row(
+            children: [
+              Expanded(
+                flex: 2,
+                child: FilledButton(
+                  onPressed: _isLoading ? null : _confirmarYAbortar,
+                  style: FilledButton.styleFrom(
+                    backgroundColor: Colors.red,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                  ),
+                  child: const Text('Abortar'),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                flex: 3,
+                child: FilledButton.icon(
+                  onPressed: _isLoading
+                      ? null
+                      : () => context.push(
+                          '/rescue-stepper',
+                          extra: widget.reporte,
+                        ),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: Colors.blue.shade700,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                  ),
+                  icon: const Icon(Icons.linear_scale_rounded),
+                  label: const Text('Fases del Rescate'),
+                ),
+              ),
+            ],
+          ),
+        ),
       );
     }
-
     return const SizedBox.shrink();
-  }
-
-  Widget _bottomButtonContainer(
-    String text,
-    Color color,
-    VoidCallback onPressed,
-  ) {
-    return SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.all(24.0),
-        child: FilledButton(
-          onPressed: _isLoading ? null : onPressed,
-          style: FilledButton.styleFrom(
-            backgroundColor: color,
-            padding: const EdgeInsets.symmetric(vertical: 16),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-          ),
-          child: _isLoading
-              ? const SizedBox(
-                  width: 24,
-                  height: 24,
-                  child: CircularProgressIndicator(
-                    color: Colors.white,
-                    strokeWidth: 2,
-                  ),
-                )
-              : Text(
-                  text,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-        ),
-      ),
-    );
   }
 
   Widget _buildDetailRow(IconData icon, String label, String value) {
@@ -490,6 +549,24 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
               style: const TextStyle(fontSize: 15, color: Colors.black87),
             ),
           ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPhaseRow(IconData icon, String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8.0),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, size: 18, color: Colors.blueGrey.shade400),
+          const SizedBox(width: 8),
+          Text(
+            '$label: ',
+            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+          ),
+          Expanded(child: Text(value, style: const TextStyle(fontSize: 14))),
         ],
       ),
     );

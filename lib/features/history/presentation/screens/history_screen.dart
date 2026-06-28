@@ -27,12 +27,6 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
   List<ReportModel> _ordenarReportes(List<ReportModel> reportes) {
     List<ReportModel> lista = List.from(reportes);
 
-    int pesoUrgencia(String u) {
-      if (u.toLowerCase() == 'alta') return 3;
-      if (u.toLowerCase() == 'media') return 2;
-      return 1;
-    }
-
     switch (_ordenActual) {
       case FiltroOrden.masRecientes:
         lista.sort(
@@ -49,16 +43,10 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
         );
         break;
       case FiltroOrden.urgenciaAlta:
-        lista.sort(
-          (a, b) =>
-              pesoUrgencia(b.urgencia).compareTo(pesoUrgencia(a.urgencia)),
-        );
+        lista.sort((a, b) => b.pesoUrgencia.compareTo(a.pesoUrgencia));
         break;
       case FiltroOrden.urgenciaBaja:
-        lista.sort(
-          (a, b) =>
-              pesoUrgencia(a.urgencia).compareTo(pesoUrgencia(b.urgencia)),
-        );
+        lista.sort((a, b) => a.pesoUrgencia.compareTo(b.pesoUrgencia));
         break;
       case FiltroOrden.urgenciaMedia:
         lista.sort((a, b) {
