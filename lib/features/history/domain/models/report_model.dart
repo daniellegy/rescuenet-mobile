@@ -14,6 +14,7 @@ class ReportModel {
   final String urgencia;
   final String estado;
   final int? usuarioRescatistaId;
+  final int usuarioReportadorId;
   final double latitud;
   final double longitud;
   final String? fotoUrl;
@@ -37,6 +38,7 @@ class ReportModel {
     required this.urgencia,
     required this.estado,
     this.usuarioRescatistaId,
+    required this.usuarioReportadorId,
     required this.latitud,
     required this.longitud,
     this.fotoUrl,
@@ -97,6 +99,8 @@ class ReportModel {
       usuarioRescatistaId: json['usuario_rescatista_id'] != null
           ? int.tryParse(json['usuario_rescatista_id'].toString())
           : null,
+      usuarioReportadorId:
+          int.tryParse(json['usuario_reportador_id']?.toString() ?? '0') ?? 0,
       latitud: double.tryParse(json['latitud']?.toString() ?? '0.0') ?? 0.0,
       longitud: double.tryParse(json['longitud']?.toString() ?? '0.0') ?? 0.0,
       fotoUrl: json['foto_url']?.toString(),
