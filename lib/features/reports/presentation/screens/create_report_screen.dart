@@ -520,7 +520,7 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
 
                     TextFormField(
                       controller: _caracController,
-                      textCapitalization: TextCapitalization.words,
+                      textCapitalization: TextCapitalization.sentences,
                       decoration: const InputDecoration(
                         labelText: 'Características Especiales',
                         border: OutlineInputBorder(),
@@ -533,7 +533,7 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
 
                     TextFormField(
                       controller: _referenciasController,
-                      textCapitalization: TextCapitalization.words,
+                      textCapitalization: TextCapitalization.sentences,
                       decoration: const InputDecoration(
                         labelText: 'Referencias del lugar',
                         border: OutlineInputBorder(),
@@ -544,6 +544,7 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
                           : null,
                     ),
                     const SizedBox(height: 32),
+
                     FilledButton.icon(
                       onPressed: _enviarFormulario,
                       icon: const Icon(Icons.send),
