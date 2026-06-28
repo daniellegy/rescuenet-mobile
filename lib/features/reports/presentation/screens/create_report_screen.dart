@@ -533,7 +533,7 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
 
                     TextFormField(
                       controller: _referenciasController,
-                      textCapitalization: TextCapitalization.sentences,
+                      textCapitalization: TextCapitalization.words,
                       decoration: const InputDecoration(
                         labelText: 'Referencias del lugar',
                         border: OutlineInputBorder(),
