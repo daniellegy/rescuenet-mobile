@@ -43,7 +43,7 @@ class AuthNotifier extends Notifier<AuthState> {
       throw const FormatException('El payload del token no es un objeto JSON');
     }
 
-    return Map<String, dynamic>.from(payload as Map);
+    return Map<String, dynamic>.from(payload);
   }
 
   Future<void> restoreSession() async {
