@@ -3,7 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../data/report_repository.dart';
-
+import '../../../map/presentation/providers/map_markers_provider.dart';
+import '../providers/active_reports_provider.dart';
 import 'location_selector_screen.dart';
 
 final List<String> _razasPerros = [
@@ -16,7 +17,7 @@ final List<String> _razasPerros = [
   'Labrador',
   'Pug',
   'Schnauzer',
-  'Otro'
+  'Otro',
 ];
 
 final List<String> _razasGatos = [
@@ -25,7 +26,7 @@ final List<String> _razasGatos = [
   'Siamés',
   'Carey / Calicó',
   'Persa / Angora',
-  'Otro gato de raza'
+  'Otro gato de raza',
 ];
 
 final List<String> _silvestresPuebla = [
@@ -38,7 +39,7 @@ final List<String> _silvestresPuebla = [
   'Reptil / Serpiente',
   'Zorro gris',
   'Conejo silvestre',
-  'Otro'
+  'Otro',
 ];
 
 final List<String> _coloresGenerales = [
@@ -50,7 +51,7 @@ final List<String> _coloresGenerales = [
   'Miel / Canela',
   'Manchado / Bicolor',
   'Crema / Arena',
-  'Otro'
+  'Otro',
 ];
 
 class CreateReportScreen extends ConsumerStatefulWidget {
@@ -79,9 +80,9 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
   int _radioSeleccionado = 500;
   String? _especie;
 
-  String? _razaSeleccionada; 
+  String? _razaSeleccionada;
   String? _colorSeleccionado;
-  
+
   String? _sexo = 'Desconocido';
   String? _edad = 'Cachorro';
   String? _tamano = 'Pequeño';
@@ -106,17 +107,21 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
       );
       return;
     }
-    
+
     if (_razaSeleccionada == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Por favor, selecciona una raza o tipo de animal.')),
+        const SnackBar(
+          content: Text('Por favor, selecciona una raza o tipo de animal.'),
+        ),
       );
       return;
     }
 
     if (_colorSeleccionado == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Por favor, selecciona un color dominante.')),
+        const SnackBar(
+          content: Text('Por favor, selecciona un color dominante.'),
+        ),
       );
       return;
     }
@@ -135,8 +140,8 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
         edadAprox: _edad!,
         tamano: _tamano!,
         agresividad: _agresividad.toInt(),
-        
-        razaAprox: _razaSeleccionada!, 
+
+        razaAprox: _razaSeleccionada!,
         caracteristicasEspeciales: _caracController.text,
         notasAdicionales: _notasController.text,
         urgencia: _urgenciaSeleccionada,
@@ -145,6 +150,8 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
       );
 
       if (mounted) {
+        ref.invalidate(reportesActivosMapaProvider);
+        ref.invalidate(activeReportsProvider);
         context.pop();
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Reporte creado con éxito')),
@@ -249,15 +256,17 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
                       items: ['Perro', 'Gato', 'Silvestre']
                           .map(
                             (e) => DropdownMenuItem(
-                              value: e, 
-                              child: Text(e == 'Silvestre' ? 'Animal Silvestre' : e),
+                              value: e,
+                              child: Text(
+                                e == 'Silvestre' ? 'Animal Silvestre' : e,
+                              ),
                             ),
                           )
                           .toList(),
                       onChanged: (val) {
                         setState(() {
                           _especie = val;
-                          _razaSeleccionada = null; 
+                          _razaSeleccionada = null;
                         });
                       },
                     ),
@@ -274,18 +283,24 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
                           border: const OutlineInputBorder(),
                           prefixIcon: const Icon(Icons.search),
                         ),
-                        items: (_especie == 'Perro'
-                                ? _razasPerros
-                                : _especie == 'Gato'
+                        items:
+                            (_especie == 'Perro'
+                                    ? _razasPerros
+                                    : _especie == 'Gato'
                                     ? _razasGatos
                                     : _silvestresPuebla)
-                            .map(
-                              (e) => DropdownMenuItem(value: e, child: Text(e)),
-                            )
-                            .toList(),
-                        onChanged: (val) => setState(() => _razaSeleccionada = val),
-                        validator: (value) =>
-                            value == null ? 'Por favor selecciona una opción' : null,
+                                .map(
+                                  (e) => DropdownMenuItem(
+                                    value: e,
+                                    child: Text(e),
+                                  ),
+                                )
+                                .toList(),
+                        onChanged: (val) =>
+                            setState(() => _razaSeleccionada = val),
+                        validator: (value) => value == null
+                            ? 'Por favor selecciona una opción'
+                            : null,
                       ),
                       const SizedBox(height: 16),
                     ],
@@ -329,6 +344,86 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
                         ),
                       ),
                     ),
+                    const SizedBox(height: 12),
+
+                    // WIDGET DINÁMICO DE LEYENDA
+                    AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 300),
+                      child: Container(
+                        key: ValueKey(_urgenciaSeleccionada),
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: _urgenciaSeleccionada == 'alta'
+                              ? Colors.red.shade50
+                              : _urgenciaSeleccionada == 'media'
+                              ? Colors.orange.shade50
+                              : Colors.green.shade50,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                            color: _urgenciaSeleccionada == 'alta'
+                                ? Colors.red.shade200
+                                : _urgenciaSeleccionada == 'media'
+                                ? Colors.orange.shade200
+                                : Colors.green.shade200,
+                          ),
+                        ),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Icon(
+                              _urgenciaSeleccionada == 'alta'
+                                  ? Icons.warning_rounded
+                                  : _urgenciaSeleccionada == 'media'
+                                  ? Icons.priority_high_rounded
+                                  : Icons.health_and_safety_outlined,
+                              color: _urgenciaSeleccionada == 'alta'
+                                  ? Colors.red
+                                  : _urgenciaSeleccionada == 'media'
+                                  ? Colors.orange.shade800
+                                  : Colors.green.shade800,
+                              size: 24,
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    _urgenciaSeleccionada == 'alta'
+                                        ? '🚨 Riesgo Vital / Flagrancia'
+                                        : _urgenciaSeleccionada == 'media'
+                                        ? '⚠️ Atención Prioritaria'
+                                        : '✅ Asistencia Diferida',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 14,
+                                      color: _urgenciaSeleccionada == 'alta'
+                                          ? Colors.red.shade900
+                                          : _urgenciaSeleccionada == 'media'
+                                          ? Colors.orange.shade900
+                                          : Colors.green.shade900,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    _urgenciaSeleccionada == 'alta'
+                                        ? 'Trauma severo, sangrado incontrolable, rescate técnico complejo (pozos/cables) o delito de crueldad en curso. Exige movilización inmediata (0-15 min).'
+                                        : _urgenciaSeleccionada == 'media'
+                                        ? 'Fauna silvestre desplazada, animal vulnerable (crías), estrés neurológico o lesiones graves pero estables. Requiere atención en horas.'
+                                        : 'Fauna deambulante estable, hacinamiento crónico, abandono sin intemperie extrema o afecciones menores (cojera/sarna).',
+                                    style: const TextStyle(
+                                      fontSize: 13,
+                                      height: 1.4,
+                                      color: Colors.black87,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
                     const SizedBox(height: 16),
                     const Text(
                       'Radio de Búsqueda Recomendado',
@@ -337,9 +432,27 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
                     const SizedBox(height: 8),
                     SegmentedButton<int>(
                       segments: const [
-                        ButtonSegment(value: 200, label: Text('200m\nCerrado', textAlign: TextAlign.center)),
-                        ButtonSegment(value: 500, label: Text('500m\nColonia', textAlign: TextAlign.center)),
-                        ButtonSegment(value: 800, label: Text('800m\nAmplio', textAlign: TextAlign.center)),
+                        ButtonSegment(
+                          value: 200,
+                          label: Text(
+                            '200m\nCerrado',
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                        ButtonSegment(
+                          value: 500,
+                          label: Text(
+                            '500m\nColonia',
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                        ButtonSegment(
+                          value: 800,
+                          label: Text(
+                            '800m\nAmplio',
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
                       ],
                       selected: {_radioSeleccionado},
                       onSelectionChanged: (Set<int> newSelection) {
@@ -381,9 +494,11 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
                             (e) => DropdownMenuItem(value: e, child: Text(e)),
                           )
                           .toList(),
-                      onChanged: (val) => setState(() => _colorSeleccionado = val),
-                      validator: (value) =>
-                          value == null ? 'Por favor selecciona un color' : null,
+                      onChanged: (val) =>
+                          setState(() => _colorSeleccionado = val),
+                      validator: (value) => value == null
+                          ? 'Por favor selecciona un color'
+                          : null,
                     ),
                     const SizedBox(height: 16),
                     DropdownButtonFormField<String>(
@@ -458,7 +573,7 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
                       },
                     ),
                     const SizedBox(height: 24),
-                    
+
                     TextFormField(
                       controller: _caracController,
                       textCapitalization: TextCapitalization.words,

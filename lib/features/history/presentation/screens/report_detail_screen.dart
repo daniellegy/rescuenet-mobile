@@ -198,6 +198,26 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
                       ),
                     ],
                   ),
+                  const SizedBox(height: 6),
+                  // FILA DE FECHA/TIEMPO TRANSCURRIDO
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.access_time_rounded,
+                        size: 16,
+                        color: Colors.grey.shade600,
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        'Reportado ${widget.reporte.tiempoTranscurrido}',
+                        style: TextStyle(
+                          color: Colors.grey.shade600,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
                   const SizedBox(height: 16),
                   const Text(
                     'Ubicación aproximada:',
@@ -252,7 +272,29 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
                       ),
                     ),
                   ),
+                  const Divider(height: 32),
 
+                  // SECCIÓN DE NOMBRES
+                  const Text(
+                    'Personas Involucradas:',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                  ),
+                  const SizedBox(height: 12),
+                  _buildPersonRow(
+                    Icons.person_pin_circle_rounded,
+                    'Reportado por',
+                    widget.reporte.nombreReportador ??
+                        'Ciudadano (Validando...)',
+                  ),
+                  if (widget.reporte.nombreRescatista != null &&
+                      widget.reporte.nombreRescatista!.isNotEmpty)
+                    _buildPersonRow(
+                      Icons.volunteer_activism_rounded,
+                      widget.reporte.estado == 'Rescatado'
+                          ? 'Rescate completado por'
+                          : 'Rescatista asignado',
+                      widget.reporte.nombreRescatista!,
+                    ),
                   const Divider(height: 32),
                   _buildDetailRow(
                     Icons.palette,
@@ -314,12 +356,18 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
                       style: FilledButton.styleFrom(
                         backgroundColor: Colors.blue.shade700,
                         padding: const EdgeInsets.symmetric(vertical: 16),
-                        minimumSize: const Size(double.infinity, 50), // Todo el ancho disponible
+                        minimumSize: const Size(
+                          double.infinity,
+                          50,
+                        ), // Todo el ancho disponible
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
                         ),
                       ),
-                      icon: const Icon(Icons.radar_rounded, color: Colors.white),
+                      icon: const Icon(
+                        Icons.radar_rounded,
+                        color: Colors.white,
+                      ),
                       label: const Text(
                         'Iniciar Ruta de Búsqueda',
                         style: TextStyle(
@@ -420,6 +468,28 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
             style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
           ),
           Expanded(child: Text(value, style: const TextStyle(fontSize: 15))),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPersonRow(IconData icon, String role, String name) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8.0),
+      child: Row(
+        children: [
+          Icon(icon, size: 20, color: Colors.blueGrey),
+          const SizedBox(width: 12),
+          Text(
+            '$role: ',
+            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+          ),
+          Expanded(
+            child: Text(
+              name,
+              style: const TextStyle(fontSize: 15, color: Colors.black87),
+            ),
+          ),
         ],
       ),
     );

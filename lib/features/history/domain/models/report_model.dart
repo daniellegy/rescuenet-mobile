@@ -13,11 +13,15 @@ class ReportModel {
   final String notasAdicionales;
   final String urgencia;
   final String estado;
-  final int? usuarioRescatistaId; // NUEVO: Determina si el caso es mío
+  final int? usuarioRescatistaId;
   final double latitud;
   final double longitud;
   final String? fotoUrl;
   final int? radio;
+
+  final String? nombreReportador;
+  final String? nombreRescatista;
+  final DateTime? fechaCreacion;
 
   ReportModel({
     required this.id,
@@ -37,6 +41,9 @@ class ReportModel {
     required this.longitud,
     this.fotoUrl,
     this.radio,
+    this.nombreReportador,
+    this.nombreRescatista,
+    this.fechaCreacion,
   });
 
   Color get colorUrgencia {
@@ -52,7 +59,20 @@ class ReportModel {
     }
   }
 
-  // NUEVO: Formateador visual para quitar el "En_Proceso" de la UI
+  String get tiempoTranscurrido {
+    if (fechaCreacion == null) return 'hace un momento';
+    final ahora = DateTime.now();
+    // Convertimos la fecha del server a la zona local para asegurar precisión
+    final diferencia = ahora.difference(fechaCreacion!.toLocal());
+
+    if (diferencia.inDays > 1) return 'hace ${diferencia.inDays} días';
+    if (diferencia.inDays == 1) return 'hace 1 día';
+    if (diferencia.inHours > 1) return 'hace ${diferencia.inHours} hrs';
+    if (diferencia.inHours == 1) return 'hace 1 hora';
+    if (diferencia.inMinutes > 1) return 'hace ${diferencia.inMinutes} min';
+    return 'hace un momento';
+  }
+
   String get estadoFormateado {
     return estado.replaceAll('_', ' ');
   }
@@ -72,7 +92,6 @@ class ReportModel {
       notasAdicionales: json['notas_adicionales']?.toString() ?? 'Sin notas',
       urgencia: json['urgencia']?.toString() ?? 'media',
       estado: json['estado']?.toString() ?? 'Nuevo',
-      // Mapeo seguro del ID del rescatista
       usuarioRescatistaId: json['usuario_rescatista_id'] != null
           ? int.tryParse(json['usuario_rescatista_id'].toString())
           : null,
@@ -80,6 +99,12 @@ class ReportModel {
       longitud: double.tryParse(json['longitud']?.toString() ?? '0.0') ?? 0.0,
       fotoUrl: json['foto_url']?.toString(),
       radio: json['radio'] != null ? json['radio'] as int : null,
+      // MAPEAMOS LOS NOMBRES
+      nombreReportador: json['nombre_reportador']?.toString(),
+      nombreRescatista: json['nombre_rescatista']?.toString(),
+      fechaCreacion: json['fecha_creacion'] != null
+          ? DateTime.tryParse(json['fecha_creacion'].toString())
+          : null,
     );
   }
 }
