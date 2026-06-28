@@ -336,10 +336,10 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
                                 children: [
                                   Text(
                                     state.urgenciaSeleccionada == 'alta'
-                                        ? '🚨 Riesgo Vital / Flagrancia'
+                                        ? 'Riesgo Vital'
                                         : state.urgenciaSeleccionada == 'media'
-                                        ? '⚠️ Atención Prioritaria'
-                                        : '✅ Asistencia Diferida',
+                                        ? 'Atención Prioritaria'
+                                        : 'Asistencia Diferida',
                                     style: TextStyle(
                                       fontWeight: FontWeight.bold,
                                       fontSize: 14,
