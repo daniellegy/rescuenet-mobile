@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -25,6 +26,7 @@ class _RescueStepperScreenState extends ConsumerState<RescueStepperScreen> {
   bool _isLoading = false;
   late TextEditingController _costoController;
   late TextEditingController _conclusionController;
+  final FocusNode _costoFocusNode = FocusNode();
 
   final Map<String, Map<String, String>> _directorios = {
     'Veterinaria': {
@@ -48,12 +50,28 @@ class _RescueStepperScreenState extends ConsumerState<RescueStepperScreen> {
     _conclusionController = TextEditingController(
       text: stepperState.conclusion,
     );
+
+    _costoFocusNode.addListener(() {
+      if (!_costoFocusNode.hasFocus) {
+        final text = _costoController.text.trim();
+        if (text.isNotEmpty) {
+          final numero = double.tryParse(text);
+          if (numero != null) {
+            _costoController.text = numero.toStringAsFixed(2);
+            ref
+                .read(rescueStepperProvider.notifier)
+                .updateField(cost: _costoController.text);
+          }
+        }
+      }
+    });
   }
 
   @override
   void dispose() {
     _costoController.dispose();
     _conclusionController.dispose();
+    _costoFocusNode.dispose();
     super.dispose();
   }
 
@@ -308,7 +326,7 @@ class _RescueStepperScreenState extends ConsumerState<RescueStepperScreen> {
                   ),
                 ),
                 Step(
-                  title: const Text('2. Condiciones'),
+                  title: const Text('2. Conditions'),
                   isActive: stepperState.currentStep >= 1,
                   content: DropdownButtonFormField<String>(
                     key: ValueKey(stepperState.condicion),
@@ -373,7 +391,7 @@ class _RescueStepperScreenState extends ConsumerState<RescueStepperScreen> {
                       ),
                       if (stepperState.tipoTraslado != null) ...[
                         const SizedBox(height: 12),
-                        Builder(
+                        WidgetRefBuilder(
                           builder: (context) {
                             final opcionesValidas =
                                 _directorios[stepperState.tipoTraslado]!.keys
@@ -483,13 +501,22 @@ class _RescueStepperScreenState extends ConsumerState<RescueStepperScreen> {
                       const SizedBox(height: 16),
                       TextFormField(
                         controller: _costoController,
-                        keyboardType: TextInputType.number,
+                        focusNode: _costoFocusNode,
+                        keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true,
+                        ),
                         decoration: const InputDecoration(
                           labelText: 'Costo Total (MXN)',
                           helperText: 'Gastos de clínica o cuotas del refugio.',
                           prefixIcon: Icon(Icons.attach_money),
+                          hintText: '0.00',
                           border: OutlineInputBorder(),
                         ),
+                        inputFormatters: [
+                          FilteringTextInputFormatter.allow(
+                            RegExp(r'^\d+\.?\d{0,2}'),
+                          ),
+                        ],
                         onChanged: (v) => notifier.updateField(cost: v),
                       ),
                     ],
@@ -498,20 +525,33 @@ class _RescueStepperScreenState extends ConsumerState<RescueStepperScreen> {
                 Step(
                   title: const Text('8. Conclusión Final'),
                   isActive: stepperState.currentStep >= 7,
-                  content: TextFormField(
-                    controller: _conclusionController,
-                    maxLines: 3,
-                    textCapitalization: TextCapitalization.sentences,
-                    decoration: const InputDecoration(
-                      labelText: 'Estado final del animal',
-                      hintText: 'Ej. Está estable internado en la clínica.',
-                      border: OutlineInputBorder(),
-                    ),
-                    onChanged: (v) => notifier.updateField(concl: v),
+                  content: Column(
+                    children: [
+                      const SizedBox(height: 16),
+                      TextFormField(
+                        controller: _conclusionController,
+                        maxLines: 3,
+                        textCapitalization: TextCapitalization.sentences,
+                        decoration: const InputDecoration(
+                          labelText: 'Estado final del animal',
+                          hintText: 'Ej. Está estable internado en la clínica.',
+                          border: OutlineInputBorder(),
+                        ),
+                        onChanged: (v) => notifier.updateField(concl: v),
+                      ),
+                    ],
                   ),
                 ),
               ],
             ),
     );
   }
+}
+
+// Pequeño helper interno necesario para evitar re-evaluación floja de herencia en builders
+class WidgetRefBuilder extends StatelessWidget {
+  final Widget Function(BuildContext context) builder;
+  const WidgetRefBuilder({super.key, required this.builder});
+  @override
+  Widget build(BuildContext context) => builder(context);
 }

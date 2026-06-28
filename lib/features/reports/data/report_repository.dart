@@ -22,6 +22,7 @@ class ReportRepository {
     required String notasAdicionales,
     required String urgencia,
     required String imagePath,
+    required String referencias,
     int? radio,
   }) async {
     try {
@@ -38,6 +39,7 @@ class ReportRepository {
         'caracteristicas_especiales': caracteristicasEspeciales,
         'notas_adicionales': notasAdicionales,
         'urgencia': urgencia,
+        'referencias': referencias,
         'radio': (radio ?? 500).toString(),
         'foto': await MultipartFile.fromFile(
           imagePath,
@@ -67,7 +69,6 @@ class ReportRepository {
     }
   }
 
-  // NUEVO: Método para abortar rescate
   Future<void> abortReport(int id) async {
     try {
       await _dio.put('/reportes/$id/abortar');

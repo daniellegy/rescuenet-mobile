@@ -22,7 +22,7 @@ class ReportDetailScreen extends ConsumerStatefulWidget {
 class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
   String _direccion = 'Buscando dirección aproximada...';
   bool _isLoading = false;
-  int _currentPhotoIndex = 0; // Para el Slider
+  int _currentPhotoIndex = 0;
 
   @override
   void initState() {
@@ -38,18 +38,20 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
       );
       if (placemarks.isNotEmpty) {
         Placemark place = placemarks.first;
-        if (mounted)
+        if (mounted) {
           setState(
             () => _direccion =
                 '${place.street}, ${place.subLocality}, ${place.locality}',
           );
+        }
       }
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         setState(
           () => _direccion =
               'Coordenadas: ${widget.reporte.latitud}, ${widget.reporte.longitud}',
         );
+      }
     }
   }
 
@@ -64,13 +66,14 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
         throw Exception('No se encontró aplicación de mapas.');
       }
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(e.toString()),
             backgroundColor: Colors.redAccent,
           ),
         );
+      }
     }
   }
 
@@ -88,13 +91,14 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
         ref.invalidate(activeReportsProvider);
         ref.invalidate(miRescateActivoProvider);
         ref.invalidate(misReportesProvider);
-        context.go('/map'); // Redirige al mapa en lugar de atras
+        context.go('/map');
       }
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(e.toString()), backgroundColor: Colors.red),
         );
+      }
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -126,9 +130,7 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
       setState(() => _isLoading = true);
       try {
         await ref.read(reportRepositoryProvider).abortReport(widget.reporte.id);
-        ref
-            .read(rescueStepperProvider.notifier)
-            .reset(); // Limpia estado global del stepper
+        ref.read(rescueStepperProvider.notifier).reset();
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
@@ -142,10 +144,11 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
           context.pop();
         }
       } catch (e) {
-        if (mounted)
+        if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text(e.toString()), backgroundColor: Colors.red),
           );
+        }
       } finally {
         if (mounted) setState(() => _isLoading = false);
       }
@@ -162,8 +165,20 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
 
     List<String> photos = [];
     if (widget.reporte.fotoUrl != null) photos.add(widget.reporte.fotoUrl!);
-    if (widget.reporte.fotoEvidenciaUrl != null)
+    if (widget.reporte.fotoEvidenciaUrl != null) {
       photos.add(widget.reporte.fotoEvidenciaUrl!);
+    }
+
+    // LÓGICA DE REEMPLAZO DE NOTAS ADICIONALES
+    final String notasAMostrar = widget.reporte.estado == 'Rescatado'
+        ? (widget.reporte.notasAdicionales.isNotEmpty &&
+                  widget.reporte.notasAdicionales != 'Ninguna'
+              ? 'Conclusión del rescate:\n${widget.reporte.notasAdicionales}'
+              : 'Sin conclusión registrada.')
+        : (widget.reporte.caracteristicasEspeciales.isNotEmpty &&
+                  widget.reporte.caracteristicasEspeciales != 'Ninguna'
+              ? widget.reporte.caracteristicasEspeciales
+              : 'Sin características registradas.');
 
     return Scaffold(
       appBar: AppBar(
@@ -262,7 +277,6 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
                   ),
                   const SizedBox(height: 16),
 
-                  // SECCIÓN DINÁMICA DE SEGUIMIENTO (Req 8)
                   if (!estaNuevo) ...[
                     Card(
                       elevation: 0,
@@ -377,6 +391,16 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
                     ),
                   const Divider(height: 32),
                   _buildDetailRow(
+                    Icons.warning_amber_rounded,
+                    'Nivel de Urgencia',
+                    widget.reporte.urgencia.toUpperCase(),
+                  ),
+                  _buildDetailRow(
+                    Icons.explore_outlined,
+                    'Referencias',
+                    widget.reporte.referencias ?? 'Sin referencias',
+                  ),
+                  _buildDetailRow(
                     Icons.palette,
                     'Color',
                     widget.reporte.colorDominante,
@@ -408,12 +432,15 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
                     style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                   ),
                   const SizedBox(height: 8),
+
+                  // TEXTO RESOLUTIVO APLICADO
                   Text(
-                    widget.reporte.notasAdicionales,
+                    notasAMostrar,
                     style: const TextStyle(fontSize: 15, height: 1.5),
                   ),
 
-                  if (esVoluntario && estaNuevo) ...[
+                  if (esVoluntario &&
+                      (estaNuevo || (estaEnProceso && esMiRescate))) ...[
                     const SizedBox(height: 24),
                     FilledButton.icon(
                       onPressed: () =>
@@ -428,7 +455,7 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
                         color: Colors.white,
                       ),
                       label: const Text(
-                        'Iniciar Ruta de Búsqueda',
+                        'Mostrar radio de búsqueda',
                         style: TextStyle(fontSize: 16, color: Colors.white),
                       ),
                     ),

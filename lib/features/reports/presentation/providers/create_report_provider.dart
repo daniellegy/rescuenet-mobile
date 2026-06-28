@@ -64,10 +64,10 @@ class CreateReportState {
   }
 }
 
+// Usamos Notifier<T>, el cual está comprobado que funciona en tu app (ej. RescueStepperNotifier)
 class CreateReportNotifier extends Notifier<CreateReportState> {
   @override
   CreateReportState build() {
-    // Estado inicial ficticio, se sobrescribe de inmediato al abrir la pantalla con setInitialLocation
     return CreateReportState(lat: 0.0, lng: 0.0);
   }
 
@@ -93,9 +93,7 @@ class CreateReportNotifier extends Notifier<CreateReportState> {
     state = state.copyWith(
       especie: especie,
       razaSeleccionada: raza,
-      clearRaza:
-          especie != null &&
-          especie != state.especie, // Limpiar raza si cambia especie
+      clearRaza: especie != null && especie != state.especie,
       urgenciaSeleccionada: urgencia,
       radioSeleccionado: radio,
       colorSeleccionado: color,
@@ -106,10 +104,15 @@ class CreateReportNotifier extends Notifier<CreateReportState> {
     );
   }
 
+  // MÉTODO NUEVO: Limpia el estado a sus valores por defecto
+  void reset() {
+    state = CreateReportState(lat: 0.0, lng: 0.0);
+  }
+
   Future<void> submitReport({
     required String imagePath,
     required String caracteristicas,
-    required String notas,
+    required String referencias,
   }) async {
     if (state.especie == null ||
         state.razaSeleccionada == null ||
@@ -135,9 +138,10 @@ class CreateReportNotifier extends Notifier<CreateReportState> {
         agresividad: state.agresividad.toInt(),
         razaAprox: state.razaSeleccionada!,
         caracteristicasEspeciales: caracteristicas,
-        notasAdicionales: notas,
+        notasAdicionales: '',
         urgencia: state.urgenciaSeleccionada,
         imagePath: imagePath,
+        referencias: referencias,
         radio: state.radioSeleccionado,
       );
     } finally {
@@ -146,7 +150,8 @@ class CreateReportNotifier extends Notifier<CreateReportState> {
   }
 }
 
+// Usamos el Provider estándar
 final createReportProvider =
-    NotifierProvider<CreateReportNotifier, CreateReportState>(() {
-      return CreateReportNotifier();
-    });
+    NotifierProvider<CreateReportNotifier, CreateReportState>(
+      () => CreateReportNotifier(),
+    );

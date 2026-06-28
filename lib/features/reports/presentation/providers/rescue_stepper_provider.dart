@@ -19,7 +19,7 @@ class RescueStepperState {
     this.lugarTraslado,
     this.evidenciaPath,
     this.destino,
-    this.costo = '0',
+    this.costo = '',
     this.conclusion = '',
   });
 
@@ -78,14 +78,13 @@ class RescueStepperNotifier extends Notifier<RescueStepperState> {
     );
   }
 
-  // NUEVO: Función exclusiva para limpiar el lugar y evitar el crasheo del Dropdown
   void clearLugarTraslado() {
     state = RescueStepperState(
       currentStep: state.currentStep,
       animalPresente: state.animalPresente,
       condicion: state.condicion,
       tipoTraslado: state.tipoTraslado,
-      lugarTraslado: null, // Forzamos el borrado explícito
+      lugarTraslado: null,
       evidenciaPath: state.evidenciaPath,
       destino: state.destino,
       costo: state.costo,

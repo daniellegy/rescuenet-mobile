@@ -73,41 +73,47 @@ class CreateReportScreen extends ConsumerStatefulWidget {
 class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
   final _formKey = GlobalKey<FormState>();
   final _caracController = TextEditingController();
-  final _notasController = TextEditingController();
+  final _referenciasController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
-    // Inicializamos el estado del Notifier con las coordenadas de la cámara
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref
-          .read(createReportProvider.notifier)
-          .setInitialLocation(widget.lat, widget.lng);
+      final notifier = ref.read(createReportProvider.notifier);
+
+      // GARANTÍA DE LIMPIEZA: Forzamos el reset justo al abrir la pantalla
+      notifier.reset();
+      notifier.setInitialLocation(widget.lat, widget.lng);
     });
   }
 
   @override
   void dispose() {
     _caracController.dispose();
-    _notasController.dispose();
+    _referenciasController.dispose();
     super.dispose();
   }
 
   Future<void> _enviarFormulario() async {
     if (!_formKey.currentState!.validate()) return;
 
+    final notifier = ref.read(createReportProvider.notifier);
+
     try {
-      await ref
-          .read(createReportProvider.notifier)
-          .submitReport(
-            imagePath: widget.imagePath,
-            caracteristicas: _caracController.text,
-            notas: _notasController.text,
-          );
+      await notifier.submitReport(
+        imagePath: widget.imagePath,
+        caracteristicas: _caracController.text,
+        referencias: _referenciasController.text,
+      );
 
       if (mounted) {
+        // Limpiamos los controladores de texto por si acaso la vista se retiene
+        _caracController.clear();
+        _referenciasController.clear();
+
         ref.invalidate(reportesActivosMapaProvider);
         ref.invalidate(activeReportsProvider);
+
         context.pop();
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Reporte creado con éxito')),
@@ -277,8 +283,9 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
                         ),
                         foregroundColor: WidgetStateProperty.resolveWith<Color>(
                           (Set<WidgetState> states) {
-                            if (states.contains(WidgetState.selected))
+                            if (states.contains(WidgetState.selected)) {
                               return Colors.white;
+                            }
                             return Colors.black87;
                           },
                         ),
@@ -401,15 +408,17 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
                       style: ButtonStyle(
                         backgroundColor: WidgetStateProperty.resolveWith<Color>(
                           (Set<WidgetState> states) {
-                            if (states.contains(WidgetState.selected))
+                            if (states.contains(WidgetState.selected)) {
                               return Colors.blue.shade700;
+                            }
                             return Colors.white;
                           },
                         ),
                         foregroundColor: WidgetStateProperty.resolveWith<Color>(
                           (Set<WidgetState> states) {
-                            if (states.contains(WidgetState.selected))
+                            if (states.contains(WidgetState.selected)) {
                               return Colors.white;
+                            }
                             return Colors.black87;
                           },
                         ),
@@ -521,16 +530,18 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
                           value!.isEmpty ? 'Ingresa las características' : null,
                     ),
                     const SizedBox(height: 16),
+
                     TextFormField(
-                      controller: _notasController,
-                      textCapitalization: TextCapitalization.words,
+                      controller: _referenciasController,
+                      textCapitalization: TextCapitalization.sentences,
                       decoration: const InputDecoration(
-                        labelText: 'Descripción del entorno',
+                        labelText: 'Referencias del lugar',
                         border: OutlineInputBorder(),
-                        hintText: 'Ej. Frente a tienda, escuela',
+                        hintText: 'Ej. Junto al portón azul o local comercial',
                       ),
-                      validator: (value) =>
-                          value!.isEmpty ? 'Ingresa la descripción' : null,
+                      validator: (value) => value!.isEmpty
+                          ? 'Por favor ingresa las referencias de la zona'
+                          : null,
                     ),
                     const SizedBox(height: 32),
                     FilledButton.icon(
