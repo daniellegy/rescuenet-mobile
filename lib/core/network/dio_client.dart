@@ -1,14 +1,17 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import '../../features/auth/presentation/providers/auth_provider.dart';
 
 class DioClient {
   final Dio _dio;
   final _storage = const FlutterSecureStorage();
   String? _inMemoryToken;
+  final VoidCallback? onUnauthorized;
 
-  DioClient()
+  DioClient({this.onUnauthorized})
     : _dio = Dio(
         BaseOptions(
           baseUrl: dotenv.env['API_URL'] ?? '',
@@ -47,6 +50,10 @@ class DioClient {
           if (e.response?.statusCode == 401) {
             _inMemoryToken = null;
             await _storage.delete(key: 'jwt_token');
+            // Disparamos el callback para que Riverpod actualice la UI
+            if (onUnauthorized != null) {
+              onUnauthorized!();
+            }
           }
           return handler.next(e);
         },
@@ -62,5 +69,10 @@ class DioClient {
 }
 
 final dioProvider = Provider<DioClient>((ref) {
-  return DioClient();
+  return DioClient(
+    onUnauthorized: () {
+      // Usamos microtask para evitar errores de actualización de estado mientras otros providers se construyen
+      Future.microtask(() => ref.read(authProvider.notifier).logout());
+    },
+  );
 });
