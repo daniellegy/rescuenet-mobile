@@ -28,6 +28,7 @@ class ReportModel {
   final String? condicionRescate;
   final double? costoRescate;
   final int? radio;
+  final String? referencias;
 
   ReportModel({
     required this.id,
@@ -57,6 +58,7 @@ class ReportModel {
     this.condicionRescate,
     this.costoRescate,
     this.radio,
+    this.referencias,
   });
 
   factory ReportModel.fromJson(Map<String, dynamic> json) {
@@ -93,6 +95,7 @@ class ReportModel {
           ? double.tryParse(json['costo_rescate'].toString())
           : null,
       radio: json['radio'],
+      referencias: json['referencias'] ?? 'Sin referencias',
     );
   }
 
