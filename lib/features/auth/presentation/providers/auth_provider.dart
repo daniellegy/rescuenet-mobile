@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
@@ -72,8 +73,9 @@ class AuthNotifier extends Notifier<AuthState> {
         }
       }
 
-      if (userId is! int || rolId is! int)
+      if (userId is! int || rolId is! int) {
         throw const FormatException('Id o rol inválidos');
+      }
 
       state = AuthState(
         isLogged: true,
@@ -81,11 +83,7 @@ class AuthNotifier extends Notifier<AuthState> {
         userId: userId,
       );
 
-      if (state.role == AppRole.voluntario) {
-        await FirebaseMessaging.instance.subscribeToTopic('voluntarios');
-      } else if (state.role == AppRole.reportante) {
-        await FirebaseMessaging.instance.unsubscribeFromTopic('voluntarios');
-      }
+      _actualizarFCMToken(); // Envia silenciosamente el token geo-alertas
     } catch (_) {
       await _storage.delete(key: 'jwt_token');
       state = AuthState(isLogged: false, role: AppRole.ninguno, userId: null);
@@ -100,16 +98,26 @@ class AuthNotifier extends Notifier<AuthState> {
     await _storage.write(key: 'jwt_token', value: token);
 
     AppRole userRole = AppRole.ninguno;
-    if (rolId == 1) {
-      userRole = AppRole.reportante;
-      await FirebaseMessaging.instance.unsubscribeFromTopic('voluntarios');
-    }
-    if (rolId == 2) {
-      userRole = AppRole.voluntario;
-      await FirebaseMessaging.instance.subscribeToTopic('voluntarios');
-    }
+    if (rolId == 1) userRole = AppRole.reportante;
+    if (rolId == 2) userRole = AppRole.voluntario;
 
     state = AuthState(isLogged: true, role: userRole, userId: idUsuario);
+    _actualizarFCMToken();
+  }
+
+  // Extrae y sube el token del dispositivo para notificaciones multicast
+  Future<void> _actualizarFCMToken() async {
+    try {
+      final tokenFCM = await FirebaseMessaging.instance.getToken();
+      if (tokenFCM != null) {
+        await ref
+            .read(dioProvider)
+            .instance
+            .put('/auth/perfil', data: {'fcm_token': tokenFCM});
+      }
+    } catch (e) {
+      debugPrint('FCM Token ignorado por permisos de red: $e');
+    }
   }
 
   Future<void> login(String email, String password) async {

@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:firebase_messaging/firebase_messaging.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../providers/settings_provider.dart';
 
@@ -102,6 +101,9 @@ class SettingsScreen extends ConsumerWidget {
           if (!acepto) return;
         }
 
+        // CORRECCIÓN: Validación asíncrona de BuildContext
+        if (!context.mounted) return;
+
         if (rolTarget == 2 &&
             (curpActual == null || curpActual.trim().isEmpty)) {
           _mostrarDialogoRegistroCurp(context, ref);
@@ -195,12 +197,6 @@ class SettingsScreen extends ConsumerWidget {
           .read(userProfileProvider.notifier)
           .actualizarCampo(role: rolTarget, curp: nuevaCurp);
 
-      if (rolTarget == 2) {
-        await FirebaseMessaging.instance.subscribeToTopic('voluntarios');
-      } else {
-        await FirebaseMessaging.instance.unsubscribeFromTopic('voluntarios');
-      }
-
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -255,6 +251,33 @@ class SettingsScreen extends ConsumerWidget {
             FilledButton(
               onPressed: () async {
                 final nuevoValor = controller.text.trim();
+
+                if (campoBaseDatos == 'email') {
+                  final emailRegex = RegExp(
+                    r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$',
+                  );
+                  if (!emailRegex.hasMatch(nuevoValor)) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Formato de correo inválido'),
+                        backgroundColor: Colors.red,
+                      ),
+                    );
+                    return;
+                  }
+                } else if (campoBaseDatos == 'telefono') {
+                  final phoneRegex = RegExp(r'^\d{10}$');
+                  if (!phoneRegex.hasMatch(nuevoValor)) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('El teléfono debe tener 10 dígitos'),
+                        backgroundColor: Colors.red,
+                      ),
+                    );
+                    return;
+                  }
+                }
+
                 if (nuevoValor.isNotEmpty && nuevoValor != valorActual) {
                   Navigator.pop(context);
                   try {
@@ -292,6 +315,87 @@ class SettingsScreen extends ConsumerWidget {
               child: const Text('Guardar'),
             ),
           ],
+        );
+      },
+    );
+  }
+
+  void _mostrarDialogoRadio(
+    BuildContext context,
+    WidgetRef ref,
+    int radioActual,
+  ) {
+    int radioSeleccionado = radioActual;
+    showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              title: const Text('Radio de Alertas (km)'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    'Verás reportes y recibirás alertas de rescates a un máximo de $radioSeleccionado km a la redonda.',
+                    style: const TextStyle(fontSize: 14),
+                  ),
+                  const SizedBox(height: 16),
+                  Slider(
+                    value: radioSeleccionado.toDouble(),
+                    min: 5,
+                    max: 100,
+                    divisions: 19,
+                    label: '$radioSeleccionado km',
+                    activeColor: Colors.purple,
+                    onChanged: (val) =>
+                        setState(() => radioSeleccionado = val.toInt()),
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Cancelar'),
+                ),
+                FilledButton(
+                  onPressed: () async {
+                    Navigator.pop(context);
+                    if (radioSeleccionado != radioActual) {
+                      try {
+                        await ref
+                            .read(userProfileProvider.notifier)
+                            .actualizarCampo(
+                              radioNotificaciones: radioSeleccionado,
+                            );
+
+                        // CORRECCIÓN: Encerrar las declaraciones en bloque {}
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Radio actualizado exitosamente'),
+                              backgroundColor: Colors.green,
+                            ),
+                          );
+                        }
+                      } catch (e) {
+                        // CORRECCIÓN: Encerrar las declaraciones en bloque {}
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(e.toString()),
+                              backgroundColor: Colors.red,
+                            ),
+                          );
+                        }
+                      }
+                    }
+                  },
+                  child: const Text('Guardar'),
+                ),
+              ],
+            );
+          },
         );
       },
     );
@@ -340,6 +444,7 @@ class SettingsScreen extends ConsumerWidget {
           final email = datos['email'] ?? 'Sin registrar';
           final curp = datos['curp'];
           final int rolActualId = datos['role'] ?? 1;
+          final int radioNotificaciones = datos['radio_notificaciones'] ?? 30;
 
           return ListView(
             padding: const EdgeInsets.all(16.0),
@@ -420,6 +525,20 @@ class SettingsScreen extends ConsumerWidget {
                   telefono,
                   'telefono',
                 ),
+              ),
+              const Divider(height: 1),
+
+              ListTile(
+                leading: const Icon(Icons.radar, color: Colors.purple),
+                title: const Text('Radio de Búsqueda'),
+                subtitle: Text('$radioNotificaciones km de área para alertas'),
+                trailing: const Icon(
+                  Icons.edit,
+                  size: 18,
+                  color: Colors.redAccent,
+                ),
+                onTap: () =>
+                    _mostrarDialogoRadio(context, ref, radioNotificaciones),
               ),
 
               if (rolActualId == 2 &&

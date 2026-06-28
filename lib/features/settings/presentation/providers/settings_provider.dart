@@ -31,15 +31,29 @@ class UserProfileNotifier extends AsyncNotifier<Map<String, dynamic>> {
     String? email,
     int? role,
     String? curp,
+    int? radioNotificaciones,
   }) async {
     final dio = ref.read(dioProvider).instance;
 
     try {
       final Map<String, dynamic> datosAActualizar = {};
-      if (telefono != null) datosAActualizar['telefono'] = telefono;
-      if (email != null) datosAActualizar['email'] = email;
-      if (role != null) datosAActualizar['role'] = role;
-      if (curp != null) datosAActualizar['curp'] = curp;
+
+      // CORRECCIÓN: Agregar llaves a todas las estructuras de control
+      if (telefono != null) {
+        datosAActualizar['telefono'] = telefono;
+      }
+      if (email != null) {
+        datosAActualizar['email'] = email;
+      }
+      if (role != null) {
+        datosAActualizar['role'] = role;
+      }
+      if (curp != null) {
+        datosAActualizar['curp'] = curp;
+      }
+      if (radioNotificaciones != null) {
+        datosAActualizar['radio_notificaciones'] = radioNotificaciones;
+      }
 
       final response = await dio.put('/auth/perfil', data: datosAActualizar);
       if (response.statusCode == 200) {

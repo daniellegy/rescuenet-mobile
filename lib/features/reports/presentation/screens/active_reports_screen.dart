@@ -50,13 +50,17 @@ class _ActiveReportsScreenState extends ConsumerState<ActiveReportsScreen> {
         break;
       case FiltroOrden.urgenciaMedia:
         lista.sort((a, b) {
+          // Si uno es 'media' y el otro no, dale prioridad absoluta al 'media'
           if (a.urgencia.toLowerCase() == 'media' &&
-              b.urgencia.toLowerCase() != 'media')
+              b.urgencia.toLowerCase() != 'media') {
             return -1;
+          }
           if (b.urgencia.toLowerCase() == 'media' &&
-              a.urgencia.toLowerCase() != 'media')
+              a.urgencia.toLowerCase() != 'media') {
             return 1;
-          return 0;
+          }
+          // CORRECCIÓN AQUÍ: Si ambos son iguales, o si NINGUNO es media, los ordena lógicamente por peso (Alta > Media > Baja)
+          return b.pesoUrgencia.compareTo(a.pesoUrgencia);
         });
         break;
     }
@@ -110,7 +114,7 @@ class _ActiveReportsScreenState extends ConsumerState<ActiveReportsScreen> {
           if (reportesBrutos.isEmpty) {
             return const Center(
               child: Text(
-                'No hay emergencias activas en este momento',
+                'No hay emergencias activas cerca de tu zona',
                 style: TextStyle(fontSize: 16),
               ),
             );
