@@ -62,14 +62,16 @@ class ReportModel {
   String get tiempoTranscurrido {
     if (fechaCreacion == null) return 'hace un momento';
     final ahora = DateTime.now();
-    // Convertimos la fecha del server a la zona local para asegurar precisión
-    final diferencia = ahora.difference(fechaCreacion!.toLocal());
+    Duration diferencia = ahora.difference(fechaCreacion!);
+    if (diferencia.isNegative) {
+      diferencia = diferencia.abs();
+    }
 
     if (diferencia.inDays > 1) return 'hace ${diferencia.inDays} días';
     if (diferencia.inDays == 1) return 'hace 1 día';
-    if (diferencia.inHours > 1) return 'hace ${diferencia.inHours} hrs';
-    if (diferencia.inHours == 1) return 'hace 1 hora';
-    if (diferencia.inMinutes > 1) return 'hace ${diferencia.inMinutes} min';
+    if (diferencia.inHours >= 1) return 'hace ${diferencia.inHours} hrs';
+    if (diferencia.inMinutes >= 1) return 'hace ${diferencia.inMinutes} min';
+
     return 'hace un momento';
   }
 
@@ -104,6 +106,8 @@ class ReportModel {
       nombreRescatista: json['nombre_rescatista']?.toString(),
       fechaCreacion: json['fecha_creacion'] != null
           ? DateTime.tryParse(json['fecha_creacion'].toString())
+          : json['creado_el'] != null
+          ? DateTime.tryParse(json['creado_el'].toString())
           : null,
     );
   }
