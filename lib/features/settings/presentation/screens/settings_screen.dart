@@ -112,13 +112,13 @@ class SettingsScreen extends ConsumerWidget {
     );
   }
 
-  // NUEVO MODAL: Captura obligatoria de CURP
   void _mostrarDialogoRegistroCurp(BuildContext context, WidgetRef ref) {
     final TextEditingController curpController = TextEditingController();
+    final curpRegex = RegExp(r'^[A-Z]{4}\d{6}[HM][A-Z]{5}[A-Z\d]\d$');
 
     showDialog(
       context: context,
-      barrierDismissible: false, // Obliga al usuario a interactuar
+      barrierDismissible: false,
       builder: (context) {
         return AlertDialog(
           title: const Text('Completar Registro'),
@@ -154,19 +154,18 @@ class SettingsScreen extends ConsumerWidget {
             FilledButton(
               onPressed: () {
                 final curpIngresada = curpController.text.trim().toUpperCase();
-                if (curpIngresada.length != 18) {
+
+                if (!curpRegex.hasMatch(curpIngresada)) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
-                      content: Text(
-                        'La CURP debe tener exactamente 18 caracteres',
-                      ),
+                      content: Text('El formato del CURP es inválido.'),
                       backgroundColor: Colors.red,
                     ),
                   );
                   return;
                 }
+
                 Navigator.pop(context);
-                // Procede a ejecutar el cambio de rol pasando la nueva CURP
                 _procesarCambioDeRol(
                   context,
                   ref,
@@ -192,12 +191,10 @@ class SettingsScreen extends ConsumerWidget {
     String? nuevaCurp,
   ) async {
     try {
-      // 1. Actualizamos la Base de Datos (enviando el rol y la curp si aplica)
       await ref
           .read(userProfileProvider.notifier)
           .actualizarCampo(role: rolTarget, curp: nuevaCurp);
 
-      // 2. Modificamos la suscripción a notificaciones push
       if (rolTarget == 2) {
         await FirebaseMessaging.instance.subscribeToTopic('voluntarios');
       } else {
@@ -377,7 +374,6 @@ class SettingsScreen extends ConsumerWidget {
               ),
               const SizedBox(height: 8),
 
-              // 1. Selector de Rol (Pasamos la curpActual para evaluarla internamente)
               ListTile(
                 leading: const Icon(
                   Icons.volunteer_activism,
@@ -391,7 +387,6 @@ class SettingsScreen extends ConsumerWidget {
               ),
               const Divider(height: 1),
 
-              // 2. Modificar Correo
               ListTile(
                 leading: const Icon(
                   Icons.email_outlined,
@@ -409,7 +404,6 @@ class SettingsScreen extends ConsumerWidget {
               ),
               const Divider(height: 1),
 
-              // 3. Modificar Teléfono
               ListTile(
                 leading: const Icon(Icons.phone_android, color: Colors.green),
                 title: const Text('Teléfono Móvil'),
@@ -428,7 +422,6 @@ class SettingsScreen extends ConsumerWidget {
                 ),
               ),
 
-              // 4. Mostrar CURP Dinámicamente (Solo lectura para Voluntarios)
               if (rolActualId == 2 &&
                   curp != null &&
                   curp.toString().isNotEmpty) ...[
@@ -456,7 +449,6 @@ class SettingsScreen extends ConsumerWidget {
 
               const Divider(height: 40),
 
-              // 5. Botón de Cerrar Sesión
               ListTile(
                 leading: const Icon(Icons.logout, color: Colors.red),
                 title: const Text(
