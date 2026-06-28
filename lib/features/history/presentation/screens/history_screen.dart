@@ -2,103 +2,236 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../domain/models/report_model.dart';
 import '../providers/history_provider.dart';
+import '../../../auth/presentation/providers/auth_provider.dart';
 
-class HistoryScreen extends ConsumerWidget {
+enum FiltroOrden {
+  masRecientes,
+  masAntiguos,
+  urgenciaAlta,
+  urgenciaMedia,
+  urgenciaBaja,
+}
+
+class HistoryScreen extends ConsumerStatefulWidget {
   const HistoryScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final reportesAsync = ref.watch(misReportesProvider);
+  ConsumerState<HistoryScreen> createState() => _HistoryScreenState();
+}
+
+class _HistoryScreenState extends ConsumerState<HistoryScreen> {
+  FiltroOrden _ordenActual = FiltroOrden.masRecientes;
+
+  List<ReportModel> _ordenarReportes(List<ReportModel> reportes) {
+    List<ReportModel> lista = List.from(reportes);
+
+    int pesoUrgencia(String u) {
+      if (u.toLowerCase() == 'alta') return 3;
+      if (u.toLowerCase() == 'media') return 2;
+      return 1;
+    }
+
+    switch (_ordenActual) {
+      case FiltroOrden.masRecientes:
+        lista.sort(
+          (a, b) => (b.fechaCreacion ?? DateTime.now()).compareTo(
+            a.fechaCreacion ?? DateTime.now(),
+          ),
+        );
+        break;
+      case FiltroOrden.masAntiguos:
+        lista.sort(
+          (a, b) => (a.fechaCreacion ?? DateTime.now()).compareTo(
+            b.fechaCreacion ?? DateTime.now(),
+          ),
+        );
+        break;
+      case FiltroOrden.urgenciaAlta:
+        lista.sort(
+          (a, b) =>
+              pesoUrgencia(b.urgencia).compareTo(pesoUrgencia(a.urgencia)),
+        );
+        break;
+      case FiltroOrden.urgenciaBaja:
+        lista.sort(
+          (a, b) =>
+              pesoUrgencia(a.urgencia).compareTo(pesoUrgencia(b.urgencia)),
+        );
+        break;
+      case FiltroOrden.urgenciaMedia:
+        lista.sort((a, b) {
+          if (a.urgencia.toLowerCase() == 'media' &&
+              b.urgencia.toLowerCase() != 'media')
+            return -1;
+          if (b.urgencia.toLowerCase() == 'media' &&
+              a.urgencia.toLowerCase() != 'media')
+            return 1;
+          return 0;
+        });
+        break;
+    }
+    return lista;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final authState = ref.watch(authProvider);
+    final currentUserId = authState.userId;
+    final bool esVoluntario = authState.role == AppRole.voluntario;
+
+    final historialAsync = ref.watch(misReportesProvider);
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Mis reportes'),
-        backgroundColor: Colors.white.withOpacity(0.95),
-        surfaceTintColor: Colors.white,
+        title: const Text('Historial de Rescates'),
+        actions: [
+          PopupMenuButton<FiltroOrden>(
+            icon: const Icon(Icons.sort_rounded),
+            tooltip: 'Ordenar reportes',
+            onSelected: (FiltroOrden nuevoOrden) {
+              setState(() {
+                _ordenActual = nuevoOrden;
+              });
+            },
+            itemBuilder: (context) => const [
+              PopupMenuItem(
+                value: FiltroOrden.masRecientes,
+                child: Text('Más Recientes'),
+              ),
+              PopupMenuItem(
+                value: FiltroOrden.masAntiguos,
+                child: Text('Más Antiguos'),
+              ),
+              PopupMenuDivider(),
+              PopupMenuItem(
+                value: FiltroOrden.urgenciaAlta,
+                child: Text('Priorizar U. Alta'),
+              ),
+              PopupMenuItem(
+                value: FiltroOrden.urgenciaMedia,
+                child: Text('Priorizar U. Media'),
+              ),
+              PopupMenuItem(
+                value: FiltroOrden.urgenciaBaja,
+                child: Text('Priorizar U. Baja'),
+              ),
+            ],
+          ),
+        ],
       ),
-      body: reportesAsync.when(
-        data: (reportes) {
-          if (reportes.isEmpty) {
-            return const Center(
-              child: Text('Aún no has hecho ningún reporte.'),
-            );
+      body: historialAsync.when(
+        data: (historialBruto) {
+          if (historialBruto.isEmpty) {
+            return const Center(child: Text('No tienes reportes registrados'));
           }
 
-          return ListView.separated(
-            padding: const EdgeInsets.all(16),
-            itemCount: reportes.length,
-            separatorBuilder: (_, __) => const SizedBox(height: 12),
-            itemBuilder: (context, index) {
-              final reporte = reportes[index];
+          final historialOrdenado = _ordenarReportes(historialBruto);
 
-              final fotoUrl = reporte.fotoUrl;
-              final especie = reporte.especie;
-              final colorDominante = reporte.colorDominante;
+          if (!esVoluntario) {
+            return _buildListaReportes(historialOrdenado);
+          }
 
-              // Llamada explícita a ambas variables nuevas
-              final caracteristicas = reporte.caracteristicasEspeciales;
-              final notas = reporte.notasAdicionales;
+          final misReportes = historialOrdenado
+              .where((r) => r.usuarioReportadorId == currentUserId)
+              .toList();
 
-              return Card(
-                elevation: 2,
-                child: ListTile(
-                  contentPadding: const EdgeInsets.all(12),
-                  leading: fotoUrl != null && fotoUrl.isNotEmpty
-                      ? ClipRRect(
-                          borderRadius: BorderRadius.circular(10),
-                          child: Image.network(
-                            fotoUrl,
-                            width: 64,
-                            height: 64,
-                            fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) => _buildPlaceholder(),
-                          ),
-                        )
-                      : _buildPlaceholder(),
-                  title: Text(
-                    '$especie - $colorDominante',
-                    style: const TextStyle(fontWeight: FontWeight.w700),
-                  ),
-                  // Renderizado de ambas variables dentro del subtítulo
-                  subtitle: Padding(
-                    padding: const EdgeInsets.only(top: 4),
-                    child: Text(
-                      'Señas: $caracteristicas\nNotas: $notas',
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(color: Colors.grey[700], fontSize: 13),
+          final rescatesConcluidos = historialOrdenado
+              .where(
+                (r) =>
+                    r.usuarioRescatistaId == currentUserId &&
+                    r.estado == 'Rescatado',
+              )
+              .toList();
+
+          return DefaultTabController(
+            length: 2,
+            child: Column(
+              children: [
+                const TabBar(
+                  labelColor: Colors.red,
+                  unselectedLabelColor: Colors.grey,
+                  indicatorColor: Colors.red,
+                  tabs: [
+                    Tab(
+                      icon: Icon(Icons.campaign_rounded),
+                      text: 'Mis Reportes',
                     ),
-                  ),
-                  trailing: const Icon(Icons.chevron_right),
-                  onTap: () {
-                    context.push('/report-detail', extra: reporte);
-                  },
+                    Tab(
+                      icon: Icon(Icons.volunteer_activism_rounded),
+                      text: 'Mis Rescates',
+                    ),
+                  ],
                 ),
-              );
-            },
+                Expanded(
+                  child: TabBarView(
+                    children: [
+                      misReportes.isEmpty
+                          ? const Center(
+                              child: Text('No has realizado reportes'),
+                            )
+                          : _buildListaReportes(misReportes),
+                      rescatesConcluidos.isEmpty
+                          ? const Center(
+                              child: Text('No has concluido rescates'),
+                            )
+                          : _buildListaReportes(rescatesConcluidos),
+                    ],
+                  ),
+                ),
+              ],
+            ),
           );
         },
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, stack) => Center(
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: Text('Error al cargar historial: $error'),
-          ),
-        ),
+        error: (error, stackTrace) => Center(child: Text('Error: $error')),
       ),
     );
   }
 
-  Widget _buildPlaceholder() {
-    return Container(
-      width: 64,
-      height: 64,
-      decoration: BoxDecoration(
-        color: Colors.redAccent.withOpacity(0.12),
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: const Icon(Icons.pets, color: Colors.redAccent),
+  Widget _buildListaReportes(List<ReportModel> lista) {
+    return ListView.builder(
+      itemCount: lista.length,
+      itemBuilder: (context, index) {
+        final reporte = lista[index];
+        return Card(
+          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          child: ListTile(
+            leading: reporte.fotoUrl != null
+                ? ClipRRect(
+                    borderRadius: BorderRadius.circular(4),
+                    child: Image.network(
+                      reporte.fotoUrl!,
+                      width: 50,
+                      height: 50,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) {
+                        return const SizedBox(
+                          width: 50,
+                          height: 50,
+                          child: Icon(Icons.broken_image),
+                        );
+                      },
+                    ),
+                  )
+                : const SizedBox(
+                    width: 50,
+                    height: 50,
+                    child: Icon(Icons.image_not_supported),
+                  ),
+            title: Text(
+              reporte.especie,
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
+            subtitle: Text(
+              'Urgencia: ${reporte.urgencia}\nEstado: ${reporte.estadoFormateado} • ${reporte.tiempoTranscurrido}',
+            ),
+            trailing: const Icon(Icons.arrow_forward_ios),
+            onTap: () => context.push('/report-detail', extra: reporte),
+          ),
+        );
+      },
     );
   }
 }

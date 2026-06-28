@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/network/dio_client.dart';
+import '../../../../core/errors/app_exception.dart';
 
 class ReportRepository {
   final Dio _dio;
@@ -46,31 +47,35 @@ class ReportRepository {
 
       await _dio.post('/reportes', data: formData);
     } on DioException catch (e) {
-      throw Exception(
+      throw AppException(
         e.response?.data['error'] ?? 'Error al enviar el reporte',
       );
+    } catch (e) {
+      throw AppException('Ocurrió un error inesperado al enviar el reporte');
     }
   }
 
-  // NUEVO METODO PARA ACEPTAR
   Future<void> acceptReport(int id) async {
     try {
       await _dio.put('/reportes/$id/aceptar');
     } on DioException catch (e) {
-      throw Exception(
+      throw AppException(
         e.response?.data['error'] ?? 'Error al aceptar el rescate',
       );
+    } catch (e) {
+      throw AppException('Ocurrió un error inesperado');
     }
   }
 
-  // NUEVO METODO PARA FINALIZAR
   Future<void> finalizeReport(int id) async {
     try {
       await _dio.put('/reportes/$id/finalizar');
     } on DioException catch (e) {
-      throw Exception(
+      throw AppException(
         e.response?.data['error'] ?? 'Error al finalizar el rescate',
       );
+    } catch (e) {
+      throw AppException('Ocurrió un error inesperado');
     }
   }
 }

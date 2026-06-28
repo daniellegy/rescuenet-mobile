@@ -1,32 +1,31 @@
+import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/network/dio_client.dart';
+import '../../../../core/errors/app_exception.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 
 class UserProfileNotifier extends AsyncNotifier<Map<String, dynamic>> {
   @override
   Future<Map<String, dynamic>> build() async {
     final authState = ref.watch(authProvider);
-
-    if (!authState.isLogged) {
-      return {};
-    }
+    if (!authState.isLogged) return {};
 
     final dio = ref.read(dioProvider).instance;
 
     try {
       final response = await dio.get('/auth/perfil');
-
       if (response.statusCode == 200) {
         return response.data as Map<String, dynamic>;
       } else {
-        throw Exception('No se pudo obtener el perfil del servidor');
+        throw AppException('No se pudo obtener el perfil del servidor');
       }
+    } on DioException catch (e) {
+      throw AppException(e.response?.data['error'] ?? 'Error de red');
     } catch (e) {
-      throw Exception('Error de red al conectar con el backend: $e');
+      throw AppException('Error de red al conectar con el backend');
     }
   }
 
-  // AÑADIDO: Parámetro curp
   Future<void> actualizarCampo({
     String? telefono,
     String? email,
@@ -48,10 +47,14 @@ class UserProfileNotifier extends AsyncNotifier<Map<String, dynamic>> {
             response.data['usuario'] as Map<String, dynamic>;
         state = AsyncData(datosActualizados);
       } else {
-        throw Exception('El servidor rechazó la actualización del perfil');
+        throw AppException('El servidor rechazó la actualización del perfil');
       }
+    } on DioException catch (e) {
+      throw AppException(
+        e.response?.data['error'] ?? 'Error al actualizar los datos',
+      );
     } catch (e) {
-      throw Exception('Error al actualizar los datos: $e');
+      throw AppException('Ocurrió un error inesperado al actualizar los datos');
     }
   }
 }
