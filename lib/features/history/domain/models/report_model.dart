@@ -29,6 +29,7 @@ class ReportModel {
   final double? costoRescate;
   final int? radio;
   final String? referencias;
+  final String? conclusion; // CAMPO NUEVO
 
   ReportModel({
     required this.id,
@@ -59,6 +60,7 @@ class ReportModel {
     this.costoRescate,
     this.radio,
     this.referencias,
+    this.conclusion, // CAMPO NUEVO
   });
 
   factory ReportModel.fromJson(Map<String, dynamic> json) {
@@ -96,6 +98,7 @@ class ReportModel {
           : null,
       radio: json['radio'],
       referencias: json['referencias'] ?? 'Sin referencias',
+      conclusion: json['conclusion'], // CAMPO NUEVO
     );
   }
 

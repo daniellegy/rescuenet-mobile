@@ -169,17 +169,6 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
       photos.add(widget.reporte.fotoEvidenciaUrl!);
     }
 
-    // LÓGICA DE REEMPLAZO DE NOTAS ADICIONALES
-    final String notasAMostrar = widget.reporte.estado == 'Rescatado'
-        ? (widget.reporte.notasAdicionales.isNotEmpty &&
-                  widget.reporte.notasAdicionales != 'Ninguna'
-              ? 'Conclusión del rescate:\n${widget.reporte.notasAdicionales}'
-              : 'Sin conclusión registrada.')
-        : (widget.reporte.caracteristicasEspeciales.isNotEmpty &&
-                  widget.reporte.caracteristicasEspeciales != 'Ninguna'
-              ? widget.reporte.caracteristicasEspeciales
-              : 'Sin características registradas.');
-
     return Scaffold(
       appBar: AppBar(
         title: const Text('Detalles de Emergencia'),
@@ -433,11 +422,34 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
                   ),
                   const SizedBox(height: 8),
 
-                  // TEXTO RESOLUTIVO APLICADO
+                  // Se muestran las notas adicionales o las características especiales si este campo está vacío
                   Text(
-                    notasAMostrar,
+                    widget.reporte.notasAdicionales.isNotEmpty &&
+                            widget.reporte.notasAdicionales != 'Ninguna'
+                        ? widget.reporte.notasAdicionales
+                        : (widget.reporte.caracteristicasEspeciales.isNotEmpty
+                              ? widget.reporte.caracteristicasEspeciales
+                              : 'Sin notas adicionales.'),
                     style: const TextStyle(fontSize: 15, height: 1.5),
                   ),
+
+                  // LÓGICA DE NUEVO CAMPO: Se pinta dinámicamente si el reporte tiene una conclusión
+                  if (widget.reporte.conclusion != null &&
+                      widget.reporte.conclusion!.isNotEmpty) ...[
+                    const Divider(height: 32),
+                    const Text(
+                      'Conclusión del rescate:',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      widget.reporte.conclusion!,
+                      style: const TextStyle(fontSize: 15, height: 1.5),
+                    ),
+                  ],
 
                   if (esVoluntario &&
                       (estaNuevo || (estaEnProceso && esMiRescate))) ...[
