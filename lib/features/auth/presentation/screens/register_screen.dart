@@ -29,6 +29,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     type: MaskAutoCompletionType.lazy,
   );
 
+  final _curpRegex = RegExp(r'^[A-Z]{4}\d{6}[HM][A-Z]{5}[A-Z\d]\d$');
+
   @override
   void dispose() {
     _nameController.dispose();
@@ -40,7 +42,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     super.dispose();
   }
 
-  // Lógica del manifiesto
   Future<bool> _mostrarManifiestoVoluntario() async {
     return await showDialog<bool>(
           context: context,
@@ -145,7 +146,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                   validator: (value) {
                     if (value == null || value.trim().isEmpty)
                       return 'El nombre es obligatorio';
-                    if (!RegExp(r'^[a-zA-Z \s]+$').hasMatch(value))
+                    if (!RegExp(r'^[a-zA-ZáéíóúÁÉÍÓÚñÑ \s]+$').hasMatch(value))
                       return 'Ingresa un nombre válido (sin números)';
                     return null;
                   },
@@ -284,10 +285,12 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                     ),
                     validator: (value) {
                       if (_selectedRole == 'Voluntario') {
-                        if (value == null || value.trim().isEmpty)
+                        if (value == null || value.trim().isEmpty) {
                           return 'El CURP es obligatorio para voluntarios';
-                        if (value.trim().length != 18)
-                          return 'El CURP debe tener exactamente 18 caracteres';
+                        }
+                        if (!_curpRegex.hasMatch(value.trim().toUpperCase())) {
+                          return 'El formato del CURP es inválido';
+                        }
                       }
                       return null;
                     },
