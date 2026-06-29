@@ -54,6 +54,11 @@ class _MapScreenState extends ConsumerState<MapScreen> {
       setState(() {
         myPosition = LatLng(position.latitude, position.longitude);
       });
+
+      // CORRECCIÓN: Se invalida el proveedor de marcadores justo aquí.
+      // Cuando la app es nueva, esto se dispara inmediatamente después de aceptar los permisos de ubicación
+      // en el diálogo nativo, obligando a Riverpod a reconstruir el mapa con las coordenadas ya disponibles.
+      ref.invalidate(reportesActivosMapaProvider);
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -471,7 +476,6 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                   orElse: () => const SizedBox.shrink(),
                 ),
 
-                // CORRECCIÓN: Botones superpuestos desplazados hacia arriba (bottom incrementado)
                 Positioned(
                   bottom: 200,
                   right: 16,
@@ -504,8 +508,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                 ),
 
                 Positioned(
-                  bottom:
-                      140, // Incrementado de 110 a 140 para librar el BottomNav
+                  bottom: 140,
                   right: 16,
                   child: FloatingActionButton(
                     heroTag: 'my_location_btn',
