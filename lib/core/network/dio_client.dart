@@ -1,13 +1,17 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import '../../features/auth/presentation/providers/auth_provider.dart';
 
 class DioClient {
   final Dio _dio;
   final _storage = const FlutterSecureStorage();
+  String? _inMemoryToken;
+  final VoidCallback? onUnauthorized;
 
-  DioClient()
+  DioClient({this.onUnauthorized})
     : _dio = Dio(
         BaseOptions(
           baseUrl: dotenv.env['API_URL'] ?? '',
@@ -19,7 +23,6 @@ class DioClient {
           },
         ),
       ) {
-    // 1. Interceptor nativo de Dio para debugear en consola (NUEVO)
     _dio.interceptors.add(
       LogInterceptor(
         request: true,
@@ -31,20 +34,27 @@ class DioClient {
       ),
     );
 
-    // 2. Tu interceptor para el Token
     _dio.interceptors.add(
       InterceptorsWrapper(
         onRequest: (options, handler) async {
           if (!options.path.contains('/login') &&
               !options.path.contains('/register')) {
-            final token = await _storage.read(key: 'jwt_token');
-            if (token != null) {
-              options.headers['Authorization'] = 'Bearer $token';
+            _inMemoryToken ??= await _storage.read(key: 'jwt_token');
+            if (_inMemoryToken != null) {
+              options.headers['Authorization'] = 'Bearer $_inMemoryToken';
             }
           }
           return handler.next(options);
         },
-        onError: (DioException e, handler) {
+        onError: (DioException e, handler) async {
+          if (e.response?.statusCode == 401) {
+            _inMemoryToken = null;
+            await _storage.delete(key: 'jwt_token');
+            // Disparamos el callback para que Riverpod actualice la UI
+            if (onUnauthorized != null) {
+              onUnauthorized!();
+            }
+          }
           return handler.next(e);
         },
       ),
@@ -52,8 +62,17 @@ class DioClient {
   }
 
   Dio get instance => _dio;
+
+  void clearTokenCache() {
+    _inMemoryToken = null;
+  }
 }
 
 final dioProvider = Provider<DioClient>((ref) {
-  return DioClient();
+  return DioClient(
+    onUnauthorized: () {
+      // Usamos microtask para evitar errores de actualización de estado mientras otros providers se construyen
+      Future.microtask(() => ref.read(authProvider.notifier).logout());
+    },
+  );
 });

@@ -5,18 +5,33 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'core/routing/app_router.dart';
+import 'features/auth/presentation/providers/auth_provider.dart';
 import 'features/history/domain/models/report_model.dart';
 import 'package:google_fonts/google_fonts.dart';
+
+import 'features/map/presentation/providers/map_markers_provider.dart';
+import 'features/reports/presentation/providers/my_active_rescue_provider.dart';
+import 'features/reports/presentation/providers/active_reports_provider.dart';
+
+final GlobalKey<ScaffoldMessengerState> scaffoldMessengerKey =
+    GlobalKey<ScaffoldMessengerState>();
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await dotenv.load(fileName: ".env");
   await Firebase.initializeApp();
 
-  final messaging = FirebaseMessaging.instance;
-  await messaging.requestPermission(alert: true, badge: true, sound: true);
+  // SE REMOVIÓ EL LLAMADO AUTOMÁTICO A REQUESTPERMISSION DE AQUÍ PARA PREGUNTAR SÓLO BAJO DEMANDA
 
-  runApp(const ProviderScope(child: RescueNetApp()));
+  final container = ProviderContainer();
+  await container.read(authProvider.notifier).restoreSession();
+
+  runApp(
+    UncontrolledProviderScope(
+      container: container,
+      child: const RescueNetApp(),
+    ),
+  );
 }
 
 class RescueNetApp extends ConsumerStatefulWidget {
@@ -34,19 +49,41 @@ class _RescueNetAppState extends ConsumerState<RescueNetApp> {
   }
 
   void _configurarToquesDeNotificacion() async {
-    // Escenario 1: La app está COMPLETAMENTE CERRADA y el usuario toca la notificación
     FirebaseMessaging.instance.getInitialMessage().then((message) {
       if (message != null) _abrirDetallesReporte(message);
     });
 
-    // Escenario 2: La app está MINIMIZADA (segundo plano) y el usuario toca la notificación
     FirebaseMessaging.onMessageOpenedApp.listen((message) {
       _abrirDetallesReporte(message);
+    });
+
+    FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+      ref.invalidate(reportesActivosMapaProvider);
+      ref.invalidate(miRescateActivoProvider);
+      ref.invalidate(activeReportsProvider);
+
+      scaffoldMessengerKey.currentState?.showSnackBar(
+        SnackBar(
+          content: Row(
+            children: const [
+              Icon(Icons.notification_important_rounded, color: Colors.white),
+              SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  '🚨 ¡Nueva emergencia reportada! Actualizando mapa...',
+                ),
+              ),
+            ],
+          ),
+          backgroundColor: Colors.redAccent,
+          behavior: SnackBarBehavior.floating,
+          duration: const Duration(seconds: 4),
+        ),
+      );
     });
   }
 
   void _abrirDetallesReporte(RemoteMessage message) {
-    // Verificamos que el paquete de datos oculto traiga la propiedad 'reporte'
     if (message.data.containsKey('reporte')) {
       try {
         final Map<String, dynamic> reportMap = jsonDecode(
@@ -54,8 +91,6 @@ class _RescueNetAppState extends ConsumerState<RescueNetApp> {
         );
         final reporteModel = ReportModel.fromJson(reportMap);
 
-        // Se le da un pequeño retraso (500ms) para garantizar que el GoRouter
-        // ya construyó el mapa de fondo antes de ponerle la pantalla de detalles encima.
         Future.delayed(const Duration(milliseconds: 500), () {
           ref.read(routerProvider).push('/report-detail', extra: reporteModel);
         });
@@ -72,20 +107,15 @@ class _RescueNetAppState extends ConsumerState<RescueNetApp> {
     return MaterialApp.router(
       title: 'Rescue Net',
       debugShowCheckedModeBanner: false,
+      scaffoldMessengerKey: scaffoldMessengerKey,
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(
           seedColor: Colors.red,
-          primary: const Color.fromARGB(
-            255,
-            202,
-            40,
-            28,
-          ), // Fuerza explícitamente el rojo vivo
+          primary: const Color.fromARGB(255, 202, 40, 28),
           secondary: Colors.redAccent,
         ),
         textTheme: GoogleFonts.dmSansTextTheme(),
-        useMaterial3:
-            true, // Si tu diseño original se sigue viendo raro, cambia esto a false
+        useMaterial3: true,
       ),
       routerConfig: router,
     );

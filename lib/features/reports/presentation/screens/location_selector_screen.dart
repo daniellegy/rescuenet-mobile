@@ -49,6 +49,17 @@ class _LocationSelectorScreenState extends State<LocationSelectorScreen> {
               initialZoom: 18.0,
               minZoom: 5.0,
               maxZoom: 22.0,
+              cameraConstraint: CameraConstraint.contain(
+                bounds: LatLngBounds(
+                  const LatLng(-90.0, -180.0),
+                  const LatLng(90.0, 180.0),
+                ),
+              ),
+              // Bloquear la rotación y optimizar el reconocimiento de gestos
+              interactionOptions: const InteractionOptions(
+                flags: InteractiveFlag.all & ~InteractiveFlag.rotate,
+                enableMultiFingerGestureRace: false,
+              ),
               onPositionChanged: (MapCamera position, bool hasGesture) {
                 _currentLat = position.center.latitude;
                 _currentLng = position.center.longitude;

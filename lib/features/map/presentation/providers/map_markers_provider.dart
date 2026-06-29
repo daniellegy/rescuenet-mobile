@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/network/dio_client.dart';
+import '../../../../core/services/location_service.dart';
 import '../../../history/domain/models/report_model.dart';
 import 'package:flutter/foundation.dart';
 
@@ -7,7 +8,30 @@ final reportesActivosMapaProvider = FutureProvider.autoDispose<List<ReportModel>
   ref,
 ) async {
   final dio = ref.watch(dioProvider).instance;
-  final response = await dio.get('/reportes/activos');
+
+  double? lat;
+  double? lng;
+
+  try {
+    final locationService = ref.read(locationServiceProvider);
+    // Solicitamos la coordenada silenciosamente. Ahora resolverá en milisegundos gracias al caché.
+    final position = await locationService.getCurrentPosition(
+      requestPermission: false,
+    );
+
+    lat = position.latitude;
+    lng = position.longitude;
+  } catch (_) {
+    // Falla silenciosa y limpia, el backend resolverá con la 'ultima_ubicacion' guardada
+  }
+
+  String url = '/reportes/activos';
+
+  if (lat != null && lng != null) {
+    url += '?lat=$lat&lng=$lng';
+  }
+
+  final response = await dio.get(url);
 
   if (response.statusCode == 200) {
     List<dynamic> data = response.data is List
@@ -19,7 +43,7 @@ final reportesActivosMapaProvider = FutureProvider.autoDispose<List<ReportModel>
     for (var jsonItem in data) {
       try {
         final reporte = ReportModel.fromJson(jsonItem);
-        // Filtrado geográfico y matemático estricto a nivel de lógica de negocio, no de UI
+        // Evitamos puntos nulos o de desbordamiento en memoria
         if (!reporte.latitud.isNaN &&
             !reporte.longitud.isNaN &&
             reporte.latitud >= -90.0 &&

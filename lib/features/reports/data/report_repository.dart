@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/network/dio_client.dart';
+import '../../../../core/errors/app_exception.dart';
 
 class ReportRepository {
   final Dio _dio;
@@ -21,6 +22,8 @@ class ReportRepository {
     required String notasAdicionales,
     required String urgencia,
     required String imagePath,
+    required String referencias,
+    int? radio,
   }) async {
     try {
       FormData formData = FormData.fromMap({
@@ -36,6 +39,8 @@ class ReportRepository {
         'caracteristicas_especiales': caracteristicasEspeciales,
         'notas_adicionales': notasAdicionales,
         'urgencia': urgencia,
+        'referencias': referencias,
+        'radio': (radio ?? 500).toString(),
         'foto': await MultipartFile.fromFile(
           imagePath,
           filename: 'reporte.jpg',
@@ -44,31 +49,84 @@ class ReportRepository {
 
       await _dio.post('/reportes', data: formData);
     } on DioException catch (e) {
-      throw Exception(
+      throw AppException(
         e.response?.data['error'] ?? 'Error al enviar el reporte',
       );
+    } catch (e) {
+      throw AppException('Ocurrió un error inesperado al enviar el reporte');
     }
   }
 
-  // NUEVO METODO PARA ACEPTAR
   Future<void> acceptReport(int id) async {
     try {
       await _dio.put('/reportes/$id/aceptar');
     } on DioException catch (e) {
-      throw Exception(
+      throw AppException(
         e.response?.data['error'] ?? 'Error al aceptar el rescate',
       );
+    } catch (e) {
+      throw AppException('Ocurrió un error inesperado');
     }
   }
 
-  // NUEVO METODO PARA FINALIZAR
-  Future<void> finalizeReport(int id) async {
+  Future<void> abortReport(int id) async {
     try {
-      await _dio.put('/reportes/$id/finalizar');
+      await _dio.put('/reportes/$id/abortar');
     } on DioException catch (e) {
-      throw Exception(
+      throw AppException(
+        e.response?.data['error'] ?? 'Error al abortar el rescate',
+      );
+    } catch (e) {
+      throw AppException('Ocurrió un error inesperado');
+    }
+  }
+
+  Future<void> updateProgress(
+    int id, {
+    bool? animalAvistado,
+    String? lugarTraslado,
+  }) async {
+    try {
+      await _dio.put(
+        '/reportes/$id/progreso',
+        data: {
+          if (animalAvistado != null) 'animal_avistado': animalAvistado,
+          if (lugarTraslado != null) 'lugar_traslado': lugarTraslado,
+        },
+      );
+    } on DioException catch (e) {
+      throw AppException(
+        e.response?.data['error'] ?? 'Error al guardar progreso',
+      );
+    } catch (e) {
+      throw AppException('Ocurrió un error inesperado al guardar progreso');
+    }
+  }
+
+  Future<void> finalizeReport(
+    int id,
+    Map<String, dynamic> detalles,
+    String? evidenciaPath,
+  ) async {
+    try {
+      FormData formData = FormData.fromMap({
+        'condicion': detalles['condicion'],
+        'destino': detalles['destino'],
+        'costo': detalles['costo'].toString(),
+        'conclusion': detalles['conclusion'],
+        if (evidenciaPath != null)
+          'evidencia': await MultipartFile.fromFile(
+            evidenciaPath,
+            filename: 'evidencia.jpg',
+          ),
+      });
+      await _dio.put('/reportes/$id/finalizar', data: formData);
+    } on DioException catch (e) {
+      throw AppException(
         e.response?.data['error'] ?? 'Error al finalizar el rescate',
       );
+    } catch (e) {
+      throw AppException('Ocurrió un error inesperado al finalizar');
     }
   }
 }

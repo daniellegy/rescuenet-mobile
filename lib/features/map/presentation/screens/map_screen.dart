@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -23,6 +24,8 @@ class MapScreen extends ConsumerStatefulWidget {
 class _MapScreenState extends ConsumerState<MapScreen> {
   LatLng? myPosition;
   late final MapController _mapController;
+  String _filtroUrgencia = 'todos';
+  bool _showUrgencyMenu = false;
 
   @override
   void initState() {
@@ -51,6 +54,11 @@ class _MapScreenState extends ConsumerState<MapScreen> {
       setState(() {
         myPosition = LatLng(position.latitude, position.longitude);
       });
+
+      // CORRECCIÓN: Se invalida el proveedor de marcadores justo aquí.
+      // Cuando la app es nueva, esto se dispara inmediatamente después de aceptar los permisos de ubicación
+      // en el diálogo nativo, obligando a Riverpod a reconstruir el mapa con las coordenadas ya disponibles.
+      ref.invalidate(reportesActivosMapaProvider);
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -91,23 +99,87 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     }
   }
 
-  Widget _buildReportMarker(Color urgencyColor) {
+  Widget _buildReportMarker(Color urgencyColor, {bool isInProgress = false}) {
     return Container(
       width: 44,
       height: 44,
       decoration: BoxDecoration(
-        color: urgencyColor.withOpacity(0.15),
+        color: urgencyColor.withValues(alpha: 0.15),
         shape: BoxShape.circle,
         border: Border.all(color: urgencyColor, width: 2.5),
         boxShadow: [
           BoxShadow(
-            color: urgencyColor.withOpacity(0.4),
+            color: urgencyColor.withValues(alpha: 0.4),
             blurRadius: 8,
             spreadRadius: 2,
           ),
         ],
       ),
-      child: Icon(Icons.warning_rounded, color: urgencyColor, size: 24),
+      child: Icon(
+        isInProgress ? Icons.hourglass_top_rounded : Icons.warning_rounded,
+        color: urgencyColor,
+        size: 24,
+      ),
+    );
+  }
+
+  Widget _buildVerticalFilterSelector() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.9),
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.1),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _buildFilterChip('Todos', 'todos', Colors.blue),
+          const SizedBox(height: 8),
+          _buildFilterChip('Alta', 'alta', Colors.red),
+          const SizedBox(height: 8),
+          _buildFilterChip('Media', 'media', Colors.orange),
+          const SizedBox(height: 8),
+          _buildFilterChip('Baja', 'baja', Colors.amber),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFilterChip(String label, String value, Color color) {
+    final bool isSelected = _filtroUrgencia == value;
+    return ChoiceChip(
+      label: SizedBox(
+        width: 46,
+        child: Center(
+          child: Text(
+            label,
+            style: TextStyle(
+              color: isSelected ? Colors.white : Colors.black87,
+              fontSize: 12,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ),
+      ),
+      selected: isSelected,
+      selectedColor: color,
+      backgroundColor: Colors.transparent,
+      showCheckmark: false,
+      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+      onSelected: (bool selected) {
+        if (selected) {
+          setState(() {
+            _filtroUrgencia = value;
+          });
+        }
+      },
     );
   }
 
@@ -124,7 +196,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     return Scaffold(
       extendBody: true,
       appBar: AppBar(
-        title: const Text('Mapa de rescates'),
+        title: const Text('Mapa de rescate'),
         backgroundColor: _kAppBarBg,
         actions: [
           reportesAsync.maybeWhen(
@@ -163,8 +235,13 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                       initialCenter: myPosition!,
                       initialZoom: 18,
                       minZoom: 5,
-                      maxZoom: 25,
-                      // La interacción queda limpia y libre de bucles
+                      maxZoom: 19,
+                      cameraConstraint: CameraConstraint.contain(
+                        bounds: LatLngBounds(
+                          const LatLng(-90.0, -180.0),
+                          const LatLng(90.0, 180.0),
+                        ),
+                      ),
                       interactionOptions: const InteractionOptions(
                         flags: InteractiveFlag.all & ~InteractiveFlag.rotate,
                         enableMultiFingerGestureRace: false,
@@ -179,38 +256,61 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                           'id': 'mapbox/streets-v12',
                         },
                         evictErrorTileStrategy: EvictErrorTileStrategy.dispose,
-                        errorTileCallback: (tile, error, stackTrace) {},
                       ),
                       MarkerLayer(
                         rotate: true,
                         markers: [
                           ...reportesAsync.maybeWhen(
-                            data: (reportes) => reportes.map((reporte) {
-                              return Marker(
-                                point: LatLng(
-                                  reporte.latitud,
-                                  reporte.longitud,
-                                ),
-                                width: 50,
-                                height: 50,
-                                rotate: true,
-                                child: GestureDetector(
-                                  onTap: () {
-                                    context
-                                        .push('/report-detail', extra: reporte)
-                                        .then((_) {
-                                          ref.refresh(
-                                            reportesActivosMapaProvider,
-                                          );
-                                          ref.refresh(miRescateActivoProvider);
-                                        });
-                                  },
-                                  child: _buildReportMarker(
-                                    reporte.colorUrgencia,
-                                  ),
-                                ),
-                              );
-                            }).toList(),
+                            data: (reportes) {
+                              return reportes
+                                  .where((r) {
+                                    if (_filtroUrgencia == 'todos') {
+                                      return true;
+                                    }
+                                    return r.urgencia.toLowerCase() ==
+                                        _filtroUrgencia;
+                                  })
+                                  .map((reporte) {
+                                    final bool estaEnProceso =
+                                        reporte.estado
+                                            .toString()
+                                            .trim()
+                                            .toUpperCase() ==
+                                        'EN_PROCESO';
+
+                                    return Marker(
+                                      point: LatLng(
+                                        reporte.latitud,
+                                        reporte.longitud,
+                                      ),
+                                      width: 50,
+                                      height: 50,
+                                      rotate: true,
+                                      child: GestureDetector(
+                                        onTap: () {
+                                          context
+                                              .push(
+                                                '/report-detail',
+                                                extra: reporte,
+                                              )
+                                              .then((_) {
+                                                ref.invalidate(
+                                                  reportesActivosMapaProvider,
+                                                );
+                                                ref.invalidate(
+                                                  miRescateActivoProvider,
+                                                );
+                                              });
+                                        },
+                                        child: _buildReportMarker(
+                                          reporte.colorUrgencia,
+                                          isInProgress: estaEnProceso,
+                                        ),
+                                      ),
+                                    );
+                                  })
+                                  .toList();
+                            },
                             orElse: () => [],
                           ),
                           if (myPosition != null)
@@ -226,6 +326,207 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                     ],
                   ),
                 ),
+
+                reportesAsync.maybeWhen(
+                  data: (reportes) {
+                    final reportesFiltrados = reportes.where((r) {
+                      if (_filtroUrgencia == 'todos') return true;
+                      return r.urgencia.toLowerCase() == _filtroUrgencia;
+                    }).toList();
+
+                    return LayoutBuilder(
+                      builder: (context, constraints) {
+                        return StreamBuilder<MapEvent>(
+                          stream: _mapController.mapEventStream,
+                          builder: (context, snapshot) {
+                            if (!mounted) return const SizedBox.shrink();
+
+                            final camera = _mapController.camera;
+                            final width = constraints.maxWidth;
+                            final height = constraints.maxHeight;
+
+                            if (width == 0 || height == 0)
+                              return const SizedBox.shrink();
+
+                            final center = Offset(width / 2, height / 2);
+
+                            const topMargin = 24.0;
+                            const sideMargin = 24.0;
+                            const bottomMargin = 130.0;
+
+                            final minX = sideMargin;
+                            final maxX = width - sideMargin;
+                            final minY = topMargin;
+                            final maxY = height - bottomMargin;
+
+                            return Stack(
+                              fit: StackFit.expand,
+                              children: reportesFiltrados.map((reporte) {
+                                final pos = LatLng(
+                                  reporte.latitud,
+                                  reporte.longitud,
+                                );
+
+                                if (camera.visibleBounds.contains(pos)) {
+                                  return const SizedBox.shrink();
+                                }
+
+                                final lat1 =
+                                    camera.center.latitude * math.pi / 180;
+                                final lng1 =
+                                    camera.center.longitude * math.pi / 180;
+                                final lat2 = pos.latitude * math.pi / 180;
+                                final lng2 = pos.longitude * math.pi / 180;
+
+                                final dLng = lng2 - lng1;
+                                final y = math.sin(dLng) * math.cos(lat2);
+                                final x =
+                                    math.cos(lat1) * math.sin(lat2) -
+                                    math.sin(lat1) *
+                                        math.cos(lat2) *
+                                        math.cos(dLng);
+
+                                final bearing = math.atan2(y, x);
+                                final dx = math.sin(bearing);
+                                final dy = -math.cos(bearing);
+
+                                if (dx.abs() < 0.0001 && dy.abs() < 0.0001) {
+                                  return const SizedBox.shrink();
+                                }
+
+                                double t = double.infinity;
+
+                                if (dx.abs() > 0.0001) {
+                                  if (dx > 0)
+                                    t = math.min(t, (maxX - center.dx) / dx);
+                                  if (dx < 0)
+                                    t = math.min(t, (minX - center.dx) / dx);
+                                }
+
+                                if (dy.abs() > 0.0001) {
+                                  if (dy > 0)
+                                    t = math.min(t, (maxY - center.dy) / dy);
+                                  if (dy < 0)
+                                    t = math.min(t, (minY - center.dy) / dy);
+                                }
+
+                                if (t == double.infinity || t.isNaN) {
+                                  return const SizedBox.shrink();
+                                }
+
+                                final indicatorX = center.dx + t * dx;
+                                final indicatorY = center.dy + t * dy;
+
+                                if (indicatorX.isNaN || indicatorY.isNaN) {
+                                  return const SizedBox.shrink();
+                                }
+
+                                final bool estaEnProceso =
+                                    reporte.estado
+                                        .toString()
+                                        .trim()
+                                        .toUpperCase() ==
+                                    'EN_PROCESO';
+
+                                return Positioned(
+                                  left: indicatorX - 18,
+                                  top: indicatorY - 18,
+                                  child: Transform.rotate(
+                                    angle: bearing,
+                                    child: GestureDetector(
+                                      onTap: () {
+                                        _mapController.move(pos, 17);
+                                      },
+                                      child: Container(
+                                        padding: const EdgeInsets.all(6),
+                                        decoration: BoxDecoration(
+                                          color: reporte.colorUrgencia,
+                                          shape: BoxShape.circle,
+                                          boxShadow: [
+                                            BoxShadow(
+                                              color: reporte.colorUrgencia
+                                                  .withValues(alpha: 0.6),
+                                              blurRadius: 8,
+                                              spreadRadius: 2,
+                                            ),
+                                          ],
+                                          border: Border.all(
+                                            color: Colors.white,
+                                            width: 2,
+                                          ),
+                                        ),
+                                        child: Icon(
+                                          estaEnProceso
+                                              ? Icons.hourglass_top_rounded
+                                              : Icons.arrow_upward_rounded,
+                                          color: Colors.white,
+                                          size: 18,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              }).toList(),
+                            );
+                          },
+                        );
+                      },
+                    );
+                  },
+                  orElse: () => const SizedBox.shrink(),
+                ),
+
+                Positioned(
+                  bottom: 200,
+                  right: 16,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      FloatingActionButton(
+                        heroTag: 'toggle_filter_btn',
+                        mini: true,
+                        backgroundColor: Colors.white,
+                        foregroundColor: Colors.blueGrey,
+                        elevation: 4,
+                        onPressed: () {
+                          setState(() {
+                            _showUrgencyMenu = !_showUrgencyMenu;
+                          });
+                        },
+                        child: Icon(
+                          _showUrgencyMenu
+                              ? Icons.close_rounded
+                              : Icons.filter_list_rounded,
+                        ),
+                      ),
+                      if (_showUrgencyMenu) ...[
+                        const SizedBox(height: 12),
+                        _buildVerticalFilterSelector(),
+                      ],
+                    ],
+                  ),
+                ),
+
+                Positioned(
+                  bottom: 140,
+                  right: 16,
+                  child: FloatingActionButton(
+                    heroTag: 'my_location_btn',
+                    mini: true,
+                    backgroundColor: Colors.white,
+                    foregroundColor: Colors.blueAccent,
+                    elevation: 4,
+                    child: const Icon(Icons.my_location),
+                    onPressed: () {
+                      if (myPosition != null) {
+                        _mapController.move(myPosition!, 18);
+                      } else {
+                        _fetchCurrentLocation();
+                      }
+                    },
+                  ),
+                ),
+
                 miRescateAsync.maybeWhen(
                   data: (rescate) {
                     if (rescate == null) return const SizedBox.shrink();
@@ -238,8 +539,8 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                           context.push('/report-detail', extra: rescate).then((
                             _,
                           ) {
-                            ref.refresh(reportesActivosMapaProvider);
-                            ref.refresh(miRescateActivoProvider);
+                            ref.invalidate(reportesActivosMapaProvider);
+                            ref.invalidate(miRescateActivoProvider);
                           });
                         },
                         child: Card(

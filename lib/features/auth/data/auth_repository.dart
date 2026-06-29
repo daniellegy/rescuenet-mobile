@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/network/dio_client.dart';
+import '../../../../core/errors/app_exception.dart';
 
 class AuthRepository {
   final Dio _dio;
@@ -15,7 +16,11 @@ class AuthRepository {
       );
       return response.data;
     } on DioException catch (e) {
-      throw Exception(e.response?.data['error'] ?? 'Credenciales incorrectas');
+      throw AppException(
+        e.response?.data['error'] ?? 'Credenciales incorrectas',
+      );
+    } catch (e) {
+      throw AppException('Error de conexión inesperado');
     }
   }
 
@@ -25,6 +30,7 @@ class AuthRepository {
     required String email,
     required String password,
     required int rolId,
+    String? curp,
   }) async {
     try {
       final response = await _dio.post(
@@ -35,13 +41,16 @@ class AuthRepository {
           'email': email,
           'password': password,
           'rol_id': rolId,
+          if (curp != null) 'curp': curp,
         },
       );
       return response.data;
     } on DioException catch (e) {
-      throw Exception(
+      throw AppException(
         e.response?.data['error'] ?? 'Error al registrar usuario',
       );
+    } catch (e) {
+      throw AppException('Error de conexión inesperado');
     }
   }
 }

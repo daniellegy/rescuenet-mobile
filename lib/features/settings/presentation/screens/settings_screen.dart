@@ -4,6 +4,9 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../providers/settings_provider.dart';
 
+import '../../../map/presentation/providers/map_markers_provider.dart';
+import '../../../reports/presentation/providers/active_reports_provider.dart';
+
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
 
@@ -93,30 +96,60 @@ class SettingsScreen extends ConsumerWidget {
       trailing: isSelected
           ? const Icon(Icons.check_circle, color: Colors.green)
           : const Icon(Icons.circle_outlined),
-      onTap: () {
-        Navigator.pop(context); // Cierra el modal de opciones
+      onTap: () async {
+        Navigator.pop(context);
+        if (rolTarget == rolActual) return;
 
-        if (rolTarget == rolActual) return; // No hace nada si elige el mismo
+        String? tokenFCM;
+        if (rolTarget == 2) {
+          final acepto = await _mostrarManifiestoVoluntario(context);
+          if (!acepto) return;
 
-        // INTERCEPCIÓN LOGICA: Si quiere ser voluntario y no tiene CURP
+          // MODIFICADO: Si cambia a Voluntario, solicita permisos oportunamente y recupera el token
+          try {
+            final messaging = FirebaseMessaging.instance;
+            NotificationSettings settings = await messaging
+                .getNotificationSettings();
+            if (settings.authorizationStatus !=
+                AuthorizationStatus.authorized) {
+              settings = await messaging.requestPermission(
+                alert: true,
+                badge: true,
+                sound: true,
+              );
+            }
+            if (settings.authorizationStatus ==
+                AuthorizationStatus.authorized) {
+              tokenFCM = await messaging.getToken();
+            }
+          } catch (e) {
+            debugPrint('Error solicitando permisos FCM en cambio de rol: $e');
+          }
+        }
+
+        if (!context.mounted) return;
+
         if (rolTarget == 2 &&
             (curpActual == null || curpActual.trim().isEmpty)) {
-          _mostrarDialogoRegistroCurp(context, ref);
+          _mostrarDialogoRegistroCurp(context, ref, tokenFCM);
         } else {
-          // Si es un cambio normal (o ya tiene CURP), procede directamente
-          _procesarCambioDeRol(context, ref, rolTarget, titulo, null);
+          _procesarCambioDeRol(context, ref, rolTarget, titulo, null, tokenFCM);
         }
       },
     );
   }
 
-  // NUEVO MODAL: Captura obligatoria de CURP
-  void _mostrarDialogoRegistroCurp(BuildContext context, WidgetRef ref) {
+  void _mostrarDialogoRegistroCurp(
+    BuildContext context,
+    WidgetRef ref,
+    String? tokenFCM,
+  ) {
     final TextEditingController curpController = TextEditingController();
+    final curpRegex = RegExp(r'^[A-Z]{4}\d{6}[HM][A-Z]{5}[A-Z\d]\d$');
 
     showDialog(
       context: context,
-      barrierDismissible: false, // Obliga al usuario a interactuar
+      barrierDismissible: false,
       builder: (context) {
         return AlertDialog(
           title: const Text('Completar Registro'),
@@ -152,25 +185,25 @@ class SettingsScreen extends ConsumerWidget {
             FilledButton(
               onPressed: () {
                 final curpIngresada = curpController.text.trim().toUpperCase();
-                if (curpIngresada.length != 18) {
+
+                if (!curpRegex.hasMatch(curpIngresada)) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
-                      content: Text(
-                        'La CURP debe tener exactamente 18 caracteres',
-                      ),
+                      content: Text('El formato del CURP es inválido.'),
                       backgroundColor: Colors.red,
                     ),
                   );
                   return;
                 }
+
                 Navigator.pop(context);
-                // Procede a ejecutar el cambio de rol pasando la nueva CURP
                 _procesarCambioDeRol(
                   context,
                   ref,
                   2,
                   'Voluntario',
                   curpIngresada,
+                  tokenFCM,
                 );
               },
               style: FilledButton.styleFrom(backgroundColor: Colors.redAccent),
@@ -188,19 +221,16 @@ class SettingsScreen extends ConsumerWidget {
     int rolTarget,
     String titulo,
     String? nuevaCurp,
+    String? tokenFCM,
   ) async {
     try {
-      // 1. Actualizamos la Base de Datos (enviando el rol y la curp si aplica)
       await ref
           .read(userProfileProvider.notifier)
-          .actualizarCampo(role: rolTarget, curp: nuevaCurp);
-
-      // 2. Modificamos la suscripción a notificaciones push
-      if (rolTarget == 2) {
-        await FirebaseMessaging.instance.subscribeToTopic('voluntarios');
-      } else {
-        await FirebaseMessaging.instance.unsubscribeFromTopic('voluntarios');
-      }
+          .actualizarCampo(
+            role: rolTarget,
+            curp: nuevaCurp,
+            fcmToken: tokenFCM,
+          );
 
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -213,10 +243,7 @@ class SettingsScreen extends ConsumerWidget {
     } catch (e) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(e.toString().replaceAll('Exception: ', '')),
-            backgroundColor: Colors.red,
-          ),
+          SnackBar(content: Text(e.toString()), backgroundColor: Colors.red),
         );
       }
     }
@@ -259,6 +286,33 @@ class SettingsScreen extends ConsumerWidget {
             FilledButton(
               onPressed: () async {
                 final nuevoValor = controller.text.trim();
+
+                if (campoBaseDatos == 'email') {
+                  final emailRegex = RegExp(
+                    r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$',
+                  );
+                  if (!emailRegex.hasMatch(nuevoValor)) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Formato de correo inválido'),
+                        backgroundColor: Colors.red,
+                      ),
+                    );
+                    return;
+                  }
+                } else if (campoBaseDatos == 'telefono') {
+                  final phoneRegex = RegExp(r'^\d{10}$');
+                  if (!phoneRegex.hasMatch(nuevoValor)) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('El teléfono debe tener 10 dígitos'),
+                        backgroundColor: Colors.red,
+                      ),
+                    );
+                    return;
+                  }
+                }
+
                 if (nuevoValor.isNotEmpty && nuevoValor != valorActual) {
                   Navigator.pop(context);
                   try {
@@ -284,9 +338,7 @@ class SettingsScreen extends ConsumerWidget {
                     if (context.mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
-                          content: Text(
-                            e.toString().replaceAll('Exception: ', ''),
-                          ),
+                          content: Text(e.toString()),
                           backgroundColor: Colors.red,
                         ),
                       );
@@ -301,6 +353,115 @@ class SettingsScreen extends ConsumerWidget {
         );
       },
     );
+  }
+
+  void _mostrarDialogoRadio(
+    BuildContext context,
+    WidgetRef ref,
+    int radioActual,
+  ) {
+    int radioSeleccionado = radioActual;
+    showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              title: const Text('Radio de Alertas (km)'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    'Verás reportes y recibirás alertas de rescates a un máximo de $radioSeleccionado km a la redonda.',
+                    style: const TextStyle(fontSize: 14),
+                  ),
+                  const SizedBox(height: 16),
+                  Slider(
+                    value: radioSeleccionado.toDouble(),
+                    min: 5,
+                    max: 100,
+                    divisions: 19,
+                    label: '$radioSeleccionado km',
+                    activeColor: Colors.purple,
+                    onChanged: (val) =>
+                        setState(() => radioSeleccionado = val.toInt()),
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Cancelar'),
+                ),
+                FilledButton(
+                  onPressed: () async {
+                    Navigator.pop(context);
+                    if (radioSeleccionado != radioActual) {
+                      try {
+                        await ref
+                            .read(userProfileProvider.notifier)
+                            .actualizarCampo(
+                              radioNotificaciones: radioSeleccionado,
+                            );
+
+                        ref.invalidate(reportesActivosMapaProvider);
+                        ref.invalidate(activeReportsProvider);
+
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Radio actualizado exitosamente'),
+                              backgroundColor: Colors.green,
+                            ),
+                          );
+                        }
+                      } catch (e) {
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(e.toString()),
+                              backgroundColor: Colors.red,
+                            ),
+                          );
+                        }
+                      }
+                    }
+                  },
+                  child: const Text('Guardar'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Future<bool> _mostrarManifiestoVoluntario(BuildContext context) async {
+    return await showDialog<bool>(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => AlertDialog(
+            title: const Text(
+              'Manifiesto de Voluntario',
+              style: TextStyle(fontSize: 18),
+            ),
+            content: const Text(
+              'Declaro que los gastos derivados corren por mi cuenta u originados por financiamiento colectivo ajeno a la app.',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('Cancelar'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.pop(context, true),
+                child: const Text('Acepto la responsabilidad'),
+              ),
+            ],
+          ),
+        ) ??
+        false;
   }
 
   @override
@@ -319,9 +480,20 @@ class SettingsScreen extends ConsumerWidget {
           final email = datos['email'] ?? 'Sin registrar';
           final curp = datos['curp'];
           final int rolActualId = datos['role'] ?? 1;
+          final int radioNotificaciones = datos['radio_notificaciones'] ?? 30;
+
+          // MODIFICADO: Extrae el estado del token para saber si las notificaciones están encendidas
+          final String? tokenFCMActual = datos['fcm_token'];
+          final bool notificacionesActivas =
+              tokenFCMActual != null && tokenFCMActual.trim().isNotEmpty;
 
           return ListView(
-            padding: const EdgeInsets.all(16.0),
+            padding: const EdgeInsets.only(
+              left: 16.0,
+              right: 16.0,
+              top: 16.0,
+              bottom: 120.0,
+            ),
             children: [
               const SizedBox(height: 20),
               const Center(
@@ -353,7 +525,6 @@ class SettingsScreen extends ConsumerWidget {
               ),
               const SizedBox(height: 8),
 
-              // 1. Selector de Rol (Pasamos la curpActual para evaluarla internamente)
               ListTile(
                 leading: const Icon(
                   Icons.volunteer_activism,
@@ -367,7 +538,6 @@ class SettingsScreen extends ConsumerWidget {
               ),
               const Divider(height: 1),
 
-              // 2. Modificar Correo
               ListTile(
                 leading: const Icon(
                   Icons.email_outlined,
@@ -385,7 +555,6 @@ class SettingsScreen extends ConsumerWidget {
               ),
               const Divider(height: 1),
 
-              // 3. Modificar Teléfono
               ListTile(
                 leading: const Icon(Icons.phone_android, color: Colors.green),
                 title: const Text('Teléfono Móvil'),
@@ -404,7 +573,6 @@ class SettingsScreen extends ConsumerWidget {
                 ),
               ),
 
-              // 4. Mostrar CURP Dinámicamente (Solo lectura para Voluntarios)
               if (rolActualId == 2 &&
                   curp != null &&
                   curp.toString().isNotEmpty) ...[
@@ -430,9 +598,97 @@ class SettingsScreen extends ConsumerWidget {
                 ),
               ],
 
+              const SizedBox(height: 32),
+
+              // MODIFICADO: Nueva sección completamente separada e independiente para el control de alertas
+              const Text(
+                'Preferencias de Alertas',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.red,
+                ),
+              ),
+              const SizedBox(height: 8),
+
+              SwitchListTile(
+                secondary: const Icon(
+                  Icons.notifications_active,
+                  color: Colors.teal,
+                ),
+                title: const Text('Notificaciones Push'),
+                subtitle: Text(
+                  notificacionesActivas ? 'Activadas' : 'Desactivadas',
+                ),
+                value: notificacionesActivas,
+                activeColor: Colors.redAccent,
+                onChanged: (bool value) async {
+                  if (value) {
+                    try {
+                      final messaging = FirebaseMessaging.instance;
+                      NotificationSettings settings = await messaging
+                          .requestPermission(
+                            alert: true,
+                            badge: true,
+                            sound: true,
+                          );
+
+                      if (settings.authorizationStatus ==
+                          AuthorizationStatus.authorized) {
+                        final token = await messaging.getToken();
+                        if (token != null) {
+                          await ref
+                              .read(userProfileProvider.notifier)
+                              .actualizarCampo(fcmToken: token);
+                        }
+                      } else {
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text(
+                                'Permiso denegado por el sistema operacional.',
+                              ),
+                              backgroundColor: Colors.orange,
+                            ),
+                          );
+                        }
+                      }
+                    } catch (e) {
+                      debugPrint(
+                        'Error al activar notificaciones desde switch: $e',
+                      );
+                    }
+                  } else {
+                    try {
+                      // Envía la bandera 'CLEAR' al backend para remover el token de forma segura
+                      await ref
+                          .read(userProfileProvider.notifier)
+                          .actualizarCampo(fcmToken: 'CLEAR');
+                    } catch (e) {
+                      debugPrint(
+                        'Error al desactivar notificaciones desde switch: $e',
+                      );
+                    }
+                  }
+                },
+              ),
+              const Divider(height: 1),
+
+              ListTile(
+                leading: const Icon(Icons.radar, color: Colors.purple),
+                title: const Text('Radio de Búsqueda'),
+                subtitle: Text('$radioNotificaciones km de área para alertas'),
+                trailing: const Icon(
+                  Icons.edit,
+                  size: 18,
+                  color: Colors.redAccent,
+                ),
+                onTap: () =>
+                    _mostrarDialogoRadio(context, ref, radioNotificaciones),
+              ),
+
               const Divider(height: 40),
 
-              // 5. Botón de Cerrar Sesión
               ListTile(
                 leading: const Icon(Icons.logout, color: Colors.red),
                 title: const Text(
