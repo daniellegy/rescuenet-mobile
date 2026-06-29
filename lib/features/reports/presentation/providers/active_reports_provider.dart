@@ -1,6 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:geolocator/geolocator.dart';
 import '../../../../core/network/dio_client.dart';
+import '../../../../core/services/location_service.dart';
 import '../../../history/domain/models/report_model.dart';
 
 final activeReportsProvider = FutureProvider.autoDispose<List<ReportModel>>((
@@ -12,21 +12,16 @@ final activeReportsProvider = FutureProvider.autoDispose<List<ReportModel>>((
   double? lng;
 
   try {
-    // Si la app tiene permiso, captura la coordenada silenciosamente para el filtro de rescates
-    final permission = await Geolocator.checkPermission();
-    if (permission == LocationPermission.whileInUse ||
-        permission == LocationPermission.always) {
-      // CORRECCIÓN: Uso de LocationSettings en lugar de desiredAccuracy
-      final position = await Geolocator.getCurrentPosition(
-        locationSettings: const LocationSettings(
-          accuracy: LocationAccuracy.medium,
-        ),
-      );
-      lat = position.latitude;
-      lng = position.longitude;
-    }
+    final locationService = ref.read(locationServiceProvider);
+    // Uso del servicio optimizado para reflejar la recarga al instante
+    final position = await locationService.getCurrentPosition(
+      requestPermission: false,
+    );
+
+    lat = position.latitude;
+    lng = position.longitude;
   } catch (_) {
-    // Si el GPS está apagado, se usará la "última ubicación" conocida por el backend
+    // Falla silenciosa, si no hay GPS se enviará al backend nulo y usará la última conocida en DB
   }
 
   String url = '/reportes/activos';

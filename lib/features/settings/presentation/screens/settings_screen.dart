@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../providers/settings_provider.dart';
+
+import '../../../map/presentation/providers/map_markers_provider.dart';
+import '../../../reports/presentation/providers/active_reports_provider.dart';
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
@@ -96,24 +100,50 @@ class SettingsScreen extends ConsumerWidget {
         Navigator.pop(context);
         if (rolTarget == rolActual) return;
 
+        String? tokenFCM;
         if (rolTarget == 2) {
           final acepto = await _mostrarManifiestoVoluntario(context);
           if (!acepto) return;
+
+          // MODIFICADO: Si cambia a Voluntario, solicita permisos oportunamente y recupera el token
+          try {
+            final messaging = FirebaseMessaging.instance;
+            NotificationSettings settings = await messaging
+                .getNotificationSettings();
+            if (settings.authorizationStatus !=
+                AuthorizationStatus.authorized) {
+              settings = await messaging.requestPermission(
+                alert: true,
+                badge: true,
+                sound: true,
+              );
+            }
+            if (settings.authorizationStatus ==
+                AuthorizationStatus.authorized) {
+              tokenFCM = await messaging.getToken();
+            }
+          } catch (e) {
+            debugPrint('Error solicitando permisos FCM en cambio de rol: $e');
+          }
         }
 
         if (!context.mounted) return;
 
         if (rolTarget == 2 &&
             (curpActual == null || curpActual.trim().isEmpty)) {
-          _mostrarDialogoRegistroCurp(context, ref);
+          _mostrarDialogoRegistroCurp(context, ref, tokenFCM);
         } else {
-          _procesarCambioDeRol(context, ref, rolTarget, titulo, null);
+          _procesarCambioDeRol(context, ref, rolTarget, titulo, null, tokenFCM);
         }
       },
     );
   }
 
-  void _mostrarDialogoRegistroCurp(BuildContext context, WidgetRef ref) {
+  void _mostrarDialogoRegistroCurp(
+    BuildContext context,
+    WidgetRef ref,
+    String? tokenFCM,
+  ) {
     final TextEditingController curpController = TextEditingController();
     final curpRegex = RegExp(r'^[A-Z]{4}\d{6}[HM][A-Z]{5}[A-Z\d]\d$');
 
@@ -173,6 +203,7 @@ class SettingsScreen extends ConsumerWidget {
                   2,
                   'Voluntario',
                   curpIngresada,
+                  tokenFCM,
                 );
               },
               style: FilledButton.styleFrom(backgroundColor: Colors.redAccent),
@@ -190,11 +221,16 @@ class SettingsScreen extends ConsumerWidget {
     int rolTarget,
     String titulo,
     String? nuevaCurp,
+    String? tokenFCM,
   ) async {
     try {
       await ref
           .read(userProfileProvider.notifier)
-          .actualizarCampo(role: rolTarget, curp: nuevaCurp);
+          .actualizarCampo(
+            role: rolTarget,
+            curp: nuevaCurp,
+            fcmToken: tokenFCM,
+          );
 
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -367,6 +403,10 @@ class SettingsScreen extends ConsumerWidget {
                             .actualizarCampo(
                               radioNotificaciones: radioSeleccionado,
                             );
+
+                        ref.invalidate(reportesActivosMapaProvider);
+                        ref.invalidate(activeReportsProvider);
+
                         if (context.mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(
@@ -442,8 +482,12 @@ class SettingsScreen extends ConsumerWidget {
           final int rolActualId = datos['role'] ?? 1;
           final int radioNotificaciones = datos['radio_notificaciones'] ?? 30;
 
+          // MODIFICADO: Extrae el estado del token para saber si las notificaciones están encendidas
+          final String? tokenFCMActual = datos['fcm_token'];
+          final bool notificacionesActivas =
+              tokenFCMActual != null && tokenFCMActual.trim().isNotEmpty;
+
           return ListView(
-            // CORRECCIÓN: Padding bottom de 120 para liberar el BottomNavigationBar
             padding: const EdgeInsets.only(
               left: 16.0,
               right: 16.0,
@@ -528,20 +572,6 @@ class SettingsScreen extends ConsumerWidget {
                   'telefono',
                 ),
               ),
-              const Divider(height: 1),
-
-              ListTile(
-                leading: const Icon(Icons.radar, color: Colors.purple),
-                title: const Text('Radio de Búsqueda'),
-                subtitle: Text('$radioNotificaciones km de área para alertas'),
-                trailing: const Icon(
-                  Icons.edit,
-                  size: 18,
-                  color: Colors.redAccent,
-                ),
-                onTap: () =>
-                    _mostrarDialogoRadio(context, ref, radioNotificaciones),
-              ),
 
               if (rolActualId == 2 &&
                   curp != null &&
@@ -567,6 +597,95 @@ class SettingsScreen extends ConsumerWidget {
                   ),
                 ),
               ],
+
+              const SizedBox(height: 32),
+
+              // MODIFICADO: Nueva sección completamente separada e independiente para el control de alertas
+              const Text(
+                'Preferencias de Alertas',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.red,
+                ),
+              ),
+              const SizedBox(height: 8),
+
+              SwitchListTile(
+                secondary: const Icon(
+                  Icons.notifications_active,
+                  color: Colors.teal,
+                ),
+                title: const Text('Notificaciones Push'),
+                subtitle: Text(
+                  notificacionesActivas ? 'Activadas' : 'Desactivadas',
+                ),
+                value: notificacionesActivas,
+                activeColor: Colors.redAccent,
+                onChanged: (bool value) async {
+                  if (value) {
+                    try {
+                      final messaging = FirebaseMessaging.instance;
+                      NotificationSettings settings = await messaging
+                          .requestPermission(
+                            alert: true,
+                            badge: true,
+                            sound: true,
+                          );
+
+                      if (settings.authorizationStatus ==
+                          AuthorizationStatus.authorized) {
+                        final token = await messaging.getToken();
+                        if (token != null) {
+                          await ref
+                              .read(userProfileProvider.notifier)
+                              .actualizarCampo(fcmToken: token);
+                        }
+                      } else {
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text(
+                                'Permiso denegado por el sistema operacional.',
+                              ),
+                              backgroundColor: Colors.orange,
+                            ),
+                          );
+                        }
+                      }
+                    } catch (e) {
+                      debugPrint(
+                        'Error al activar notificaciones desde switch: $e',
+                      );
+                    }
+                  } else {
+                    try {
+                      // Envía la bandera 'CLEAR' al backend para remover el token de forma segura
+                      await ref
+                          .read(userProfileProvider.notifier)
+                          .actualizarCampo(fcmToken: 'CLEAR');
+                    } catch (e) {
+                      debugPrint(
+                        'Error al desactivar notificaciones desde switch: $e',
+                      );
+                    }
+                  }
+                },
+              ),
+              const Divider(height: 1),
+
+              ListTile(
+                leading: const Icon(Icons.radar, color: Colors.purple),
+                title: const Text('Radio de Búsqueda'),
+                subtitle: Text('$radioNotificaciones km de área para alertas'),
+                trailing: const Icon(
+                  Icons.edit,
+                  size: 18,
+                  color: Colors.redAccent,
+                ),
+                onTap: () =>
+                    _mostrarDialogoRadio(context, ref, radioNotificaciones),
+              ),
 
               const Divider(height: 40),
 

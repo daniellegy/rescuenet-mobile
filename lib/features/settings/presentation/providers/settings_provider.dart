@@ -32,13 +32,14 @@ class UserProfileNotifier extends AsyncNotifier<Map<String, dynamic>> {
     int? role,
     String? curp,
     int? radioNotificaciones,
+    String?
+    fcmToken, // MODIFICADO: Soporte para actualizar/limpiar el token FCM
   }) async {
     final dio = ref.read(dioProvider).instance;
 
     try {
       final Map<String, dynamic> datosAActualizar = {};
 
-      // CORRECCIÓN: Agregar llaves a todas las estructuras de control
       if (telefono != null) {
         datosAActualizar['telefono'] = telefono;
       }
@@ -53,6 +54,9 @@ class UserProfileNotifier extends AsyncNotifier<Map<String, dynamic>> {
       }
       if (radioNotificaciones != null) {
         datosAActualizar['radio_notificaciones'] = radioNotificaciones;
+      }
+      if (fcmToken != null) {
+        datosAActualizar['fcm_token'] = fcmToken;
       }
 
       final response = await dio.put('/auth/perfil', data: datosAActualizar);

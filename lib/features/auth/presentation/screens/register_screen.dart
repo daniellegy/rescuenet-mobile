@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:mask_text_input_formatter/mask_text_input_formatter.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import '../providers/auth_provider.dart';
 
 class RegisterScreen extends ConsumerStatefulWidget {
@@ -87,6 +88,17 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       if (_selectedRole == 'Voluntario') {
         final acepto = await _mostrarManifiestoVoluntario();
         if (!acepto) return;
+
+        // MODIFICADO: Solicitud de permisos Push oportuna sólo para Voluntarios
+        try {
+          await FirebaseMessaging.instance.requestPermission(
+            alert: true,
+            badge: true,
+            sound: true,
+          );
+        } catch (e) {
+          debugPrint('Error al solicitar permisos FCM en registro: $e');
+        }
       }
 
       try {
