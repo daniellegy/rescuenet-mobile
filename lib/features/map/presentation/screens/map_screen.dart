@@ -24,7 +24,7 @@ class MapScreen extends ConsumerStatefulWidget {
 class _MapScreenState extends ConsumerState<MapScreen> {
   LatLng? myPosition;
   late final MapController _mapController;
-  String _filtroUrgencia = 'todos'; // Estados: 'todos', 'alta', 'media', 'baja'
+  String _filtroUrgencia = 'todos';
   bool _showUrgencyMenu = false;
 
   @override
@@ -118,7 +118,6 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     );
   }
 
-  // BARRA FLOTANTE VERTICAL
   Widget _buildVerticalFilterSelector() {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
@@ -152,7 +151,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     final bool isSelected = _filtroUrgencia == value;
     return ChoiceChip(
       label: SizedBox(
-        width: 46, // Ancho fijo para mantener la simetría de la columna
+        width: 46,
         child: Center(
           child: Text(
             label,
@@ -323,7 +322,6 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                   ),
                 ),
 
-                // RADAR PERIFÉRICO CORREGIDO
                 reportesAsync.maybeWhen(
                   data: (reportes) {
                     final reportesFiltrados = reportes.where((r) {
@@ -357,7 +355,6 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                             final maxY = height - bottomMargin;
 
                             return Stack(
-                              // CLAVE DE LA CORRECCIÓN: Evita el colapso a 0x0 cuando hay SizedBox.shrink
                               fit: StackFit.expand,
                               children: reportesFiltrados.map((reporte) {
                                 final pos = LatLng(
@@ -474,15 +471,15 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                   orElse: () => const SizedBox.shrink(),
                 ),
 
-                // FILTRO UBICADO EN LATERAL DERECHO
+                // CORRECCIÓN: Botones superpuestos desplazados hacia arriba (bottom incrementado)
                 Positioned(
-                  bottom: 160, 
+                  bottom: 200,
                   right: 16,
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
                       FloatingActionButton(
-                        heroTag: 'toggle_filter_btn', // Evita conflictos de hero tags con el botón de cámara
+                        heroTag: 'toggle_filter_btn',
                         mini: true,
                         backgroundColor: Colors.white,
                         foregroundColor: Colors.blueGrey,
@@ -493,10 +490,11 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                           });
                         },
                         child: Icon(
-                          _showUrgencyMenu ? Icons.close_rounded : Icons.filter_list_rounded,
+                          _showUrgencyMenu
+                              ? Icons.close_rounded
+                              : Icons.filter_list_rounded,
                         ),
                       ),
-                      // El menú solo se renderiza si _showUrgencyMenu es true
                       if (_showUrgencyMenu) ...[
                         const SizedBox(height: 12),
                         _buildVerticalFilterSelector(),
@@ -505,7 +503,27 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                   ),
                 ),
 
-                // TARJETA DE RESCATE ACTIVO EN LA PARTE SUPERIOR
+                Positioned(
+                  bottom:
+                      140, // Incrementado de 110 a 140 para librar el BottomNav
+                  right: 16,
+                  child: FloatingActionButton(
+                    heroTag: 'my_location_btn',
+                    mini: true,
+                    backgroundColor: Colors.white,
+                    foregroundColor: Colors.blueAccent,
+                    elevation: 4,
+                    child: const Icon(Icons.my_location),
+                    onPressed: () {
+                      if (myPosition != null) {
+                        _mapController.move(myPosition!, 18);
+                      } else {
+                        _fetchCurrentLocation();
+                      }
+                    },
+                  ),
+                ),
+
                 miRescateAsync.maybeWhen(
                   data: (rescate) {
                     if (rescate == null) return const SizedBox.shrink();
@@ -551,24 +569,6 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                     );
                   },
                   orElse: () => const SizedBox.shrink(),
-                ),
-                Positioned(
-                  bottom: 110,
-                  right: 16,
-                  child: FloatingActionButton(
-                    mini: true,
-                    backgroundColor: Colors.white,
-                    foregroundColor: Colors.blueAccent,
-                    elevation: 4,
-                    child: const Icon(Icons.my_location),
-                    onPressed: () {
-                      if (myPosition != null) {
-                        _mapController.move(myPosition!, 18);
-                      } else {
-                        _fetchCurrentLocation();
-                      }
-                    },
-                  ),
                 ),
               ],
             ),

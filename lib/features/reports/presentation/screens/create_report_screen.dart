@@ -26,7 +26,7 @@ final List<String> _razasGatos = [
   'Siamés',
   'Carey / Calicó',
   'Persa / Angora',
-  'Otro gato de raza',
+  'Otro', // MODIFICADO
 ];
 
 final List<String> _silvestresPuebla = [
@@ -74,14 +74,14 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
   final _formKey = GlobalKey<FormState>();
   final _caracController = TextEditingController();
   final _referenciasController = TextEditingController();
+  final _razaPersonalizadaController =
+      TextEditingController(); // NUEVO CONTROLADOR
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final notifier = ref.read(createReportProvider.notifier);
-
-      // GARANTÍA DE LIMPIEZA: Forzamos el reset justo al abrir la pantalla
       notifier.reset();
       notifier.setInitialLocation(widget.lat, widget.lng);
     });
@@ -91,6 +91,7 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
   void dispose() {
     _caracController.dispose();
     _referenciasController.dispose();
+    _razaPersonalizadaController.dispose();
     super.dispose();
   }
 
@@ -104,12 +105,13 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
         imagePath: widget.imagePath,
         caracteristicas: _caracController.text,
         referencias: _referenciasController.text,
+        razaPersonalizada: _razaPersonalizadaController.text, // ENVIANDO DATO
       );
 
       if (mounted) {
-        // Limpiamos los controladores de texto por si acaso la vista se retiene
         _caracController.clear();
         _referenciasController.clear();
+        _razaPersonalizadaController.clear();
 
         ref.invalidate(reportesActivosMapaProvider);
         ref.invalidate(activeReportsProvider);
@@ -252,6 +254,25 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
                             : null,
                       ),
                       const SizedBox(height: 16),
+
+                      // CAMPO ABIERTO DINÁMICO
+                      if (state.razaSeleccionada == 'Otro') ...[
+                        TextFormField(
+                          controller: _razaPersonalizadaController,
+                          textCapitalization: TextCapitalization.words,
+                          decoration: const InputDecoration(
+                            labelText: 'Especificar Raza / Especie',
+                            border: OutlineInputBorder(),
+                            prefixIcon: Icon(Icons.edit),
+                            hintText: 'Ej. Cruza de pastor',
+                          ),
+                          validator: (value) =>
+                              value == null || value.trim().isEmpty
+                              ? 'Por favor escribe la raza o especie'
+                              : null,
+                        ),
+                        const SizedBox(height: 16),
+                      ],
                     ],
 
                     const Text(

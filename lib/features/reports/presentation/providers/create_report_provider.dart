@@ -64,7 +64,6 @@ class CreateReportState {
   }
 }
 
-// Usamos Notifier<T>, el cual está comprobado que funciona en tu app (ej. RescueStepperNotifier)
 class CreateReportNotifier extends Notifier<CreateReportState> {
   @override
   CreateReportState build() {
@@ -104,7 +103,6 @@ class CreateReportNotifier extends Notifier<CreateReportState> {
     );
   }
 
-  // MÉTODO NUEVO: Limpia el estado a sus valores por defecto
   void reset() {
     state = CreateReportState(lat: 0.0, lng: 0.0);
   }
@@ -113,6 +111,7 @@ class CreateReportNotifier extends Notifier<CreateReportState> {
     required String imagePath,
     required String caracteristicas,
     required String referencias,
+    String? razaPersonalizada, // NUEVO PARÁMETRO
   }) async {
     if (state.especie == null ||
         state.razaSeleccionada == null ||
@@ -127,6 +126,14 @@ class CreateReportNotifier extends Notifier<CreateReportState> {
     try {
       final repository = ref.read(reportRepositoryProvider);
 
+      // LÓGICA: Si es "Otro" y escribieron algo, guardamos el texto manual
+      final razaFinal =
+          (state.razaSeleccionada == 'Otro' &&
+              razaPersonalizada != null &&
+              razaPersonalizada.trim().isNotEmpty)
+          ? razaPersonalizada.trim()
+          : state.razaSeleccionada!;
+
       await repository.createReport(
         lat: state.lat,
         lng: state.lng,
@@ -136,7 +143,7 @@ class CreateReportNotifier extends Notifier<CreateReportState> {
         edadAprox: state.edad,
         tamano: state.tamano,
         agresividad: state.agresividad.toInt(),
-        razaAprox: state.razaSeleccionada!,
+        razaAprox: razaFinal,
         caracteristicasEspeciales: caracteristicas,
         notasAdicionales: '',
         urgencia: state.urgenciaSeleccionada,
@@ -150,7 +157,6 @@ class CreateReportNotifier extends Notifier<CreateReportState> {
   }
 }
 
-// Usamos el Provider estándar
 final createReportProvider =
     NotifierProvider<CreateReportNotifier, CreateReportState>(
       () => CreateReportNotifier(),

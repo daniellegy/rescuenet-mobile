@@ -101,7 +101,6 @@ class SettingsScreen extends ConsumerWidget {
           if (!acepto) return;
         }
 
-        // CORRECCIÓN: Validación asíncrona de BuildContext
         if (!context.mounted) return;
 
         if (rolTarget == 2 &&
@@ -368,8 +367,6 @@ class SettingsScreen extends ConsumerWidget {
                             .actualizarCampo(
                               radioNotificaciones: radioSeleccionado,
                             );
-
-                        // CORRECCIÓN: Encerrar las declaraciones en bloque {}
                         if (context.mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(
@@ -379,7 +376,6 @@ class SettingsScreen extends ConsumerWidget {
                           );
                         }
                       } catch (e) {
-                        // CORRECCIÓN: Encerrar las declaraciones en bloque {}
                         if (context.mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
@@ -447,7 +443,13 @@ class SettingsScreen extends ConsumerWidget {
           final int radioNotificaciones = datos['radio_notificaciones'] ?? 30;
 
           return ListView(
-            padding: const EdgeInsets.all(16.0),
+            // CORRECCIÓN: Padding bottom de 120 para liberar el BottomNavigationBar
+            padding: const EdgeInsets.only(
+              left: 16.0,
+              right: 16.0,
+              top: 16.0,
+              bottom: 120.0,
+            ),
             children: [
               const SizedBox(height: 20),
               const Center(
