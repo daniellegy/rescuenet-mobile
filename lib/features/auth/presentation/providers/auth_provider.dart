@@ -1,7 +1,5 @@
-import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:firebase_messaging/firebase_messaging.dart';
 import 'dart:convert';
 import '../../data/auth_repository.dart';
 import '../../../../core/network/dio_client.dart';
@@ -83,7 +81,8 @@ class AuthNotifier extends Notifier<AuthState> {
         userId: userId,
       );
 
-      _actualizarFCMToken(); // Envia silenciosamente el token geo-alertas
+      // SE ELIMINÓ: _actualizarFCMToken() automático.
+      // Las notificaciones dependen exclusivamente de la preferencia guardada en el backend.
     } catch (_) {
       await _storage.delete(key: 'jwt_token');
       state = AuthState(isLogged: false, role: AppRole.ninguno, userId: null);
@@ -102,22 +101,7 @@ class AuthNotifier extends Notifier<AuthState> {
     if (rolId == 2) userRole = AppRole.voluntario;
 
     state = AuthState(isLogged: true, role: userRole, userId: idUsuario);
-    _actualizarFCMToken();
-  }
-
-  // Extrae y sube el token del dispositivo para notificaciones multicast
-  Future<void> _actualizarFCMToken() async {
-    try {
-      final tokenFCM = await FirebaseMessaging.instance.getToken();
-      if (tokenFCM != null) {
-        await ref
-            .read(dioProvider)
-            .instance
-            .put('/auth/perfil', data: {'fcm_token': tokenFCM});
-      }
-    } catch (e) {
-      debugPrint('FCM Token ignorado por permisos de red: $e');
-    }
+    // SE ELIMINÓ: _actualizarFCMToken() automático.
   }
 
   Future<void> login(String email, String password) async {

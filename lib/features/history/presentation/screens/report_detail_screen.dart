@@ -6,6 +6,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../domain/models/report_model.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../reports/data/report_repository.dart';
+import '../../../map/presentation/providers/map_markers_provider.dart'; // AÑADIDO PARA MAPA
 import '../../../reports/presentation/providers/active_reports_provider.dart';
 import '../../../reports/presentation/providers/my_active_rescue_provider.dart';
 import '../providers/history_provider.dart';
@@ -91,6 +92,9 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
         ref.invalidate(activeReportsProvider);
         ref.invalidate(miRescateActivoProvider);
         ref.invalidate(misReportesProvider);
+        ref.invalidate(
+          reportesActivosMapaProvider,
+        ); // CORRECCIÓN: Evitar duplicado de iconos
         context.go('/map');
       }
     } catch (e) {
@@ -141,6 +145,7 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
           ref.invalidate(activeReportsProvider);
           ref.invalidate(miRescateActivoProvider);
           ref.invalidate(misReportesProvider);
+          ref.invalidate(reportesActivosMapaProvider); // CORRECCIÓN
           context.pop();
         }
       } catch (e) {
@@ -160,13 +165,25 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
     final authState = ref.watch(authProvider);
     final esVoluntario = authState.role == AppRole.voluntario;
     final esMiRescate = widget.reporte.usuarioRescatistaId == authState.userId;
-    final estaNuevo = widget.reporte.estado == 'Nuevo';
-    final estaEnProceso = widget.reporte.estado == 'En_Proceso';
+
+    // LÓGICA DE ACTUALIZACIÓN EN TIEMPO REAL
+    ReportModel reporteActual = widget.reporte;
+    if (esMiRescate) {
+      final miRescateAsync = ref.watch(miRescateActivoProvider);
+      miRescateAsync.whenData((rescateBackend) {
+        if (rescateBackend != null && rescateBackend.id == widget.reporte.id) {
+          reporteActual = rescateBackend;
+        }
+      });
+    }
+
+    final estaNuevo = reporteActual.estado == 'Nuevo';
+    final estaEnProceso = reporteActual.estado == 'En_Proceso';
 
     List<String> photos = [];
-    if (widget.reporte.fotoUrl != null) photos.add(widget.reporte.fotoUrl!);
-    if (widget.reporte.fotoEvidenciaUrl != null) {
-      photos.add(widget.reporte.fotoEvidenciaUrl!);
+    if (reporteActual.fotoUrl != null) photos.add(reporteActual.fotoUrl!);
+    if (reporteActual.fotoEvidenciaUrl != null) {
+      photos.add(reporteActual.fotoEvidenciaUrl!);
     }
 
     return Scaffold(
@@ -233,7 +250,7 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        widget.reporte.especie,
+                        reporteActual.especie,
                         style: const TextStyle(
                           fontSize: 26,
                           fontWeight: FontWeight.bold,
@@ -245,18 +262,18 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
                           vertical: 6,
                         ),
                         decoration: BoxDecoration(
-                          color: widget.reporte.colorUrgencia.withValues(
+                          color: reporteActual.colorUrgencia.withValues(
                             alpha: 0.2,
                           ),
                           borderRadius: BorderRadius.circular(20),
                           border: Border.all(
-                            color: widget.reporte.colorUrgencia,
+                            color: reporteActual.colorUrgencia,
                           ),
                         ),
                         child: Text(
-                          widget.reporte.estadoFormateado.toUpperCase(),
+                          reporteActual.estadoFormateado.toUpperCase(),
                           style: TextStyle(
-                            color: widget.reporte.colorUrgencia,
+                            color: reporteActual.colorUrgencia,
                             fontWeight: FontWeight.bold,
                             fontSize: 12,
                           ),
@@ -291,27 +308,28 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
                             _buildPhaseRow(
                               Icons.visibility,
                               'Avistamiento',
-                              widget.reporte.animalAvistado == true
+                              reporteActual.animalAvistado == true
                                   ? 'Voluntario en zona (Avistado)'
-                                  : (widget.reporte.animalAvistado == false
+                                  : (reporteActual.animalAvistado == false
                                         ? 'No encontrado en área'
                                         : 'En camino / Pendiente'),
                             ),
                             _buildPhaseRow(
                               Icons.directions_car,
                               'Traslado a',
-                              widget.reporte.lugarTraslado ?? 'Pendiente',
+                              reporteActual.lugarTraslado ??
+                                  'Pendiente', // YA SE LLENARÁ DINÁMICAMENTE
                             ),
                             _buildPhaseRow(
                               Icons.house,
                               'Destino Final',
-                              widget.reporte.destinoFinal ?? 'Pendiente',
+                              reporteActual.destinoFinal ?? 'Pendiente',
                             ),
                             _buildPhaseRow(
                               Icons.attach_money,
                               'Costo',
-                              widget.reporte.costoRescate != null
-                                  ? '\$${widget.reporte.costoRescate} MXN'
+                              reporteActual.costoRescate != null
+                                  ? '\$${reporteActual.costoRescate} MXN'
                                   : 'Calculando al finalizar...',
                             ),
                           ],
@@ -368,52 +386,52 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
                   _buildPersonRow(
                     Icons.person_pin_circle_rounded,
                     'Reportado por',
-                    widget.reporte.nombreReportador ?? 'Ciudadano',
+                    reporteActual.nombreReportador ?? 'Ciudadano',
                   ),
-                  if (widget.reporte.nombreRescatista != null)
+                  if (reporteActual.nombreRescatista != null)
                     _buildPersonRow(
                       Icons.volunteer_activism_rounded,
-                      widget.reporte.estado == 'Rescatado'
+                      reporteActual.estado == 'Rescatado'
                           ? 'Completado por'
                           : 'Rescatista',
-                      widget.reporte.nombreRescatista!,
+                      reporteActual.nombreRescatista!,
                     ),
                   const Divider(height: 32),
                   _buildDetailRow(
                     Icons.warning_amber_rounded,
                     'Nivel de Urgencia',
-                    widget.reporte.urgencia.toUpperCase(),
+                    reporteActual.urgencia.toUpperCase(),
                   ),
                   _buildDetailRow(
                     Icons.explore_outlined,
                     'Referencias',
-                    widget.reporte.referencias ?? 'Sin referencias',
+                    reporteActual.referencias ?? 'Sin referencias',
                   ),
                   _buildDetailRow(
                     Icons.palette,
                     'Color',
-                    widget.reporte.colorDominante,
+                    reporteActual.colorDominante,
                   ),
-                  _buildDetailRow(Icons.pets, 'Raza', widget.reporte.razaAprox),
+                  _buildDetailRow(Icons.pets, 'Raza', reporteActual.razaAprox),
                   _buildDetailRow(
                     Icons.transgender,
                     'Sexo',
-                    widget.reporte.sexo,
+                    reporteActual.sexo,
                   ),
                   _buildDetailRow(
                     Icons.cake,
                     'Edad Aprox.',
-                    widget.reporte.edadAprox,
+                    reporteActual.edadAprox,
                   ),
                   _buildDetailRow(
                     Icons.straighten,
                     'Tamaño',
-                    widget.reporte.tamano,
+                    reporteActual.tamano,
                   ),
                   _buildDetailRow(
                     Icons.mood_bad,
                     'Agresividad',
-                    '${widget.reporte.agresividad}/10',
+                    '${reporteActual.agresividad}/10',
                   ),
                   const Divider(height: 32),
                   const Text(
@@ -422,20 +440,18 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
                   ),
                   const SizedBox(height: 8),
 
-                  // Se muestran las notas adicionales o las características especiales si este campo está vacío
                   Text(
-                    widget.reporte.notasAdicionales.isNotEmpty &&
-                            widget.reporte.notasAdicionales != 'Ninguna'
-                        ? widget.reporte.notasAdicionales
-                        : (widget.reporte.caracteristicasEspeciales.isNotEmpty
-                              ? widget.reporte.caracteristicasEspeciales
+                    reporteActual.notasAdicionales.isNotEmpty &&
+                            reporteActual.notasAdicionales != 'Ninguna'
+                        ? reporteActual.notasAdicionales
+                        : (reporteActual.caracteristicasEspeciales.isNotEmpty
+                              ? reporteActual.caracteristicasEspeciales
                               : 'Sin notas adicionales.'),
                     style: const TextStyle(fontSize: 15, height: 1.5),
                   ),
 
-                  // LÓGICA DE NUEVO CAMPO: Se pinta dinámicamente si el reporte tiene una conclusión
-                  if (widget.reporte.conclusion != null &&
-                      widget.reporte.conclusion!.isNotEmpty) ...[
+                  if (reporteActual.conclusion != null &&
+                      reporteActual.conclusion!.isNotEmpty) ...[
                     const Divider(height: 32),
                     const Text(
                       'Conclusión del rescate:',
@@ -446,7 +462,7 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      widget.reporte.conclusion!,
+                      reporteActual.conclusion!,
                       style: const TextStyle(fontSize: 15, height: 1.5),
                     ),
                   ],
@@ -456,7 +472,7 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
                     const SizedBox(height: 24),
                     FilledButton.icon(
                       onPressed: () =>
-                          context.push('/search-radar', extra: widget.reporte),
+                          context.push('/search-radar', extra: reporteActual),
                       style: FilledButton.styleFrom(
                         backgroundColor: Colors.blue.shade700,
                         padding: const EdgeInsets.symmetric(vertical: 16),

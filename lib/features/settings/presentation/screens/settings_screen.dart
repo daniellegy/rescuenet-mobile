@@ -11,17 +11,18 @@ class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
 
   void _mostrarModalRoles(
-    BuildContext context,
+    BuildContext parentContext, // Contexto principal de la pantalla
     WidgetRef ref,
     int rolActualId,
     String? curpActual,
   ) {
     showModalBottomSheet(
-      context: context,
+      context: parentContext,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
-      builder: (context) {
+      builder: (modalContext) {
+        // Contexto específico del BottomSheet
         return SafeArea(
           child: Padding(
             padding: const EdgeInsets.symmetric(
@@ -47,7 +48,8 @@ class SettingsScreen extends ConsumerWidget {
                 const SizedBox(height: 20),
 
                 _buildOpcionRol(
-                  context: context,
+                  parentContext: parentContext,
+                  modalContext: modalContext,
                   ref: ref,
                   titulo: 'Reportante',
                   subtitulo: 'Solo quiero reportar casos',
@@ -58,7 +60,8 @@ class SettingsScreen extends ConsumerWidget {
                 ),
                 const Divider(),
                 _buildOpcionRol(
-                  context: context,
+                  parentContext: parentContext,
+                  modalContext: modalContext,
                   ref: ref,
                   titulo: 'Voluntario',
                   subtitulo: 'Quiero rescatar y recibir alertas',
@@ -76,7 +79,8 @@ class SettingsScreen extends ConsumerWidget {
   }
 
   Widget _buildOpcionRol({
-    required BuildContext context,
+    required BuildContext parentContext,
+    required BuildContext modalContext,
     required WidgetRef ref,
     required String titulo,
     required String subtitulo,
@@ -97,15 +101,17 @@ class SettingsScreen extends ConsumerWidget {
           ? const Icon(Icons.check_circle, color: Colors.green)
           : const Icon(Icons.circle_outlined),
       onTap: () async {
-        Navigator.pop(context);
+        Navigator.pop(
+          modalContext,
+        ); // Cierra el BottomSheet usando su propio contexto
         if (rolTarget == rolActual) return;
 
         String? tokenFCM;
         if (rolTarget == 2) {
-          final acepto = await _mostrarManifiestoVoluntario(context);
+          // Lanza el manifiesto usando el contexto de la pantalla, que sigue vivo
+          final acepto = await _mostrarManifiestoVoluntario(parentContext);
           if (!acepto) return;
 
-          // MODIFICADO: Si cambia a Voluntario, solicita permisos oportunamente y recupera el token
           try {
             final messaging = FirebaseMessaging.instance;
             NotificationSettings settings = await messaging
@@ -127,20 +133,27 @@ class SettingsScreen extends ConsumerWidget {
           }
         }
 
-        if (!context.mounted) return;
+        if (!parentContext.mounted) return;
 
         if (rolTarget == 2 &&
             (curpActual == null || curpActual.trim().isEmpty)) {
-          _mostrarDialogoRegistroCurp(context, ref, tokenFCM);
+          _mostrarDialogoRegistroCurp(parentContext, ref, tokenFCM);
         } else {
-          _procesarCambioDeRol(context, ref, rolTarget, titulo, null, tokenFCM);
+          _procesarCambioDeRol(
+            parentContext,
+            ref,
+            rolTarget,
+            titulo,
+            null,
+            tokenFCM,
+          );
         }
       },
     );
   }
 
   void _mostrarDialogoRegistroCurp(
-    BuildContext context,
+    BuildContext parentContext,
     WidgetRef ref,
     String? tokenFCM,
   ) {
@@ -148,9 +161,9 @@ class SettingsScreen extends ConsumerWidget {
     final curpRegex = RegExp(r'^[A-Z]{4}\d{6}[HM][A-Z]{5}[A-Z\d]\d$');
 
     showDialog(
-      context: context,
+      context: parentContext,
       barrierDismissible: false,
-      builder: (context) {
+      builder: (dialogContext) {
         return AlertDialog(
           title: const Text('Completar Registro'),
           content: Column(
@@ -176,7 +189,7 @@ class SettingsScreen extends ConsumerWidget {
           ),
           actions: [
             TextButton(
-              onPressed: () => Navigator.pop(context),
+              onPressed: () => Navigator.pop(dialogContext),
               child: const Text(
                 'Cancelar',
                 style: TextStyle(color: Colors.grey),
@@ -187,7 +200,7 @@ class SettingsScreen extends ConsumerWidget {
                 final curpIngresada = curpController.text.trim().toUpperCase();
 
                 if (!curpRegex.hasMatch(curpIngresada)) {
-                  ScaffoldMessenger.of(context).showSnackBar(
+                  ScaffoldMessenger.of(dialogContext).showSnackBar(
                     const SnackBar(
                       content: Text('El formato del CURP es inválido.'),
                       backgroundColor: Colors.red,
@@ -196,9 +209,10 @@ class SettingsScreen extends ConsumerWidget {
                   return;
                 }
 
-                Navigator.pop(context);
+                Navigator.pop(dialogContext); // Cierra el diálogo de captura
+                // Procesa con el contexto principal
                 _procesarCambioDeRol(
-                  context,
+                  parentContext,
                   ref,
                   2,
                   'Voluntario',
@@ -216,7 +230,7 @@ class SettingsScreen extends ConsumerWidget {
   }
 
   Future<void> _procesarCambioDeRol(
-    BuildContext context,
+    BuildContext parentContext,
     WidgetRef ref,
     int rolTarget,
     String titulo,
@@ -232,8 +246,8 @@ class SettingsScreen extends ConsumerWidget {
             fcmToken: tokenFCM,
           );
 
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
+      if (parentContext.mounted) {
+        ScaffoldMessenger.of(parentContext).showSnackBar(
           SnackBar(
             content: Text('Cambiado a $titulo exitosamente.'),
             backgroundColor: Colors.green,
@@ -241,8 +255,8 @@ class SettingsScreen extends ConsumerWidget {
         );
       }
     } catch (e) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
+      if (parentContext.mounted) {
+        ScaffoldMessenger.of(parentContext).showSnackBar(
           SnackBar(content: Text(e.toString()), backgroundColor: Colors.red),
         );
       }
@@ -250,7 +264,7 @@ class SettingsScreen extends ConsumerWidget {
   }
 
   void _mostrarDialogoDato(
-    BuildContext context,
+    BuildContext parentContext,
     WidgetRef ref,
     String titulo,
     String valorActual,
@@ -261,8 +275,8 @@ class SettingsScreen extends ConsumerWidget {
     );
 
     showDialog(
-      context: context,
-      builder: (context) {
+      context: parentContext,
+      builder: (dialogContext) {
         return AlertDialog(
           title: Text('Actualizar $titulo'),
           content: TextField(
@@ -277,7 +291,7 @@ class SettingsScreen extends ConsumerWidget {
           ),
           actions: [
             TextButton(
-              onPressed: () => Navigator.pop(context),
+              onPressed: () => Navigator.pop(dialogContext),
               child: const Text(
                 'Cancelar',
                 style: TextStyle(color: Colors.grey),
@@ -292,7 +306,7 @@ class SettingsScreen extends ConsumerWidget {
                     r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$',
                   );
                   if (!emailRegex.hasMatch(nuevoValor)) {
-                    ScaffoldMessenger.of(context).showSnackBar(
+                    ScaffoldMessenger.of(dialogContext).showSnackBar(
                       const SnackBar(
                         content: Text('Formato de correo inválido'),
                         backgroundColor: Colors.red,
@@ -303,7 +317,7 @@ class SettingsScreen extends ConsumerWidget {
                 } else if (campoBaseDatos == 'telefono') {
                   final phoneRegex = RegExp(r'^\d{10}$');
                   if (!phoneRegex.hasMatch(nuevoValor)) {
-                    ScaffoldMessenger.of(context).showSnackBar(
+                    ScaffoldMessenger.of(dialogContext).showSnackBar(
                       const SnackBar(
                         content: Text('El teléfono debe tener 10 dígitos'),
                         backgroundColor: Colors.red,
@@ -314,7 +328,7 @@ class SettingsScreen extends ConsumerWidget {
                 }
 
                 if (nuevoValor.isNotEmpty && nuevoValor != valorActual) {
-                  Navigator.pop(context);
+                  Navigator.pop(dialogContext); // Cierra modal de edición
                   try {
                     if (campoBaseDatos == 'telefono') {
                       await ref
@@ -326,8 +340,8 @@ class SettingsScreen extends ConsumerWidget {
                           .actualizarCampo(email: nuevoValor);
                     }
 
-                    if (context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
+                    if (parentContext.mounted) {
+                      ScaffoldMessenger.of(parentContext).showSnackBar(
                         const SnackBar(
                           content: Text('Dato actualizado exitosamente'),
                           backgroundColor: Colors.green,
@@ -335,8 +349,8 @@ class SettingsScreen extends ConsumerWidget {
                       );
                     }
                   } catch (e) {
-                    if (context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
+                    if (parentContext.mounted) {
+                      ScaffoldMessenger.of(parentContext).showSnackBar(
                         SnackBar(
                           content: Text(e.toString()),
                           backgroundColor: Colors.red,
@@ -356,14 +370,14 @@ class SettingsScreen extends ConsumerWidget {
   }
 
   void _mostrarDialogoRadio(
-    BuildContext context,
+    BuildContext parentContext,
     WidgetRef ref,
     int radioActual,
   ) {
     int radioSeleccionado = radioActual;
     showDialog(
-      context: context,
-      builder: (context) {
+      context: parentContext,
+      builder: (dialogContext) {
         return StatefulBuilder(
           builder: (context, setState) {
             return AlertDialog(
@@ -390,12 +404,12 @@ class SettingsScreen extends ConsumerWidget {
               ),
               actions: [
                 TextButton(
-                  onPressed: () => Navigator.pop(context),
+                  onPressed: () => Navigator.pop(dialogContext),
                   child: const Text('Cancelar'),
                 ),
                 FilledButton(
                   onPressed: () async {
-                    Navigator.pop(context);
+                    Navigator.pop(dialogContext); // Cierra diálogo
                     if (radioSeleccionado != radioActual) {
                       try {
                         await ref
@@ -407,8 +421,8 @@ class SettingsScreen extends ConsumerWidget {
                         ref.invalidate(reportesActivosMapaProvider);
                         ref.invalidate(activeReportsProvider);
 
-                        if (context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
+                        if (parentContext.mounted) {
+                          ScaffoldMessenger.of(parentContext).showSnackBar(
                             const SnackBar(
                               content: Text('Radio actualizado exitosamente'),
                               backgroundColor: Colors.green,
@@ -416,8 +430,8 @@ class SettingsScreen extends ConsumerWidget {
                           );
                         }
                       } catch (e) {
-                        if (context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
+                        if (parentContext.mounted) {
+                          ScaffoldMessenger.of(parentContext).showSnackBar(
                             SnackBar(
                               content: Text(e.toString()),
                               backgroundColor: Colors.red,
@@ -441,7 +455,7 @@ class SettingsScreen extends ConsumerWidget {
     return await showDialog<bool>(
           context: context,
           barrierDismissible: false,
-          builder: (context) => AlertDialog(
+          builder: (dialogContext) => AlertDialog(
             title: const Text(
               'Manifiesto de Voluntario',
               style: TextStyle(fontSize: 18),
@@ -451,11 +465,11 @@ class SettingsScreen extends ConsumerWidget {
             ),
             actions: [
               TextButton(
-                onPressed: () => Navigator.pop(context, false),
+                onPressed: () => Navigator.pop(dialogContext, false),
                 child: const Text('Cancelar'),
               ),
               FilledButton(
-                onPressed: () => Navigator.pop(context, true),
+                onPressed: () => Navigator.pop(dialogContext, true),
                 child: const Text('Acepto la responsabilidad'),
               ),
             ],
@@ -482,7 +496,6 @@ class SettingsScreen extends ConsumerWidget {
           final int rolActualId = datos['role'] ?? 1;
           final int radioNotificaciones = datos['radio_notificaciones'] ?? 30;
 
-          // MODIFICADO: Extrae el estado del token para saber si las notificaciones están encendidas
           final String? tokenFCMActual = datos['fcm_token'];
           final bool notificacionesActivas =
               tokenFCMActual != null && tokenFCMActual.trim().isNotEmpty;
@@ -533,6 +546,7 @@ class SettingsScreen extends ConsumerWidget {
                 title: const Text('Rol en la Plataforma'),
                 subtitle: Text(rolActualId == 2 ? 'Voluntario' : 'Reportante'),
                 trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                // Aquí pasamos el context inicial y persistente de la pantalla (parentContext)
                 onTap: () =>
                     _mostrarModalRoles(context, ref, rolActualId, curp),
               ),
@@ -600,7 +614,6 @@ class SettingsScreen extends ConsumerWidget {
 
               const SizedBox(height: 32),
 
-              // MODIFICADO: Nueva sección completamente separada e independiente para el control de alertas
               const Text(
                 'Preferencias de Alertas',
                 style: TextStyle(
@@ -646,9 +659,10 @@ class SettingsScreen extends ConsumerWidget {
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(
                               content: Text(
-                                'Permiso denegado por el sistema operacional.',
+                                'Permiso denegado. Actívalo manualmente en la configuración de tu dispositivo (Ajustes > Aplicaciones).',
                               ),
                               backgroundColor: Colors.orange,
+                              duration: Duration(seconds: 4),
                             ),
                           );
                         }
@@ -660,7 +674,6 @@ class SettingsScreen extends ConsumerWidget {
                     }
                   } else {
                     try {
-                      // Envía la bandera 'CLEAR' al backend para remover el token de forma segura
                       await ref
                           .read(userProfileProvider.notifier)
                           .actualizarCampo(fcmToken: 'CLEAR');

@@ -9,6 +9,7 @@ import '../../../history/domain/models/report_model.dart';
 import '../../data/report_repository.dart';
 import '../providers/active_reports_provider.dart';
 import '../providers/my_active_rescue_provider.dart';
+import '../../../map/presentation/providers/map_markers_provider.dart'; // AÑADIDO PARA MAPA
 import '../../../history/presentation/providers/history_provider.dart';
 import '../providers/rescue_stepper_provider.dart';
 import '../../../../core/services/camera_service.dart';
@@ -111,6 +112,12 @@ class _RescueStepperScreenState extends ConsumerState<RescueStepperScreen> {
             widget.reporte.id,
             lugarTraslado: estado.lugarTraslado,
           );
+
+      // INVALIDAR PROVIDERS PARA QUE `ReportDetailScreen` VEA EL "TRASLADO A"
+      ref.invalidate(miRescateActivoProvider);
+      ref.invalidate(activeReportsProvider);
+      ref.invalidate(reportesActivosMapaProvider);
+
       final url = _directorios[estado.tipoTraslado]![estado.lugarTraslado]!;
       await _lanzarUrl(url);
       ref
@@ -165,6 +172,9 @@ class _RescueStepperScreenState extends ConsumerState<RescueStepperScreen> {
         ref.invalidate(activeReportsProvider);
         ref.invalidate(miRescateActivoProvider);
         ref.invalidate(misReportesProvider);
+        ref.invalidate(
+          reportesActivosMapaProvider,
+        ); // CORRECCIÓN: Borra el icono del mapa principal
         context.go('/map');
       }
     } catch (e) {
@@ -216,6 +226,8 @@ class _RescueStepperScreenState extends ConsumerState<RescueStepperScreen> {
                           widget.reporte.id,
                           animalAvistado: true,
                         );
+                    // Actualizar el estado interno global para Reflejo Real-Time
+                    ref.invalidate(miRescateActivoProvider);
                   } catch (_) {}
                 }
 
@@ -326,7 +338,7 @@ class _RescueStepperScreenState extends ConsumerState<RescueStepperScreen> {
                   ),
                 ),
                 Step(
-                  title: const Text('2. Conditions'),
+                  title: const Text('2. Condiciones'),
                   isActive: stepperState.currentStep >= 1,
                   content: DropdownButtonFormField<String>(
                     key: ValueKey(stepperState.condicion),
@@ -548,7 +560,6 @@ class _RescueStepperScreenState extends ConsumerState<RescueStepperScreen> {
   }
 }
 
-// Pequeño helper interno necesario para evitar re-evaluación floja de herencia en builders
 class WidgetRefBuilder extends StatelessWidget {
   final Widget Function(BuildContext context) builder;
   const WidgetRefBuilder({super.key, required this.builder});
