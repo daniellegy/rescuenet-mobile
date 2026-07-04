@@ -25,6 +25,20 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
   bool _isLoading = false;
   int _currentPhotoIndex = 0;
 
+  Color _obtenerColorPorEstado(String estado) {
+    switch (estado.toLowerCase()) {
+      case 'nuevo':
+        return const Color(0xFF0288D1); 
+      case 'en_proceso':
+      case 'en proceso':
+        return const Color(0xFFF57C00); 
+      case 'rescatado':
+        return const Color(0xFF388E3C); 
+      default:
+        return Colors.grey;
+    }
+  }
+
   @override
   void initState() {
     super.initState();
@@ -262,23 +276,25 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
                           vertical: 6,
                         ),
                         decoration: BoxDecoration(
-                          color: reporteActual.colorUrgencia.withValues(
-                            alpha: 0.2,
+                          color: _obtenerColorPorEstado(reporteActual.estado).withValues(
+                            alpha: 0.15,
                           ),
                           borderRadius: BorderRadius.circular(20),
                           border: Border.all(
-                            color: reporteActual.colorUrgencia,
+                            color: _obtenerColorPorEstado(reporteActual.estado),
+                            width: 1.5,
                           ),
                         ),
                         child: Text(
                           reporteActual.estadoFormateado.toUpperCase(),
                           style: TextStyle(
-                            color: reporteActual.colorUrgencia,
+                            color: _obtenerColorPorEstado(reporteActual.estado),
                             fontWeight: FontWeight.bold,
                             fontSize: 12,
                           ),
                         ),
                       ),
+
                     ],
                   ),
                   const SizedBox(height: 16),
