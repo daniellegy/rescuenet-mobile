@@ -121,50 +121,61 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
             return _buildListaReportes(historialOrdenado);
           }
 
-          final misReportes = historialOrdenado
-              .where((r) => r.usuarioReportadorId == currentUserId)
+        final reportesActivos = historialOrdenado
+              .where((r) => r.usuarioReportadorId == currentUserId && r.estado != 'Rescatado')
               .toList();
 
-          final rescatesConcluidos = historialOrdenado
-              .where(
-                (r) =>
-                    r.usuarioRescatistaId == currentUserId &&
-                    r.estado == 'Rescatado',
-              )
+          final misRescates = historialOrdenado
+              .where((r) => r.usuarioRescatistaId == currentUserId && r.estado == 'Rescatado')
               .toList();
 
+          final reportesConcluidos = historialOrdenado
+              .where((r) => r.usuarioReportadorId == currentUserId && r.estado == 'Rescatado')
+              .toList();
           return DefaultTabController(
-            length: 2,
+            length: 3,
             child: Column(
               children: [
                 const TabBar(
                   labelColor: Colors.red,
                   unselectedLabelColor: Colors.grey,
                   indicatorColor: Colors.red,
+                  isScrollable: false,
                   tabs: [
                     Tab(
                       icon: Icon(Icons.campaign_rounded),
-                      text: 'Mis Reportes',
+                      text: 'Mis Alertas',
                     ),
                     Tab(
                       icon: Icon(Icons.volunteer_activism_rounded),
                       text: 'Mis Rescates',
+                    ),
+                    Tab(
+                      icon: Icon(Icons.check_circle_rounded),
+                      text: 'Mis Cierres', 
                     ),
                   ],
                 ),
                 Expanded(
                   child: TabBarView(
                     children: [
-                      misReportes.isEmpty
+                      reportesActivos.isEmpty
                           ? const Center(
-                              child: Text('No has realizado reportes'),
+                              child: Text('No tienes alertas activas'),
                             )
-                          : _buildListaReportes(misReportes),
-                      rescatesConcluidos.isEmpty
+                          : _buildListaReportes(reportesActivos),
+                          
+                      misRescates.isEmpty
                           ? const Center(
                               child: Text('No has concluido rescates'),
                             )
-                          : _buildListaReportes(rescatesConcluidos),
+                          : _buildListaReportes(misRescates),
+                          
+                      reportesConcluidos.isEmpty
+                          ? const Center(
+                              child: Text('No tienes casos concluidos'),
+                            )
+                          : _buildListaReportes(reportesConcluidos),
                     ],
                   ),
                 ),
