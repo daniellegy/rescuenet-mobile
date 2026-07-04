@@ -207,6 +207,9 @@ class _RescueStepperScreenState extends ConsumerState<RescueStepperScreen> {
               onStepContinue: () async {
                 if (stepperState.currentStep == 0) {
                   if (stepperState.animalPresente == null) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Por favor, indica si el animal se encuentra en el área.')),
+                    );
                     return;
                   }
                   if (stepperState.animalPresente == 'No') {
@@ -230,13 +233,56 @@ class _RescueStepperScreenState extends ConsumerState<RescueStepperScreen> {
                     ref.invalidate(miRescateActivoProvider);
                   } catch (_) {}
                 }
-
+                if (stepperState.currentStep == 1) {
+                  if (stepperState.condicion == null) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Por favor, selecciona la condición actual del animal.')),
+                    );
+                    return;
+                  }
+                }
                 if (stepperState.currentStep == 3) {
                   if (stepperState.lugarTraslado == null) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
                         content: Text('Debes confirmar el lugar de traslado.'),
                       ),
+                    );
+                    return;
+                  }
+                }
+
+                if (stepperState.currentStep == 4) {
+                  if (stepperState.evidenciaPath == null) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Es obligatorio tomar una fotografía como evidencia del rescate.')),
+                    );
+                    return;
+                  }
+                }
+
+                if (stepperState.currentStep == 5) {
+                  if (stepperState.destino == null) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Por favor, selecciona el destino o ubicación final del animal.')),
+                    );
+                    return;
+                  }
+                }
+
+                if (stepperState.currentStep == 6) {
+                  if (_costoController.text.trim().isEmpty) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Por favor, indica el costo operativo. Si no hubo gastos, escribe 0.')),
+                    );
+                    return;
+                  }
+                }
+
+                if (stepperState.currentStep == 7) {
+                  if (_conclusionController.text.trim().isEmpty) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Por favor, ingresa una conclusión sobre el estado final del animal.')),
                     );
                     return;
                   }
@@ -342,7 +388,8 @@ class _RescueStepperScreenState extends ConsumerState<RescueStepperScreen> {
                   isActive: stepperState.currentStep >= 1,
                   content: DropdownButtonFormField<String>(
                     key: ValueKey(stepperState.condicion),
-                    initialValue: stepperState.condicion,
+                    value: stepperState.condicion,
+                    hint: const Text('Selecciona una condición'),
                     items: ['Accesible', 'Atrapado / Encerrado', 'Herido']
                         .map((e) => DropdownMenuItem(value: e, child: Text(e)))
                         .toList(),
@@ -417,7 +464,7 @@ class _RescueStepperScreenState extends ConsumerState<RescueStepperScreen> {
 
                             return DropdownButtonFormField<String>(
                               key: ValueKey(valorSeguro),
-                              initialValue: valorSeguro,
+                              value: valorSeguro,
                               hint: const Text('Selecciona el lugar exacto'),
                               items: opcionesValidas
                                   .map(
@@ -486,7 +533,7 @@ class _RescueStepperScreenState extends ConsumerState<RescueStepperScreen> {
                   isActive: stepperState.currentStep >= 5,
                   content: DropdownButtonFormField<String>(
                     key: ValueKey(stepperState.destino),
-                    initialValue: stepperState.destino,
+                    value: stepperState.destino,
                     hint: const Text('¿Dónde ubicaste al animal?'),
                     items:
                         [
