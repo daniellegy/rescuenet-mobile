@@ -130,6 +130,33 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
     }
   }
 
+  String _obtenerMensajeAgresividad(int nivel) {
+    switch (nivel) {
+      case 1:
+        return 'Completamente dócil. No muestra ninguna señal de hostilidad.';
+      case 2:
+        return 'Tranquilo. Asustado, pero se deja manipular sin resistencia.';
+      case 3:
+        return 'Temeroso o evasivo. Se aleja e intenta esconderse si te aproximas.';
+      case 4:
+        return 'Nervioso. Puede gruñir levemente si se siente muy acorralado.';
+      case 5:
+        return 'Alerta y territorial. Mantiene la distancia emitiendo señales de aviso.';
+      case 6:
+        return 'Defensivo. Muestra los dientes o gruñe firmemente al acercarse.';
+      case 7:
+        return 'Reactivo. Lanza dentelladas al aire o intentos de rasguño si intentas tocarlo.';
+      case 8:
+        return 'Agresivo. Intenta morder o atacar de forma directa si invades su espacio.';
+      case 9:
+        return 'Altamente agresivo. Ataque activo e impredecible; muy difícil de contener.';
+      case 10:
+        return 'Peligro extremo. Agresión inminente; imposible de manipular sin equipo.';
+      default:
+        return 'Selecciona un nivel del 1 al 10.';
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(createReportProvider);
@@ -537,6 +564,37 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
                       onChanged: (val) =>
                           notifier.updateField(agresividad: val),
                     ),
+                    const SizedBox(height: 8),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade100,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.grey.shade300),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.info_outline,
+                            color: state.agresividad >= 7 ? Colors.red : Colors.blueGrey,
+                            size: 20,
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              _obtenerMensajeAgresividad(state.agresividad.round()),
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: Colors.grey.shade800,
+                                fontStyle: FontStyle.italic,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
                     const SizedBox(height: 24),
 
                     TextFormField(
