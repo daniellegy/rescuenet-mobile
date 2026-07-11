@@ -6,6 +6,7 @@ import '../../features/auth/presentation/providers/auth_provider.dart';
 import '../../features/auth/presentation/screens/login_screen.dart';
 import '../../features/auth/presentation/screens/register_screen.dart';
 import '../../features/map/presentation/screens/map_screen.dart';
+import '../../features/lost_dogs/presentation/screens/lost_dogs_screen.dart';
 import '../../features/reports/presentation/screens/create_report_screen.dart';
 import '../../features/history/presentation/screens/history_screen.dart';
 import '../../features/history/presentation/screens/report_detail_screen.dart';
@@ -47,6 +48,10 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const RegisterScreen(),
       ),
       GoRoute(path: '/map', builder: (context, state) => const MapScreen()),
+      GoRoute(
+        path: '/lost-dogs',
+        builder: (context, state) => const LostDogsScreen(),
+      ),
       GoRoute(
         path: '/history',
         builder: (context, state) => const HistoryScreen(),

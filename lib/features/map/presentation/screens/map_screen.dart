@@ -8,7 +8,6 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 import '../../../../core/services/location_service.dart';
 import '../../../../core/services/camera_service.dart';
-import '../../../auth/presentation/providers/auth_provider.dart';
 import '../providers/map_markers_provider.dart';
 import '../../../reports/presentation/providers/my_active_rescue_provider.dart';
 
@@ -219,8 +218,9 @@ class _MapScreenState extends ConsumerState<MapScreen> {
             ),
           ),
           IconButton(
-            icon: const Icon(Icons.logout, color: Colors.red),
-            onPressed: () => ref.read(authProvider.notifier).logout(),
+            icon: const Icon(Icons.settings, color: Colors.grey),
+            tooltip: 'Configuración',
+            onPressed: () => context.push('/settings'),
           ),
         ],
       ),
@@ -608,9 +608,9 @@ class _MapScreenState extends ConsumerState<MapScreen> {
               onPressed: () => context.push('/active-reports'),
             ),
             IconButton(
-              icon: const Icon(Icons.settings, color: Colors.grey),
-              tooltip: 'Configuración',
-              onPressed: () => context.push('/settings'),
+              icon: const Icon(Icons.search_rounded, color: Colors.grey),
+              tooltip: 'Perros Perdidos',
+              onPressed: () => context.push('/lost-dogs'),
             ),
           ],
         ),
