@@ -29,7 +29,9 @@ class ReportModel {
   final double? costoRescate;
   final int? radio;
   final String? referencias;
-  final String? conclusion; // CAMPO NUEVO
+  final String? conclusion; 
+  final bool canalComunicacionHabilitado;
+  final String? canalComunicacionEstado;
 
   ReportModel({
     required this.id,
@@ -60,7 +62,9 @@ class ReportModel {
     this.costoRescate,
     this.radio,
     this.referencias,
-    this.conclusion, // CAMPO NUEVO
+    this.conclusion, 
+    required this.canalComunicacionHabilitado,
+    this.canalComunicacionEstado,
   });
 
   factory ReportModel.fromJson(Map<String, dynamic> json) {
@@ -98,11 +102,61 @@ class ReportModel {
           : null,
       radio: json['radio'],
       referencias: json['referencias'] ?? 'Sin referencias',
-      conclusion: json['conclusion'], // CAMPO NUEVO
+      conclusion: json['conclusion'], 
+      canalComunicacionHabilitado: json['canal_comunicacion_habilitado'] ?? false,
+      canalComunicacionEstado: json['canal_comunicacion_estado'],
     );
   }
 
   String get estadoFormateado => estado.replaceAll('_', ' ');
+
+  bool get canalActivo =>
+      canalComunicacionHabilitado && canalComunicacionEstado == 'activo';
+
+  // =========================================================================
+  // ZONA F: NUEVO MÉTODO copyWithCanal PARA ACTUALIZACIÓN LOCAL SIN RE-FETCH
+  // =========================================================================
+  ReportModel copyWithCanal({
+    bool? canalComunicacionHabilitado,
+    String? canalComunicacionEstado,
+  }) {
+    return ReportModel(
+      id: id,
+      especie: especie,
+      colorDominante: colorDominante,
+      sexo: sexo,
+      edadAprox: edadAprox,
+      tamano: tamano,
+      agresividad: agresividad,
+      razaAprox: razaAprox,
+      caracteristicasEspeciales: caracteristicasEspeciales,
+      notasAdicionales: notasAdicionales,
+      urgencia: urgencia,
+      estado: estado,
+      latitud: latitud,
+      longitud: longitud,
+      fotoUrl: fotoUrl,
+      fotoEvidenciaUrl: fotoEvidenciaUrl,
+      fechaCreacion: fechaCreacion,
+      usuarioReportadorId: usuarioReportadorId,
+      usuarioRescatistaId: usuarioRescatistaId,
+      nombreReportador: nombreReportador,
+      nombreRescatista: nombreRescatista,
+      animalAvistado: animalAvistado,
+      lugarTraslado: lugarTraslado,
+      destinoFinal: destinoFinal,
+      condicionRescate: condicionRescate,
+      costoRescate: costoRescate,
+      radio: radio,
+      referencias: referencias,
+      conclusion: conclusion,
+      canalComunicacionHabilitado:
+          canalComunicacionHabilitado ?? this.canalComunicacionHabilitado,
+      canalComunicacionEstado:
+          canalComunicacionEstado ?? this.canalComunicacionEstado,
+    );
+  }
+  // =========================================================================
 
   Color get colorUrgencia {
     switch (urgencia.toLowerCase()) {
