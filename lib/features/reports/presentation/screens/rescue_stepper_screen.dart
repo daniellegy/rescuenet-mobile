@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../history/domain/models/report_model.dart';
 import '../../data/report_repository.dart';
@@ -13,6 +14,7 @@ import '../../../map/presentation/providers/map_markers_provider.dart'; // AÑAD
 import '../../../history/presentation/providers/history_provider.dart';
 import '../providers/rescue_stepper_provider.dart';
 import '../../../../core/services/camera_service.dart';
+import '../widgets/canal_chat_sheet.dart';
 
 class RescueStepperScreen extends ConsumerStatefulWidget {
   final ReportModel reporte;
@@ -28,6 +30,7 @@ class _RescueStepperScreenState extends ConsumerState<RescueStepperScreen> {
   late TextEditingController _costoController;
   late TextEditingController _conclusionController;
   final FocusNode _costoFocusNode = FocusNode();
+  bool _canalCerradoLocalmente = false;
 
   final Map<String, Map<String, String>> _directorios = {
     'Veterinaria': {
@@ -74,6 +77,21 @@ class _RescueStepperScreenState extends ConsumerState<RescueStepperScreen> {
     _conclusionController.dispose();
     _costoFocusNode.dispose();
     super.dispose();
+  }
+
+  Future<bool> _hayMensajesSinLeer() async {
+    try {
+      final mensajes = await ref
+          .read(reportRepositoryProvider)
+          .obtenerMensajesCanal(widget.reporte.id);
+      if (mensajes.isEmpty) return false;
+      final ultimoId = mensajes.last['id'] as int;
+      final prefs = await SharedPreferences.getInstance();
+      final leidoId = prefs.getInt('canal_leido_${widget.reporte.id}') ?? 0;
+      return ultimoId > leidoId;
+    } catch (_) {
+      return false;
+    }
   }
 
   Future<void> _lanzarUrl(String url) async {
@@ -198,7 +216,55 @@ class _RescueStepperScreenState extends ConsumerState<RescueStepperScreen> {
     final notifier = ref.read(rescueStepperProvider.notifier);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Asistente de Rescate')),
+      appBar: AppBar(
+        title: const Text('Asistente de Rescate'),
+        actions: [
+          if (widget.reporte.canalComunicacionHabilitado &&
+              widget.reporte.canalComunicacionEstado == 'activo' &&
+              !_canalCerradoLocalmente)
+            FutureBuilder<bool>(
+              future: _hayMensajesSinLeer(),
+              builder: (context, snapshot) {
+                final hayNuevos = snapshot.data ?? false;
+                return Stack(
+                  clipBehavior: Clip.none,
+                  alignment: Alignment.center,
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.chat_bubble_outline),
+                      tooltip: 'Canal de comunicación',
+                      onPressed: () async {
+                        await showModalBottomSheet(
+                          context: context,
+                          isScrollControlled: true,
+                          builder: (ctx) => CanalChatSheet(
+                            reporteId: widget.reporte.id,
+                            onCanalCerrado: () => setState(() => _canalCerradoLocalmente = true),
+                          ),
+                        );
+                        if (mounted) setState(() {});
+                      },
+                    ),
+                    if (hayNuevos)
+                      Positioned(
+                        top: 6,
+                        right: 6,
+                        child: Container(
+                          width: 12,
+                          height: 12,
+                          decoration: const BoxDecoration(
+                            color: Colors.red,
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                      ),
+                  ],
+                );
+              },
+            ),
+        ],
+      ),
+
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : Stepper(
