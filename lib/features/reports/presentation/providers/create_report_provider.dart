@@ -12,6 +12,7 @@ class CreateReportState {
   final String tamano;
   final double agresividad;
   final bool isLoading;
+  final bool activarCanal;
   final double lat;
   final double lng;
 
@@ -26,6 +27,7 @@ class CreateReportState {
     this.tamano = 'Pequeño',
     this.agresividad = 1.0,
     this.isLoading = false,
+    this.activarCanal = false,
     required this.lat,
     required this.lng,
   });
@@ -41,6 +43,7 @@ class CreateReportState {
     String? tamano,
     double? agresividad,
     bool? isLoading,
+    bool? activarCanal,
     double? lat,
     double? lng,
     bool clearRaza = false,
@@ -58,6 +61,7 @@ class CreateReportState {
       tamano: tamano ?? this.tamano,
       agresividad: agresividad ?? this.agresividad,
       isLoading: isLoading ?? this.isLoading,
+      activarCanal: activarCanal ?? this.activarCanal,
       lat: lat ?? this.lat,
       lng: lng ?? this.lng,
     );
@@ -68,6 +72,10 @@ class CreateReportNotifier extends Notifier<CreateReportState> {
   @override
   CreateReportState build() {
     return CreateReportState(lat: 0.0, lng: 0.0);
+  }
+
+  void toggleActivarCanal(bool value) {
+    state = state.copyWith(activarCanal: value);
   }
 
   void setInitialLocation(double lat, double lng) {
@@ -150,6 +158,7 @@ class CreateReportNotifier extends Notifier<CreateReportState> {
         imagePath: imagePath,
         referencias: referencias,
         radio: state.radioSeleccionado,
+        activarCanal: state.activarCanal,
       );
     } finally {
       state = state.copyWith(isLoading: false);
