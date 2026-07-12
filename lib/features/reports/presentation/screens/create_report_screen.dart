@@ -624,6 +624,30 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
                     ),
                     const SizedBox(height: 32),
 
+                    Card(
+                      elevation: 0,
+                      color: Colors.blue.shade50,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        side: BorderSide(color: Colors.blue.shade200),
+                      ),
+                      child: SwitchListTile(
+                        value: state.activarCanal,
+                        onChanged: (val) => notifier.toggleActivarCanal(val),
+                        title: const Text(
+                          '¿Deseas activar el canal de comunicación?',
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        subtitle: const Text(
+                          'Podrás chatear con el voluntario que tome tu caso. '
+                          'El canal se cerrará automáticamente cuando el caso se resuelva.',
+                          style: TextStyle(fontSize: 12),
+                        ),
+                        activeColor: Colors.blue.shade700,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+
                     FilledButton.icon(
                       onPressed: _enviarFormulario,
                       icon: const Icon(Icons.send),
