@@ -3,14 +3,16 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../domain/models/report_model.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../reports/data/report_repository.dart';
-import '../../../map/presentation/providers/map_markers_provider.dart'; // AÑADIDO PARA MAPA
+import '../../../map/presentation/providers/map_markers_provider.dart'; 
 import '../../../reports/presentation/providers/active_reports_provider.dart';
 import '../../../reports/presentation/providers/my_active_rescue_provider.dart';
 import '../providers/history_provider.dart';
 import '../../../reports/presentation/providers/rescue_stepper_provider.dart';
+import '../../../reports/presentation/widgets/canal_chat_sheet.dart'; 
 
 class ReportDetailScreen extends ConsumerStatefulWidget {
   final ReportModel reporte;
@@ -24,6 +26,8 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
   String _direccion = 'Buscando dirección aproximada...';
   bool _isLoading = false;
   int _currentPhotoIndex = 0;
+  bool _canalCerradoLocalmente = false;
+  ReportModel? _reporteLocal;
 
   Color _obtenerColorPorEstado(String estado) {
     switch (estado.toLowerCase()) {
@@ -70,6 +74,21 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
     }
   }
 
+  Future<bool> _hayMensajesSinLeer() async {
+    try {
+      final mensajes = await ref
+          .read(reportRepositoryProvider)
+          .obtenerMensajesCanal(widget.reporte.id);
+      if (mensajes.isEmpty) return false;
+      final ultimoId = mensajes.last['id'] as int;
+      final prefs = await SharedPreferences.getInstance();
+      final leidoId = prefs.getInt('canal_leido_${widget.reporte.id}') ?? 0;
+      return ultimoId > leidoId;
+    } catch (_) {
+      return false;
+    }
+  }
+
   Future<void> _abrirEnMapaNativo() async {
     final double lat = widget.reporte.latitud;
     final double lng = widget.reporte.longitud;
@@ -106,9 +125,7 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
         ref.invalidate(activeReportsProvider);
         ref.invalidate(miRescateActivoProvider);
         ref.invalidate(misReportesProvider);
-        ref.invalidate(
-          reportesActivosMapaProvider,
-        ); // CORRECCIÓN: Evitar duplicado de iconos
+        ref.invalidate(reportesActivosMapaProvider);
         context.go('/map');
       }
     } catch (e) {
@@ -159,7 +176,7 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
           ref.invalidate(activeReportsProvider);
           ref.invalidate(miRescateActivoProvider);
           ref.invalidate(misReportesProvider);
-          ref.invalidate(reportesActivosMapaProvider); // CORRECCIÓN
+          ref.invalidate(reportesActivosMapaProvider);
           context.pop();
         }
       } catch (e) {
@@ -174,22 +191,38 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
     }
   }
 
+  void _abrirCanalComunicacion() async {
+    await showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (ctx) => CanalChatSheet(
+        reporteId: widget.reporte.id,
+        onCanalCerrado: () => setState(() => _canalCerradoLocalmente = true),
+      ),
+    );
+    if (mounted) setState(() {});
+  }
+
   @override
   Widget build(BuildContext context) {
     final authState = ref.watch(authProvider);
     final esVoluntario = authState.role == AppRole.voluntario;
     final esMiRescate = widget.reporte.usuarioRescatistaId == authState.userId;
 
-    // LÓGICA DE ACTUALIZACIÓN EN TIEMPO REAL
-    ReportModel reporteActual = widget.reporte;
+    // Inicializamos localmente si no se ha hecho
+    _reporteLocal ??= widget.reporte;
+
     if (esMiRescate) {
       final miRescateAsync = ref.watch(miRescateActivoProvider);
       miRescateAsync.whenData((rescateBackend) {
         if (rescateBackend != null && rescateBackend.id == widget.reporte.id) {
-          reporteActual = rescateBackend;
+          _reporteLocal = rescateBackend;
         }
       });
     }
+
+    ReportModel reporteActual = _reporteLocal!;
+    final esReportador = reporteActual.usuarioReportadorId == authState.userId;
 
     final estaNuevo = reporteActual.estado == 'Nuevo';
     final estaEnProceso = reporteActual.estado == 'En_Proceso';
@@ -294,7 +327,6 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
                           ),
                         ),
                       ),
-
                     ],
                   ),
                   const SizedBox(height: 16),
@@ -333,8 +365,7 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
                             _buildPhaseRow(
                               Icons.directions_car,
                               'Traslado a',
-                              reporteActual.lugarTraslado ??
-                                  'Pendiente', // YA SE LLENARÁ DINÁMICAMENTE
+                              reporteActual.lugarTraslado ?? 'Pendiente',
                             ),
                             _buildPhaseRow(
                               Icons.house,
@@ -482,6 +513,102 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
                       style: const TextStyle(fontSize: 15, height: 1.5),
                     ),
                   ],
+
+                  // ESTRUCTURA DEL CANAL DE CHAT CON SU FUTUREBUILDER
+                  if (reporteActual.canalComunicacionHabilitado &&
+                      reporteActual.canalComunicacionEstado == 'activo' &&
+                      !_canalCerradoLocalmente) ...[
+                    const SizedBox(height: 16),
+                    FutureBuilder<bool>(
+                      future: _hayMensajesSinLeer(),
+                      builder: (context, snapshot) {
+                        final hayNuevos = snapshot.data ?? false;
+                        return Stack(
+                          clipBehavior: Clip.none,
+                          children: [
+                            FilledButton.icon(
+                              onPressed: _abrirCanalComunicacion,
+                              style: FilledButton.styleFrom(
+                                backgroundColor: Colors.green.shade700,
+                                padding: const EdgeInsets.symmetric(vertical: 16),
+                                minimumSize: const Size(double.infinity, 50),
+                              ),
+                              icon: const Icon(Icons.chat_bubble_outline, color: Colors.white),
+                              label: const Text(
+                                'Canal de comunicación',
+                                style: TextStyle(fontSize: 16, color: Colors.white),
+                              ),
+                            ),
+                            if (hayNuevos) 
+                              Positioned(
+                                top: -4,
+                                right: 12,
+                                child: Container(
+                                  width: 14,
+                                  height: 14,
+                                  decoration: const BoxDecoration(
+                                    color: Colors.red,
+                                    shape: BoxShape.circle,
+                                  ),
+                                ),
+                              ),
+                          ],
+                        );
+                      },
+                    ),
+                  ],
+
+                  if (!reporteActual.canalComunicacionHabilitado &&
+                      esReportador && 
+                      reporteActual.estado != 'Resuelto' &&
+                      reporteActual.estado != 'Cancelado') ...[
+                    const SizedBox(height: 16),
+                    OutlinedButton.icon(
+                      onPressed: () async {
+                        final confirmar = await showDialog<bool>(
+                          context: context,
+                          builder: (ctx) => AlertDialog(
+                            title: const Text('Activar canal de comunicación'),
+                            content: const Text(
+                              'Esto habilitará el chat con el voluntario asignado a tu caso.',
+                            ),
+                            actions: [
+                              TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancelar')),
+                              FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Activar')),
+                            ],
+                          ),
+                        );
+                        if (confirmar != true) return;
+                        try {
+                          await ref.read(reportRepositoryProvider).activarCanalManual(reporteActual.id);
+                          setState(() {
+                            _reporteLocal = reporteActual.copyWithCanal(
+                              canalComunicacionHabilitado: true,
+                              canalComunicacionEstado:
+                                  reporteActual.estado == 'En_Proceso' ? 'activo' : 'inactivo',
+                            );
+                          });
+                        } catch (e) {
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text(e.toString().replaceAll('Exception: ', ''))),
+                            );
+                          }
+                        }
+                      },
+                      style: OutlinedButton.styleFrom(
+                        side: BorderSide(color: Colors.green.shade700, width: 1.5),
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        minimumSize: const Size(double.infinity, 50),
+                      ),
+                      icon: Icon(Icons.chat_bubble_outline, color: Colors.green.shade700),
+                      label: Text(
+                        'Activar canal de comunicación',
+                        style: TextStyle(fontSize: 16, color: Colors.green.shade700, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ],
+                  // =========================================================================
 
                   if (esVoluntario &&
                       (estaNuevo || (estaEnProceso && esMiRescate))) ...[
