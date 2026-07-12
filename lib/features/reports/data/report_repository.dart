@@ -24,6 +24,7 @@ class ReportRepository {
     required String imagePath,
     required String referencias,
     int? radio,
+    bool activarCanal = false,
   }) async {
     try {
       FormData formData = FormData.fromMap({
@@ -41,6 +42,7 @@ class ReportRepository {
         'urgencia': urgencia,
         'referencias': referencias,
         'radio': (radio ?? 500).toString(),
+        'activarCanal': activarCanal.toString(),
         'foto': await MultipartFile.fromFile(
           imagePath,
           filename: 'reporte.jpg',
@@ -127,6 +129,74 @@ class ReportRepository {
       );
     } catch (e) {
       throw AppException('Ocurrió un error inesperado al finalizar');
+    }
+  }
+
+
+  Future<Map<String, dynamic>> obtenerEstadoCanal(int reporteId) async {
+    try {
+      final response = await _dio.get('/reportes/$reporteId/canal');
+      return response.data as Map<String, dynamic>;
+    } on DioException catch (e) {
+      throw AppException(
+        e.response?.data['error'] ?? 'Error al obtener el canal',
+      );
+    } catch (e) {
+      throw AppException('Ocurrió un error inesperado al obtener el canal');
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> obtenerMensajesCanal(int reporteId) async {
+    try {
+      final response = await _dio.get('/reportes/$reporteId/canal/mensajes');
+      return List<Map<String, dynamic>>.from(response.data);
+    } on DioException catch (e) {
+      throw AppException(
+        e.response?.data['error'] ?? 'Error al obtener los mensajes',
+      );
+    } catch (e) {
+      throw AppException('Ocurrió un error inesperado al obtener mensajes');
+    }
+  }
+
+  Future<Map<String, dynamic>> enviarMensajeCanal(
+    int reporteId,
+    String contenido,
+  ) async {
+    try {
+      final response = await _dio.post(
+        '/reportes/$reporteId/canal/mensajes',
+        data: {'contenido': contenido},
+      );
+      return response.data as Map<String, dynamic>;
+    } on DioException catch (e) {
+      throw AppException(
+        e.response?.data['error'] ?? 'Error al enviar el mensaje',
+      );
+    } catch (e) {
+      throw AppException('Ocurrió un error inesperado al enviar el mensaje');
+    }
+  }
+
+  Future<void> activarCanalManual(int reporteId) async {
+    try {
+      await _dio.put('/reportes/$reporteId/canal/activar');
+    } on DioException catch (e) {
+      throw AppException(e.response?.data['error'] ?? 'Error al activar el canal');
+    } catch (e) {
+      throw AppException('Ocurrió un error inesperado al activar el canal');
+    }
+  }
+  
+  Future<void> cerrarCanalManual(int reporteId) async {
+    try {
+      await _dio.put('/reportes/$reporteId/canal/cerrar');
+    } on DioException catch (e) {
+      throw AppException(
+        e.response?.data['error'] ?? 'Error al cerrar el canal',
+      );
+    } catch (e) {
+      throw AppException('Ocurrió un error inesperado al cerrar el canal');
     }
   }
 }
