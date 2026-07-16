@@ -1,16 +1,24 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:socket_io_client/socket_io_client.dart'
+    as IO; // LIBRERÍA DE SOCKETS
 
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../data/report_repository.dart';
 import '../../domain/models/canal_mensaje_model.dart';
-import 'package:shared_preferences/shared_preferences.dart'; 
 
 class CanalChatSheet extends ConsumerStatefulWidget {
   final int reporteId;
   final VoidCallback onCanalCerrado;
-  const CanalChatSheet({super.key, required this.reporteId, required this.onCanalCerrado,});
+
+  const CanalChatSheet({
+    super.key,
+    required this.reporteId,
+    required this.onCanalCerrado,
+  });
 
   @override
   ConsumerState<CanalChatSheet> createState() => _CanalChatSheetState();
@@ -20,28 +28,74 @@ class _CanalChatSheetState extends ConsumerState<CanalChatSheet> {
   final TextEditingController _mensajeController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
 
+  IO.Socket? _socket; // Instancia del socket
+
   List<CanalMensajeModel> _mensajes = [];
   bool _isLoadingInicial = true;
   bool _isSending = false;
   String? _error;
-  Timer? _pollingTimer;
 
   @override
   void initState() {
     super.initState();
     _cargarMensajes(mostrarLoading: true);
-    // Polling simple cada 5s mientras el sheet esté abierto
-    _pollingTimer = Timer.periodic(const Duration(seconds: 5), (_) {
-      _cargarMensajes(mostrarLoading: false);
-    });
+    _iniciarConexionWebSocket(); // Iniciamos la conexión en tiempo real
   }
 
   @override
   void dispose() {
-    _pollingTimer?.cancel();
     _mensajeController.dispose();
     _scrollController.dispose();
+    _socket?.disconnect(); // Desconectamos limpiamente al cerrar el modal
+    _socket?.dispose();
     super.dispose();
+  }
+
+  // =======================================================
+  // MAGIA DEL WEBSOCKET (TIEMPO REAL)
+  // =======================================================
+  void _iniciarConexionWebSocket() {
+    final apiUrl = dotenv.env['API_URL'] ?? '';
+
+    // Configuramos el socket para conectarse directo por WebSocket
+    _socket = IO.io(
+      apiUrl,
+      IO.OptionBuilder()
+          .setTransports(['websocket'])
+          .disableAutoConnect() // Conectamos manualmente después
+          .build(),
+    );
+
+    _socket?.connect();
+
+    _socket?.onConnect((_) {
+      debugPrint('Conectado al WebSocket del servidor');
+      // Al conectarnos, le avisamos al servidor a qué canal nos queremos unir
+      _socket?.emit('join_canal', widget.reporteId);
+    });
+
+    // Escuchamos los mensajes nuevos que el servidor transmite
+    _socket?.on('nuevo_mensaje', (data) {
+      if (mounted) {
+        final nuevoMensaje = CanalMensajeModel.fromJson(data);
+        setState(() {
+          // Validamos que el mensaje no exista ya en la lista para evitar duplicados
+          if (!_mensajes.any((m) => m.id == nuevoMensaje.id)) {
+            _mensajes.add(nuevoMensaje);
+          }
+        });
+        _irAlFinal();
+        _marcarUltimoMensajeComoLeido(nuevoMensaje.id);
+      }
+    });
+
+    _socket?.onDisconnect((_) => debugPrint('Desconectado del WebSocket'));
+  }
+  // =======================================================
+
+  Future<void> _marcarUltimoMensajeComoLeido(int id) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt('canal_leido_${widget.reporteId}', id);
   }
 
   Future<void> _confirmarYCerrarCanal() async {
@@ -67,22 +121,23 @@ class _CanalChatSheetState extends ConsumerState<CanalChatSheet> {
         ],
       ),
     );
+
     if (confirmar != true) return;
 
     try {
-      await ref.read(reportRepositoryProvider).cerrarCanalManual(widget.reporteId);
-      widget.onCanalCerrado(); // Dispara el callback hacia la pantalla padre
-      if (mounted) Navigator.pop(context); // Cierra el modal/sheet actual
+      await ref
+          .read(reportRepositoryProvider)
+          .cerrarCanalManual(widget.reporteId);
+      widget.onCanalCerrado();
+      if (mounted) Navigator.pop(context);
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.toString().replaceAll('Exception: ', ''))),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(e.toString())));
       }
     }
   }
-  // ==========================================
-
 
   Future<void> _cargarMensajes({required bool mostrarLoading}) async {
     if (mostrarLoading) setState(() => _isLoadingInicial = true);
@@ -90,7 +145,9 @@ class _CanalChatSheetState extends ConsumerState<CanalChatSheet> {
       final data = await ref
           .read(reportRepositoryProvider)
           .obtenerMensajesCanal(widget.reporteId);
+
       final mensajes = data.map((m) => CanalMensajeModel.fromJson(m)).toList();
+
       if (mounted) {
         setState(() {
           _mensajes = mensajes;
@@ -98,13 +155,13 @@ class _CanalChatSheetState extends ConsumerState<CanalChatSheet> {
         });
         _irAlFinal();
       }
+
       if (mensajes.isNotEmpty) {
-          final prefs = await SharedPreferences.getInstance();
-          await prefs.setInt('canal_leido_${widget.reporteId}', mensajes.last.id);
-        }
+        await _marcarUltimoMensajeComoLeido(mensajes.last.id);
+      }
     } catch (e) {
       if (mounted) {
-        setState(() => _error = e.toString().replaceAll('Exception: ', ''));
+        setState(() => _error = e.toString());
       }
     } finally {
       if (mounted && mostrarLoading) {
@@ -131,18 +188,18 @@ class _CanalChatSheetState extends ConsumerState<CanalChatSheet> {
 
     setState(() => _isSending = true);
     try {
+      // Enviamos el mensaje por HTTP tradicional.
+      // El servidor lo guardará y lo rebotará por WebSocket a todos (incluyéndote a ti)
       await ref
           .read(reportRepositoryProvider)
           .enviarMensajeCanal(widget.reporteId, texto);
+
       _mensajeController.clear();
-      await _cargarMensajes(mostrarLoading: false);
+      // Ya NO necesitamos llamar a _cargarMensajes() aquí porque el WebSocket nos lo enviará automáticamente.
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(e.toString().replaceAll('Exception: ', '')),
-            backgroundColor: Colors.red,
-          ),
+          SnackBar(content: Text(e.toString()), backgroundColor: Colors.red),
         );
       }
     } finally {
@@ -171,7 +228,6 @@ class _CanalChatSheetState extends ConsumerState<CanalChatSheet> {
             ),
             child: Column(
               children: [
-                // Handle visual
                 Padding(
                   padding: const EdgeInsets.only(top: 10, bottom: 4),
                   child: Container(
@@ -183,8 +239,6 @@ class _CanalChatSheetState extends ConsumerState<CanalChatSheet> {
                     ),
                   ),
                 ),
-
-                // Header
                 Padding(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 16,
@@ -192,7 +246,10 @@ class _CanalChatSheetState extends ConsumerState<CanalChatSheet> {
                   ),
                   child: Row(
                     children: [
-                      const Icon(Icons.chat_bubble_outline, color: Colors.blueGrey),
+                      const Icon(
+                        Icons.chat_bubble_outline,
+                        color: Colors.blueGrey,
+                      ),
                       const SizedBox(width: 8),
                       const Expanded(
                         child: Text(
@@ -203,16 +260,11 @@ class _CanalChatSheetState extends ConsumerState<CanalChatSheet> {
                           ),
                         ),
                       ),
-// ==========================================
-                      // MODIFICACIÓN (Zona C): Botón de candado para cerrar canal
-                      // ==========================================
                       IconButton(
                         icon: const Icon(Icons.lock_outline),
                         tooltip: 'Cerrar canal',
                         onPressed: _confirmarYCerrarCanal,
                       ),
-                      // ==========================================
-
                       IconButton(
                         icon: const Icon(Icons.close),
                         onPressed: () => Navigator.pop(context),
@@ -220,8 +272,6 @@ class _CanalChatSheetState extends ConsumerState<CanalChatSheet> {
                     ],
                   ),
                 ),
-
-                // Leyenda de advertencia
                 Container(
                   margin: const EdgeInsets.symmetric(horizontal: 16),
                   padding: const EdgeInsets.all(10),
@@ -232,12 +282,19 @@ class _CanalChatSheetState extends ConsumerState<CanalChatSheet> {
                   ),
                   child: Row(
                     children: [
-                      Icon(Icons.info_outline, size: 18, color: Colors.amber.shade800),
+                      Icon(
+                        Icons.info_outline,
+                        size: 18,
+                        color: Colors.amber.shade800,
+                      ),
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
                           'Recuerda que la comunicación se cortará cuando el caso sea resuelto.',
-                          style: TextStyle(fontSize: 12, color: Colors.amber.shade900),
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.amber.shade900,
+                          ),
                         ),
                       ),
                     ],
@@ -245,49 +302,42 @@ class _CanalChatSheetState extends ConsumerState<CanalChatSheet> {
                 ),
                 const SizedBox(height: 8),
                 const Divider(height: 1),
-
-                // Lista de mensajes
                 Expanded(
                   child: _isLoadingInicial
                       ? const Center(child: CircularProgressIndicator())
                       : _error != null && _mensajes.isEmpty
-                          ? Center(
-                              child: Padding(
-                                padding: const EdgeInsets.all(24.0),
-                                child: Text(
-                                  _error!,
-                                  textAlign: TextAlign.center,
-                                  style: const TextStyle(color: Colors.red),
-                                ),
-                              ),
-                            )
-                          : _mensajes.isEmpty
-                              ? const Center(
-                                  child: Text(
-                                    'Aún no hay mensajes.\nEscribe el primero para iniciar la conversación.',
-                                    textAlign: TextAlign.center,
-                                    style: TextStyle(color: Colors.grey),
-                                  ),
-                                )
-                              : ListView.builder(
-                                  controller: _scrollController,
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 16,
-                                    vertical: 12,
-                                  ),
-                                  itemCount: _mensajes.length,
-                                  itemBuilder: (context, index) {
-                                    final msg = _mensajes[index];
-                                    final esMio = msg.autorId == miUsuarioId;
-                                    return _BurbujaMensaje(
-                                      mensaje: msg,
-                                      esMio: esMio,
-                                    );
-                                  },
-                                ),
+                      ? Center(
+                          child: Padding(
+                            padding: const EdgeInsets.all(24.0),
+                            child: Text(
+                              _error!,
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(color: Colors.red),
+                            ),
+                          ),
+                        )
+                      : _mensajes.isEmpty
+                      ? const Center(
+                          child: Text(
+                            'Aún no hay mensajes.\nEscribe el primero para iniciar la conversación.',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(color: Colors.grey),
+                          ),
+                        )
+                      : ListView.builder(
+                          controller: _scrollController,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 12,
+                          ),
+                          itemCount: _mensajes.length,
+                          itemBuilder: (context, index) {
+                            final msg = _mensajes[index];
+                            final esMio = msg.autorId == miUsuarioId;
+                            return _BurbujaMensaje(mensaje: msg, esMio: esMio);
+                          },
+                        ),
                 ),
-
-                // Campo de texto para enviar
                 SafeArea(
                   top: false,
                   child: Padding(
@@ -332,7 +382,11 @@ class _CanalChatSheetState extends ConsumerState<CanalChatSheet> {
                                     color: Colors.white,
                                   ),
                                 )
-                              : const Icon(Icons.send, color: Colors.white, size: 20),
+                              : const Icon(
+                                  Icons.send,
+                                  color: Colors.white,
+                                  size: 20,
+                                ),
                         ),
                       ],
                     ),
