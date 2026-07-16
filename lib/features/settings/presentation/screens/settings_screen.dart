@@ -703,13 +703,159 @@ class SettingsScreen extends ConsumerWidget {
               const Divider(height: 40),
 
               ListTile(
-                leading: const Icon(Icons.logout, color: Colors.red),
+                leading: const Icon(Icons.logout_rounded, color: Colors.red),
                 title: const Text(
                   'Cerrar Sesión',
-                  style: TextStyle(color: Colors.red),
+                  style: TextStyle(
+                    color: Colors.red,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                subtitle: const Text(
+                  'Salir de tu cuenta actual en este dispositivo',
+                  style: TextStyle(fontSize: 12, color: Colors.grey),
                 ),
                 onTap: () {
-                  ref.read(authProvider.notifier).logout();
+                  showDialog(
+                    context: context,
+                    barrierDismissible: false, // elegir opcion
+                    builder: (dialogContext) {
+                      return AlertDialog(
+                        title: const Row(
+                          children: [
+                            Icon(Icons.logout_rounded, color: Colors.red),
+                            SizedBox(width: 8),
+                            Text('¿Cerrar Sesión?'),
+                          ],
+                        ),
+                        content: const Text(
+                          'Estás a punto de salir de tu cuenta en RescueNet. '
+                          'Para volver a reportar emergencias o rastrear rescates en tiempo real '
+                          'necesitarás ingresar tus credenciales nuevamente.',
+                        ),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(dialogContext),
+                            child: const Text(
+                              'Cancelar',
+                              style: TextStyle(color: Colors.grey),
+                            ),
+                          ),
+                          FilledButton(
+                            style: FilledButton.styleFrom(
+                              backgroundColor: Colors.red,
+                              foregroundColor: Colors.white,
+                            ),
+                            onPressed: () async {
+                              Navigator.pop(dialogContext);
+                              
+                              try {
+                                await ref.read(authProvider.notifier).logout();
+                                
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text('Has cerrado sesión correctamente.'),
+                                      backgroundColor: Colors.black87,
+                                    ),
+                                  );
+                                }
+                              } catch (e) {
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text('Error al cerrar sesión: $e'),
+                                      backgroundColor: Colors.red,
+                                    ),
+                                  );
+                                }
+                              }
+                            },
+                            child: const Text('Cerrar Sesión'),
+                          ),
+                        ],
+                      );
+                    },
+                  );
+                },
+              ),
+
+              ListTile(
+                leading: const Icon(Icons.delete_forever_rounded, color: Colors.red),
+                title: const Text(
+                  'Eliminar Cuenta',
+                  style: TextStyle(
+                    color: Colors.red,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                subtitle: const Text(
+                  'Dar de baja tu usuario y borrar tus datos de RescueNet',
+                  style: TextStyle(fontSize: 12, color: Colors.grey),
+                ),
+                onTap: () {
+                  showDialog(
+                    context: context,
+                    barrierDismissible: false, 
+                    builder: (dialogContext) {
+                      return AlertDialog(
+                        title: const Row(
+                          children: [
+                            Icon(Icons.warning_amber_rounded, color: Colors.red),
+                            SizedBox(width: 8),
+                            Text('¿Eliminar cuenta?'),
+                          ],
+                        ),
+                        content: const Text(
+                          'Esta acción es irreversible. Se borrarán tus datos perosnales, el historial '
+                          'de alertas que has emitido y tus registros de rescates'
+                          'de los servidores de RescueNet',
+                        ),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(dialogContext),
+                            child: const Text(
+                              'Cancelar',
+                              style: TextStyle(color: Colors.grey),
+                            ),
+                          ),
+                          FilledButton(
+                            style: FilledButton.styleFrom(
+                              backgroundColor: Colors.red,
+                              foregroundColor: Colors.white,
+                            ),
+                            onPressed: () async {
+                              Navigator.pop(dialogContext); // Cierra el diálogo
+                              
+                              try {
+                                await ref.read(authProvider.notifier).eliminarCuentaEnServidor();
+                                await ref.read(authProvider.notifier).logout();
+                                
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text('Tu cuenta ha sido eliminada correctamente.'),
+                                      backgroundColor: Colors.black87,
+                                    ),
+                                  );
+                                }
+                              } catch (e) {
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text('Error al eliminar cuenta: $e'),
+                                      backgroundColor: Colors.red,
+                                    ),
+                                  );
+                                }
+                              }
+                            },
+                            child: const Text('Eliminar cuenta'),
+                          ),
+                        ],
+                      );
+                    },
+                  );
                 },
               ),
             ],
