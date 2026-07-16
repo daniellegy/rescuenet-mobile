@@ -53,6 +53,25 @@ class AuthRepository {
       throw AppException('Error de conexión inesperado');
     }
   }
+
+  Future<void> eliminarCuenta(String token) async {
+    try {
+      await _dio.delete(
+        '/auth/perfil',
+        options: Options(
+          headers: {
+            'Authorization': 'Bearer $token',
+          },
+        ),
+      );
+    } on DioException catch (e) {
+      throw AppException(
+        e.response?.data['error'] ?? 'No se pudo eliminar la cuenta en el servidor',
+      );
+    } catch (e) {
+      throw AppException('Error inesperado al intentar dar de baja la cuenta');
+    }
+  }
 }
 
 final authRepositoryProvider = Provider<AuthRepository>((ref) {
