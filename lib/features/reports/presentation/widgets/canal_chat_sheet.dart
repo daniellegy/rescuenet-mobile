@@ -3,8 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:socket_io_client/socket_io_client.dart'
-    as IO; // LIBRERÍA DE SOCKETS
+import 'package:socket_io_client/socket_io_client.dart' as IO;
 
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../data/report_repository.dart';
@@ -28,7 +27,7 @@ class _CanalChatSheetState extends ConsumerState<CanalChatSheet> {
   final TextEditingController _mensajeController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
 
-  IO.Socket? _socket; // Instancia del socket
+  IO.Socket? _socket;
 
   List<CanalMensajeModel> _mensajes = [];
   bool _isLoadingInicial = true;
@@ -39,30 +38,33 @@ class _CanalChatSheetState extends ConsumerState<CanalChatSheet> {
   void initState() {
     super.initState();
     _cargarMensajes(mostrarLoading: true);
-    _iniciarConexionWebSocket(); // Iniciamos la conexión en tiempo real
+    _iniciarConexionWebSocket();
   }
 
   @override
   void dispose() {
     _mensajeController.dispose();
     _scrollController.dispose();
-    _socket?.disconnect(); // Desconectamos limpiamente al cerrar el modal
+    _socket?.disconnect();
     _socket?.dispose();
     super.dispose();
   }
 
-  // =======================================================
-  // MAGIA DEL WEBSOCKET (TIEMPO REAL)
-  // =======================================================
   void _iniciarConexionWebSocket() {
     final apiUrl = dotenv.env['API_URL'] ?? '';
 
-    // Configuramos el socket para conectarse directo por WebSocket
+    // MEJORA: Asegurar que el socket se conecte a la raíz del dominio
+    // Si apiUrl es "https://midominio.com/api", el socket necesita "https://midominio.com"
+    final uri = Uri.tryParse(apiUrl);
+    final socketUrl = uri != null
+        ? '${uri.scheme}://${uri.host}${uri.hasPort ? ':${uri.port}' : ''}'
+        : apiUrl;
+
     _socket = IO.io(
-      apiUrl,
+      socketUrl,
       IO.OptionBuilder()
           .setTransports(['websocket'])
-          .disableAutoConnect() // Conectamos manualmente después
+          .disableAutoConnect()
           .build(),
     );
 
@@ -70,16 +72,13 @@ class _CanalChatSheetState extends ConsumerState<CanalChatSheet> {
 
     _socket?.onConnect((_) {
       debugPrint('Conectado al WebSocket del servidor');
-      // Al conectarnos, le avisamos al servidor a qué canal nos queremos unir
       _socket?.emit('join_canal', widget.reporteId);
     });
 
-    // Escuchamos los mensajes nuevos que el servidor transmite
     _socket?.on('nuevo_mensaje', (data) {
       if (mounted) {
         final nuevoMensaje = CanalMensajeModel.fromJson(data);
         setState(() {
-          // Validamos que el mensaje no exista ya en la lista para evitar duplicados
           if (!_mensajes.any((m) => m.id == nuevoMensaje.id)) {
             _mensajes.add(nuevoMensaje);
           }
@@ -91,7 +90,6 @@ class _CanalChatSheetState extends ConsumerState<CanalChatSheet> {
 
     _socket?.onDisconnect((_) => debugPrint('Desconectado del WebSocket'));
   }
-  // =======================================================
 
   Future<void> _marcarUltimoMensajeComoLeido(int id) async {
     final prefs = await SharedPreferences.getInstance();
@@ -188,14 +186,24 @@ class _CanalChatSheetState extends ConsumerState<CanalChatSheet> {
 
     setState(() => _isSending = true);
     try {
-      // Enviamos el mensaje por HTTP tradicional.
-      // El servidor lo guardará y lo rebotará por WebSocket a todos (incluyéndote a ti)
-      await ref
+      // MEJORA: Capturamos la respuesta HTTP que ya trae el mensaje creado
+      final response = await ref
           .read(reportRepositoryProvider)
           .enviarMensajeCanal(widget.reporteId, texto);
 
+      final nuevoMensaje = CanalMensajeModel.fromJson(response);
+
+      // MEJORA: Actualizamos la UI instantáneamente para el usuario que envía
+      if (mounted) {
+        setState(() {
+          if (!_mensajes.any((m) => m.id == nuevoMensaje.id)) {
+            _mensajes.add(nuevoMensaje);
+          }
+        });
+        _irAlFinal();
+      }
+
       _mensajeController.clear();
-      // Ya NO necesitamos llamar a _cargarMensajes() aquí porque el WebSocket nos lo enviará automáticamente.
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
