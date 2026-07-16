@@ -135,6 +135,15 @@ class AuthNotifier extends Notifier<AuthState> {
     ref.read(dioProvider).clearTokenCache();
     state = AuthState(isLogged: false, role: AppRole.ninguno, userId: null);
   }
+
+  Future<void> eliminarCuentaEnServidor() async {
+    final token = await _storage.read(key: 'jwt_token');
+    if (token == null || token.isEmpty) throw Exception('No hay una sesión activa.');
+
+    final repository = ref.read(authRepositoryProvider);
+    
+    await repository.eliminarCuenta(token);
+  }
 }
 
 final authProvider = NotifierProvider<AuthNotifier, AuthState>(
