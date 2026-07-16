@@ -272,11 +272,11 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                   items: const [
                     DropdownMenuItem(
                       value: 'Cliente',
-                      child: Text('Solo quiero reportar casos'),
+                      child: Text('Reportar casos'),
                     ),
                     DropdownMenuItem(
                       value: 'Voluntario',
-                      child: Text('Quiero ser Voluntario de rescate'),
+                      child: Text('Voluntario de rescate'),
                     ),
                   ],
                   onChanged: (String? newValue) =>
