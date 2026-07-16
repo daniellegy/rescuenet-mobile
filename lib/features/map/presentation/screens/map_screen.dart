@@ -1,4 +1,3 @@
-import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -10,6 +9,12 @@ import '../../../../core/services/location_service.dart';
 import '../../../../core/services/camera_service.dart';
 import '../providers/map_markers_provider.dart';
 import '../../../reports/presentation/providers/my_active_rescue_provider.dart';
+
+// Componentes modulares
+import '../widgets/urgency_filter_menu.dart';
+import '../widgets/active_rescue_card.dart';
+import '../widgets/map_bottom_nav_bar.dart';
+import '../widgets/off_screen_markers.dart';
 
 const _kAppBarBg = Color(0xE6FFFFFF);
 
@@ -54,9 +59,6 @@ class _MapScreenState extends ConsumerState<MapScreen> {
         myPosition = LatLng(position.latitude, position.longitude);
       });
 
-      // CORRECCIÓN: Se invalida el proveedor de marcadores justo aquí.
-      // Cuando la app es nueva, esto se dispara inmediatamente después de aceptar los permisos de ubicación
-      // en el diálogo nativo, obligando a Riverpod a reconstruir el mapa con las coordenadas ya disponibles.
       ref.invalidate(reportesActivosMapaProvider);
     } catch (e) {
       if (mounted) {
@@ -122,70 +124,6 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     );
   }
 
-  Widget _buildVerticalFilterSelector() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.9),
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.1),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          _buildFilterChip('Todos', 'todos', Colors.blue),
-          const SizedBox(height: 8),
-          _buildFilterChip('Alta', 'alta', Colors.red),
-          const SizedBox(height: 8),
-          _buildFilterChip('Media', 'media', Colors.orange),
-          const SizedBox(height: 8),
-          _buildFilterChip('Baja', 'baja', Colors.amber),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildFilterChip(String label, String value, Color color) {
-    final bool isSelected = _filtroUrgencia == value;
-    return ChoiceChip(
-      label: SizedBox(
-        width: 46,
-        child: Center(
-          child: Text(
-            label,
-            style: TextStyle(
-              color: isSelected ? Colors.white : Colors.black87,
-              fontSize: 12,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ),
-      ),
-      selected: isSelected,
-      selectedColor: color,
-      backgroundColor: Colors.transparent,
-      showCheckmark: false,
-      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
-      onSelected: (bool selected) {
-        if (selected) {
-          setState(() {
-            _filtroUrgencia = value;
-          });
-        }
-      },
-    );
-  }
-
-  Widget get _buildUserMarker => const RepaintBoundary(
-    child: Icon(Icons.person_pin, color: Colors.red, size: 40),
-  );
-
   @override
   Widget build(BuildContext context) {
     final mapboxToken = dotenv.env['MAPBOX_TOKEN'] ?? '';
@@ -228,6 +166,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
           ? const Center(child: CircularProgressIndicator())
           : Stack(
               children: [
+                // CAPA PRINCIPAL DEL MAPA
                 RepaintBoundary(
                   child: FlutterMap(
                     mapController: _mapController,
@@ -263,13 +202,12 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                           ...reportesAsync.maybeWhen(
                             data: (reportes) {
                               return reportes
-                                  .where((r) {
-                                    if (_filtroUrgencia == 'todos') {
-                                      return true;
-                                    }
-                                    return r.urgencia.toLowerCase() ==
-                                        _filtroUrgencia;
-                                  })
+                                  .where(
+                                    (r) =>
+                                        _filtroUrgencia == 'todos' ||
+                                        r.urgencia.toLowerCase() ==
+                                            _filtroUrgencia,
+                                  )
                                   .map((reporte) {
                                     final bool estaEnProceso =
                                         reporte.estado
@@ -277,7 +215,6 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                                             .trim()
                                             .toUpperCase() ==
                                         'EN_PROCESO';
-
                                     return Marker(
                                       point: LatLng(
                                         reporte.latitud,
@@ -319,7 +256,13 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                               width: 50,
                               height: 50,
                               rotate: true,
-                              child: _buildUserMarker,
+                              child: const RepaintBoundary(
+                                child: Icon(
+                                  Icons.person_pin,
+                                  color: Colors.red,
+                                  size: 40,
+                                ),
+                              ),
                             ),
                         ],
                       ),
@@ -327,6 +270,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                   ),
                 ),
 
+                // CAPA DE INDICADORES FUERA DE PANTALLA
                 reportesAsync.maybeWhen(
                   data: (reportes) {
                     final reportesFiltrados = reportes.where((r) {
@@ -334,148 +278,15 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                       return r.urgencia.toLowerCase() == _filtroUrgencia;
                     }).toList();
 
-                    return LayoutBuilder(
-                      builder: (context, constraints) {
-                        return StreamBuilder<MapEvent>(
-                          stream: _mapController.mapEventStream,
-                          builder: (context, snapshot) {
-                            if (!mounted) return const SizedBox.shrink();
-
-                            final camera = _mapController.camera;
-                            final width = constraints.maxWidth;
-                            final height = constraints.maxHeight;
-
-                            if (width == 0 || height == 0)
-                              return const SizedBox.shrink();
-
-                            final center = Offset(width / 2, height / 2);
-
-                            const topMargin = 24.0;
-                            const sideMargin = 24.0;
-                            const bottomMargin = 130.0;
-
-                            final minX = sideMargin;
-                            final maxX = width - sideMargin;
-                            final minY = topMargin;
-                            final maxY = height - bottomMargin;
-
-                            return Stack(
-                              fit: StackFit.expand,
-                              children: reportesFiltrados.map((reporte) {
-                                final pos = LatLng(
-                                  reporte.latitud,
-                                  reporte.longitud,
-                                );
-
-                                if (camera.visibleBounds.contains(pos)) {
-                                  return const SizedBox.shrink();
-                                }
-
-                                final lat1 =
-                                    camera.center.latitude * math.pi / 180;
-                                final lng1 =
-                                    camera.center.longitude * math.pi / 180;
-                                final lat2 = pos.latitude * math.pi / 180;
-                                final lng2 = pos.longitude * math.pi / 180;
-
-                                final dLng = lng2 - lng1;
-                                final y = math.sin(dLng) * math.cos(lat2);
-                                final x =
-                                    math.cos(lat1) * math.sin(lat2) -
-                                    math.sin(lat1) *
-                                        math.cos(lat2) *
-                                        math.cos(dLng);
-
-                                final bearing = math.atan2(y, x);
-                                final dx = math.sin(bearing);
-                                final dy = -math.cos(bearing);
-
-                                if (dx.abs() < 0.0001 && dy.abs() < 0.0001) {
-                                  return const SizedBox.shrink();
-                                }
-
-                                double t = double.infinity;
-
-                                if (dx.abs() > 0.0001) {
-                                  if (dx > 0)
-                                    t = math.min(t, (maxX - center.dx) / dx);
-                                  if (dx < 0)
-                                    t = math.min(t, (minX - center.dx) / dx);
-                                }
-
-                                if (dy.abs() > 0.0001) {
-                                  if (dy > 0)
-                                    t = math.min(t, (maxY - center.dy) / dy);
-                                  if (dy < 0)
-                                    t = math.min(t, (minY - center.dy) / dy);
-                                }
-
-                                if (t == double.infinity || t.isNaN) {
-                                  return const SizedBox.shrink();
-                                }
-
-                                final indicatorX = center.dx + t * dx;
-                                final indicatorY = center.dy + t * dy;
-
-                                if (indicatorX.isNaN || indicatorY.isNaN) {
-                                  return const SizedBox.shrink();
-                                }
-
-                                final bool estaEnProceso =
-                                    reporte.estado
-                                        .toString()
-                                        .trim()
-                                        .toUpperCase() ==
-                                    'EN_PROCESO';
-
-                                return Positioned(
-                                  left: indicatorX - 18,
-                                  top: indicatorY - 18,
-                                  child: Transform.rotate(
-                                    angle: bearing,
-                                    child: GestureDetector(
-                                      onTap: () {
-                                        _mapController.move(pos, 17);
-                                      },
-                                      child: Container(
-                                        padding: const EdgeInsets.all(6),
-                                        decoration: BoxDecoration(
-                                          color: reporte.colorUrgencia,
-                                          shape: BoxShape.circle,
-                                          boxShadow: [
-                                            BoxShadow(
-                                              color: reporte.colorUrgencia
-                                                  .withValues(alpha: 0.6),
-                                              blurRadius: 8,
-                                              spreadRadius: 2,
-                                            ),
-                                          ],
-                                          border: Border.all(
-                                            color: Colors.white,
-                                            width: 2,
-                                          ),
-                                        ),
-                                        child: Icon(
-                                          estaEnProceso
-                                              ? Icons.hourglass_top_rounded
-                                              : Icons.arrow_upward_rounded,
-                                          color: Colors.white,
-                                          size: 18,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                );
-                              }).toList(),
-                            );
-                          },
-                        );
-                      },
+                    return OffScreenMarkers(
+                      mapController: _mapController,
+                      reportes: reportesFiltrados,
                     );
                   },
                   orElse: () => const SizedBox.shrink(),
                 ),
 
+                // CAPA DE BOTONES FLOTANTES (Filtro y Ubicación)
                 Positioned(
                   bottom: 200,
                   right: 16,
@@ -501,7 +312,14 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                       ),
                       if (_showUrgencyMenu) ...[
                         const SizedBox(height: 12),
-                        _buildVerticalFilterSelector(),
+                        UrgencyFilterMenu(
+                          currentFilter: _filtroUrgencia,
+                          onFilterChanged: (newFilter) {
+                            setState(() {
+                              _filtroUrgencia = newFilter;
+                            });
+                          },
+                        ),
                       ],
                     ],
                   ),
@@ -527,6 +345,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                   ),
                 ),
 
+                // CAPA DE AVISO DE RESCATE ACTIVO
                 miRescateAsync.maybeWhen(
                   data: (rescate) {
                     if (rescate == null) return const SizedBox.shrink();
@@ -534,41 +353,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                       top: 16,
                       left: 16,
                       right: 16,
-                      child: GestureDetector(
-                        onTap: () {
-                          context.push('/report-detail', extra: rescate).then((
-                            _,
-                          ) {
-                            ref.invalidate(reportesActivosMapaProvider);
-                            ref.invalidate(miRescateActivoProvider);
-                          });
-                        },
-                        child: Card(
-                          elevation: 8,
-                          shape: RoundedRectangleBorder(
-                            side: BorderSide(
-                              color: rescate.colorUrgencia,
-                              width: 2,
-                            ),
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          child: ListTile(
-                            leading: Icon(
-                              Icons.warning_amber_rounded,
-                              color: rescate.colorUrgencia,
-                              size: 36,
-                            ),
-                            title: const Text(
-                              'Tienes un rescate en curso',
-                              style: TextStyle(fontWeight: FontWeight.bold),
-                            ),
-                            subtitle: Text(
-                              '${rescate.especie} - Estado: ${rescate.estadoFormateado}',
-                            ),
-                            trailing: const Icon(Icons.arrow_forward_ios),
-                          ),
-                        ),
-                      ),
+                      child: ActiveRescueCard(rescate: rescate),
                     );
                   },
                   orElse: () => const SizedBox.shrink(),
@@ -584,37 +369,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
         shape: const CircleBorder(),
         child: const Icon(Icons.add_a_photo, size: 28),
       ),
-      bottomNavigationBar: BottomAppBar(
-        shape: const CircularNotchedRectangle(),
-        notchMargin: 8.0,
-        color: Colors.white,
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
-          children: [
-            IconButton(
-              icon: const Icon(Icons.map, color: Colors.redAccent),
-              tooltip: 'Mapa',
-              onPressed: () {},
-            ),
-            IconButton(
-              icon: const Icon(Icons.history, color: Colors.grey),
-              tooltip: 'Mi Historial',
-              onPressed: () => context.push('/history'),
-            ),
-            const SizedBox(width: 48),
-            IconButton(
-              icon: const Icon(Icons.warning_amber_rounded, color: Colors.grey),
-              tooltip: 'Emergencias Activas',
-              onPressed: () => context.push('/active-reports'),
-            ),
-            IconButton(
-              icon: const Icon(Icons.search_rounded, color: Colors.grey),
-              tooltip: 'Perros Perdidos',
-              onPressed: () => context.push('/lost-dogs'),
-            ),
-          ],
-        ),
-      ),
+      bottomNavigationBar: const MapBottomNavBar(),
     );
   }
 }
