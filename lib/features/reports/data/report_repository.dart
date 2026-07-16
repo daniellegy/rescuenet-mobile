@@ -51,9 +51,7 @@ class ReportRepository {
 
       await _dio.post('/reportes', data: formData);
     } on DioException catch (e) {
-      throw AppException(
-        e.response?.data['error'] ?? 'Error al enviar el reporte',
-      );
+      throw AppException.fromDioException(e);
     } catch (e) {
       throw AppException('Ocurrió un error inesperado al enviar el reporte');
     }
@@ -63,9 +61,7 @@ class ReportRepository {
     try {
       await _dio.put('/reportes/$id/aceptar');
     } on DioException catch (e) {
-      throw AppException(
-        e.response?.data['error'] ?? 'Error al aceptar el rescate',
-      );
+      throw AppException.fromDioException(e);
     } catch (e) {
       throw AppException('Ocurrió un error inesperado');
     }
@@ -75,9 +71,7 @@ class ReportRepository {
     try {
       await _dio.put('/reportes/$id/abortar');
     } on DioException catch (e) {
-      throw AppException(
-        e.response?.data['error'] ?? 'Error al abortar el rescate',
-      );
+      throw AppException.fromDioException(e);
     } catch (e) {
       throw AppException('Ocurrió un error inesperado');
     }
@@ -97,9 +91,7 @@ class ReportRepository {
         },
       );
     } on DioException catch (e) {
-      throw AppException(
-        e.response?.data['error'] ?? 'Error al guardar progreso',
-      );
+      throw AppException.fromDioException(e);
     } catch (e) {
       throw AppException('Ocurrió un error inesperado al guardar progreso');
     }
@@ -124,23 +116,18 @@ class ReportRepository {
       });
       await _dio.put('/reportes/$id/finalizar', data: formData);
     } on DioException catch (e) {
-      throw AppException(
-        e.response?.data['error'] ?? 'Error al finalizar el rescate',
-      );
+      throw AppException.fromDioException(e);
     } catch (e) {
       throw AppException('Ocurrió un error inesperado al finalizar');
     }
   }
-
 
   Future<Map<String, dynamic>> obtenerEstadoCanal(int reporteId) async {
     try {
       final response = await _dio.get('/reportes/$reporteId/canal');
       return response.data as Map<String, dynamic>;
     } on DioException catch (e) {
-      throw AppException(
-        e.response?.data['error'] ?? 'Error al obtener el canal',
-      );
+      throw AppException.fromDioException(e);
     } catch (e) {
       throw AppException('Ocurrió un error inesperado al obtener el canal');
     }
@@ -151,9 +138,7 @@ class ReportRepository {
       final response = await _dio.get('/reportes/$reporteId/canal/mensajes');
       return List<Map<String, dynamic>>.from(response.data);
     } on DioException catch (e) {
-      throw AppException(
-        e.response?.data['error'] ?? 'Error al obtener los mensajes',
-      );
+      throw AppException.fromDioException(e);
     } catch (e) {
       throw AppException('Ocurrió un error inesperado al obtener mensajes');
     }
@@ -170,9 +155,7 @@ class ReportRepository {
       );
       return response.data as Map<String, dynamic>;
     } on DioException catch (e) {
-      throw AppException(
-        e.response?.data['error'] ?? 'Error al enviar el mensaje',
-      );
+      throw AppException.fromDioException(e);
     } catch (e) {
       throw AppException('Ocurrió un error inesperado al enviar el mensaje');
     }
@@ -182,19 +165,17 @@ class ReportRepository {
     try {
       await _dio.put('/reportes/$reporteId/canal/activar');
     } on DioException catch (e) {
-      throw AppException(e.response?.data['error'] ?? 'Error al activar el canal');
+      throw AppException.fromDioException(e);
     } catch (e) {
       throw AppException('Ocurrió un error inesperado al activar el canal');
     }
   }
-  
+
   Future<void> cerrarCanalManual(int reporteId) async {
     try {
       await _dio.put('/reportes/$reporteId/canal/cerrar');
     } on DioException catch (e) {
-      throw AppException(
-        e.response?.data['error'] ?? 'Error al cerrar el canal',
-      );
+      throw AppException.fromDioException(e);
     } catch (e) {
       throw AppException('Ocurrió un error inesperado al cerrar el canal');
     }

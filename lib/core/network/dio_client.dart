@@ -1,5 +1,5 @@
 import 'package:dio/dio.dart';
-import 'package:flutter/foundation.dart';
+import 'package:flutter/foundation.dart'; // Importante para detectar si es Debug o Release
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
@@ -23,20 +23,25 @@ class DioClient {
           },
         ),
       ) {
-    _dio.interceptors.add(
-      LogInterceptor(
-        request: true,
-        requestHeader: true,
-        requestBody: true,
-        responseHeader: false,
-        responseBody: true,
-        error: true,
-      ),
-    );
+    // PRÁCTICA SENIOR: Los logs solo se inyectan si estás depurando.
+    // Esto evita fugas de tokens, contraseñas y datos sensibles en producción.
+    if (kDebugMode) {
+      _dio.interceptors.add(
+        LogInterceptor(
+          request: true,
+          requestHeader: true,
+          requestBody: true,
+          responseHeader: false,
+          responseBody: true,
+          error: true,
+        ),
+      );
+    }
 
     _dio.interceptors.add(
       InterceptorsWrapper(
         onRequest: (options, handler) async {
+          // No inyectamos token en rutas públicas
           if (!options.path.contains('/login') &&
               !options.path.contains('/register')) {
             _inMemoryToken ??= await _storage.read(key: 'jwt_token');
@@ -47,14 +52,15 @@ class DioClient {
           return handler.next(options);
         },
         onError: (DioException e, handler) async {
+          // Si el token expira o es inválido, matamos la sesión inmediatamente
           if (e.response?.statusCode == 401) {
             _inMemoryToken = null;
             await _storage.delete(key: 'jwt_token');
-            // Disparamos el callback para que Riverpod actualice la UI
             if (onUnauthorized != null) {
               onUnauthorized!();
             }
           }
+          // Propagamos el error para que AppException.fromDioException lo procese en los repositorios
           return handler.next(e);
         },
       ),
@@ -71,7 +77,6 @@ class DioClient {
 final dioProvider = Provider<DioClient>((ref) {
   return DioClient(
     onUnauthorized: () {
-      // Usamos microtask para evitar errores de actualización de estado mientras otros providers se construyen
       Future.microtask(() => ref.read(authProvider.notifier).logout());
     },
   );

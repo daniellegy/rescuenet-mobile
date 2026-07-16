@@ -16,11 +16,9 @@ class AuthRepository {
       );
       return response.data;
     } on DioException catch (e) {
-      throw AppException(
-        e.response?.data['error'] ?? 'Credenciales incorrectas',
-      );
+      throw AppException.fromDioException(e);
     } catch (e) {
-      throw AppException('Error de conexión inesperado');
+      throw AppException('Error inesperado al intentar iniciar sesión');
     }
   }
 
@@ -46,28 +44,21 @@ class AuthRepository {
       );
       return response.data;
     } on DioException catch (e) {
-      throw AppException(
-        e.response?.data['error'] ?? 'Error al registrar usuario',
-      );
+      throw AppException.fromDioException(e);
     } catch (e) {
-      throw AppException('Error de conexión inesperado');
+      throw AppException('Error inesperado al registrar usuario');
     }
   }
 
   Future<void> eliminarCuenta(String token) async {
     try {
+      // Nota: El interceptor ya maneja la inyección del token, pero lo enviamos explícito por seguridad de tu diseño previo
       await _dio.delete(
         '/auth/perfil',
-        options: Options(
-          headers: {
-            'Authorization': 'Bearer $token',
-          },
-        ),
+        options: Options(headers: {'Authorization': 'Bearer $token'}),
       );
     } on DioException catch (e) {
-      throw AppException(
-        e.response?.data['error'] ?? 'No se pudo eliminar la cuenta en el servidor',
-      );
+      throw AppException.fromDioException(e);
     } catch (e) {
       throw AppException('Error inesperado al intentar dar de baja la cuenta');
     }

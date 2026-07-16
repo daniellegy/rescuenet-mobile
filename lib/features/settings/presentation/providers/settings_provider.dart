@@ -14,15 +14,11 @@ class UserProfileNotifier extends AsyncNotifier<Map<String, dynamic>> {
 
     try {
       final response = await dio.get('/auth/perfil');
-      if (response.statusCode == 200) {
-        return response.data as Map<String, dynamic>;
-      } else {
-        throw AppException('No se pudo obtener el perfil del servidor');
-      }
+      return response.data as Map<String, dynamic>;
     } on DioException catch (e) {
-      throw AppException(e.response?.data['error'] ?? 'Error de red');
+      throw AppException.fromDioException(e);
     } catch (e) {
-      throw AppException('Error de red al conectar con el backend');
+      throw AppException('Error de red inesperado al cargar el perfil');
     }
   }
 
@@ -32,45 +28,28 @@ class UserProfileNotifier extends AsyncNotifier<Map<String, dynamic>> {
     int? role,
     String? curp,
     int? radioNotificaciones,
-    String?
-    fcmToken, // MODIFICADO: Soporte para actualizar/limpiar el token FCM
+    String? fcmToken,
   }) async {
     final dio = ref.read(dioProvider).instance;
 
     try {
       final Map<String, dynamic> datosAActualizar = {};
 
-      if (telefono != null) {
-        datosAActualizar['telefono'] = telefono;
-      }
-      if (email != null) {
-        datosAActualizar['email'] = email;
-      }
-      if (role != null) {
-        datosAActualizar['role'] = role;
-      }
-      if (curp != null) {
-        datosAActualizar['curp'] = curp;
-      }
-      if (radioNotificaciones != null) {
+      if (telefono != null) datosAActualizar['telefono'] = telefono;
+      if (email != null) datosAActualizar['email'] = email;
+      if (role != null) datosAActualizar['role'] = role;
+      if (curp != null) datosAActualizar['curp'] = curp;
+      if (radioNotificaciones != null)
         datosAActualizar['radio_notificaciones'] = radioNotificaciones;
-      }
-      if (fcmToken != null) {
-        datosAActualizar['fcm_token'] = fcmToken;
-      }
+      if (fcmToken != null) datosAActualizar['fcm_token'] = fcmToken;
 
       final response = await dio.put('/auth/perfil', data: datosAActualizar);
-      if (response.statusCode == 200) {
-        final datosActualizados =
-            response.data['usuario'] as Map<String, dynamic>;
-        state = AsyncData(datosActualizados);
-      } else {
-        throw AppException('El servidor rechazó la actualización del perfil');
-      }
+      final datosActualizados =
+          response.data['usuario'] as Map<String, dynamic>;
+
+      state = AsyncData(datosActualizados);
     } on DioException catch (e) {
-      throw AppException(
-        e.response?.data['error'] ?? 'Error al actualizar los datos',
-      );
+      throw AppException.fromDioException(e);
     } catch (e) {
       throw AppException('Ocurrió un error inesperado al actualizar los datos');
     }
