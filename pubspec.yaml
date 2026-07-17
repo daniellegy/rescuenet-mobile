@@ -98,7 +98,7 @@ flutter_launcher_icons:
 flutter_native_splash:
   # Fondo general y logo transparente
   color: "#FFFFFF"
-  image: "assets/icon/rescuenet-logo-sinfondo.png"
+  image: "assets/splash/rescuenet-logo-sinfondo.png"
   # Soporte obligatorio para la API nativa de Android 12+
   android_12:
     image: "assets/splash/rescuenet-logo-sinfondo.png"
