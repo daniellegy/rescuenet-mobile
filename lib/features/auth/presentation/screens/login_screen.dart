@@ -12,11 +12,9 @@ class LoginScreen extends ConsumerStatefulWidget {
 
 class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
-
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
 
-  // Nuevo estado para controlar la carga y evitar clics duplicados
   bool _isLoading = false;
   bool _isPasswordVisible = false;
 
@@ -27,20 +25,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     super.dispose();
   }
 
-  // Lógica separada y asíncrona para manejar el proceso
   Future<void> _handleLogin() async {
     if (_formKey.currentState!.validate()) {
       setState(() => _isLoading = true);
-
       try {
         await ref
             .read(authProvider.notifier)
             .login(_emailController.text, _passwordController.text);
-        // Si el login es exitoso, GoRouter redirigirá automáticamente
-        // gracias al refreshListenable en app_router.dart
       } catch (e) {
         if (mounted) {
-          // Mostramos el error capturado en pantalla sin crashear la app
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(e.toString()),
@@ -70,17 +63,36 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 const SizedBox(height: 60),
-                Icon(
-                  Icons.pets,
-                  size: 80,
-                  color: Theme.of(context).colorScheme.primary,
+
+                // 1. Logo implementado en reemplazo del Icon
+                Image.asset(
+                  'assets/splash/rescuenet-logo-sinfondo-grande.png',
+                  height:
+                      120, // Altura recomendada, puedes ajustarla si es necesario
+                  fit: BoxFit.contain,
                 ),
                 const SizedBox(height: 24),
-                const Text(
-                  'RescueNet',
+
+                // 2. RichText para separar los colores de "Rescue" y "Net"
+                RichText(
                   textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
+                  text: const TextSpan(
+                    style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
+                    children: [
+                      TextSpan(
+                        text: 'Rescue',
+                        style: TextStyle(color: Colors.red),
+                      ),
+                      TextSpan(
+                        text: 'Net',
+                        style: TextStyle(
+                          color: Colors.deepOrange,
+                        ), // Naranja fuerte
+                      ),
+                    ],
+                  ),
                 ),
+
                 const SizedBox(height: 40),
                 TextFormField(
                   controller: _emailController,
@@ -106,7 +118,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   obscureText: !_isPasswordVisible,
                   decoration: InputDecoration(
                     labelText: 'Contraseña',
-                    prefixIcon: Icon(Icons.lock),
+                    prefixIcon: const Icon(Icons.lock),
                     suffixIcon: IconButton(
                       icon: Icon(
                         _isPasswordVisible
@@ -119,7 +131,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         });
                       },
                     ),
-                    border: OutlineInputBorder(),
+                    border: const OutlineInputBorder(),
                   ),
                   validator: (value) {
                     if (value == null || value.isEmpty) {
@@ -129,8 +141,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   },
                 ),
                 const SizedBox(height: 32),
-
-                // Botón interactivo que reacciona a la carga
                 FilledButton(
                   onPressed: _isLoading ? null : _handleLogin,
                   style: FilledButton.styleFrom(

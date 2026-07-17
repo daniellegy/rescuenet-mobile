@@ -82,6 +82,7 @@ flutter:
   #   - images/a_dot_burr.jpeg
   #   - images/a_dot_ham.jpeg
   assets:
+    - assets/splash/
     - .env
 
 # CONFIGURACIÓN DEL ÍCONO DE LA APP
