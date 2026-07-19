@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../providers/settings_provider.dart';
-
 import '../../../map/presentation/providers/map_markers_provider.dart';
 import '../../../reports/presentation/providers/active_reports_provider.dart';
 
@@ -11,7 +10,7 @@ class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
 
   void _mostrarModalRoles(
-    BuildContext parentContext, // Contexto principal de la pantalla
+    BuildContext parentContext,
     WidgetRef ref,
     int rolActualId,
     String? curpActual,
@@ -22,7 +21,6 @@ class SettingsScreen extends ConsumerWidget {
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder: (modalContext) {
-        // Contexto específico del BottomSheet
         return SafeArea(
           child: Padding(
             padding: const EdgeInsets.symmetric(
@@ -46,7 +44,6 @@ class SettingsScreen extends ConsumerWidget {
                   style: const TextStyle(color: Colors.grey, fontSize: 13),
                 ),
                 const SizedBox(height: 20),
-
                 _buildOpcionRol(
                   parentContext: parentContext,
                   modalContext: modalContext,
@@ -101,14 +98,11 @@ class SettingsScreen extends ConsumerWidget {
           ? const Icon(Icons.check_circle, color: Colors.green)
           : const Icon(Icons.circle_outlined),
       onTap: () async {
-        Navigator.pop(
-          modalContext,
-        ); // Cierra el BottomSheet usando su propio contexto
+        Navigator.pop(modalContext);
         if (rolTarget == rolActual) return;
 
         String? tokenFCM;
         if (rolTarget == 2) {
-          // Lanza el manifiesto usando el contexto de la pantalla, que sigue vivo
           final acepto = await _mostrarManifiestoVoluntario(parentContext);
           if (!acepto) return;
 
@@ -198,7 +192,6 @@ class SettingsScreen extends ConsumerWidget {
             FilledButton(
               onPressed: () {
                 final curpIngresada = curpController.text.trim().toUpperCase();
-
                 if (!curpRegex.hasMatch(curpIngresada)) {
                   ScaffoldMessenger.of(dialogContext).showSnackBar(
                     const SnackBar(
@@ -208,9 +201,7 @@ class SettingsScreen extends ConsumerWidget {
                   );
                   return;
                 }
-
-                Navigator.pop(dialogContext); // Cierra el diálogo de captura
-                // Procesa con el contexto principal
+                Navigator.pop(dialogContext);
                 _procesarCambioDeRol(
                   parentContext,
                   ref,
@@ -246,6 +237,9 @@ class SettingsScreen extends ConsumerWidget {
             fcmToken: tokenFCM,
           );
 
+      // SOLUCIÓN: Actualizamos el provider de autenticación para propagar el cambio
+      ref.read(authProvider.notifier).updateLocalRole(rolTarget);
+
       if (parentContext.mounted) {
         ScaffoldMessenger.of(parentContext).showSnackBar(
           SnackBar(
@@ -273,7 +267,6 @@ class SettingsScreen extends ConsumerWidget {
     final TextEditingController controller = TextEditingController(
       text: valorActual,
     );
-
     showDialog(
       context: parentContext,
       builder: (dialogContext) {
@@ -300,7 +293,6 @@ class SettingsScreen extends ConsumerWidget {
             FilledButton(
               onPressed: () async {
                 final nuevoValor = controller.text.trim();
-
                 if (campoBaseDatos == 'email') {
                   final emailRegex = RegExp(
                     r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$',
@@ -328,7 +320,7 @@ class SettingsScreen extends ConsumerWidget {
                 }
 
                 if (nuevoValor.isNotEmpty && nuevoValor != valorActual) {
-                  Navigator.pop(dialogContext); // Cierra modal de edición
+                  Navigator.pop(dialogContext);
                   try {
                     if (campoBaseDatos == 'telefono') {
                       await ref
@@ -339,7 +331,6 @@ class SettingsScreen extends ConsumerWidget {
                           .read(userProfileProvider.notifier)
                           .actualizarCampo(email: nuevoValor);
                     }
-
                     if (parentContext.mounted) {
                       ScaffoldMessenger.of(parentContext).showSnackBar(
                         const SnackBar(
@@ -409,7 +400,7 @@ class SettingsScreen extends ConsumerWidget {
                 ),
                 FilledButton(
                   onPressed: () async {
-                    Navigator.pop(dialogContext); // Cierra diálogo
+                    Navigator.pop(dialogContext);
                     if (radioSeleccionado != radioActual) {
                       try {
                         await ref
@@ -417,7 +408,6 @@ class SettingsScreen extends ConsumerWidget {
                             .actualizarCampo(
                               radioNotificaciones: radioSeleccionado,
                             );
-
                         ref.invalidate(reportesActivosMapaProvider);
                         ref.invalidate(activeReportsProvider);
 
@@ -481,7 +471,6 @@ class SettingsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final perfilAsync = ref.watch(userProfileProvider);
-
     return Scaffold(
       appBar: AppBar(
         title: const Text('Configuración'),
@@ -495,7 +484,6 @@ class SettingsScreen extends ConsumerWidget {
           final curp = datos['curp'];
           final int rolActualId = datos['role'] ?? 1;
           final int radioNotificaciones = datos['radio_notificaciones'] ?? 30;
-
           final String? tokenFCMActual = datos['fcm_token'];
           final bool notificacionesActivas =
               tokenFCMActual != null && tokenFCMActual.trim().isNotEmpty;
@@ -527,7 +515,6 @@ class SettingsScreen extends ConsumerWidget {
                 ),
               ),
               const SizedBox(height: 32),
-
               const Text(
                 'Mi Cuenta',
                 style: TextStyle(
@@ -537,7 +524,6 @@ class SettingsScreen extends ConsumerWidget {
                 ),
               ),
               const SizedBox(height: 8),
-
               ListTile(
                 leading: const Icon(
                   Icons.volunteer_activism,
@@ -546,12 +532,10 @@ class SettingsScreen extends ConsumerWidget {
                 title: const Text('Rol en la Plataforma'),
                 subtitle: Text(rolActualId == 2 ? 'Voluntario' : 'Reportante'),
                 trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-                // Aquí pasamos el context inicial y persistente de la pantalla (parentContext)
                 onTap: () =>
                     _mostrarModalRoles(context, ref, rolActualId, curp),
               ),
               const Divider(height: 1),
-
               ListTile(
                 leading: const Icon(
                   Icons.email_outlined,
@@ -568,7 +552,6 @@ class SettingsScreen extends ConsumerWidget {
                     _mostrarDialogoDato(context, ref, 'Correo', email, 'email'),
               ),
               const Divider(height: 1),
-
               ListTile(
                 leading: const Icon(Icons.phone_android, color: Colors.green),
                 title: const Text('Teléfono Móvil'),
@@ -586,7 +569,6 @@ class SettingsScreen extends ConsumerWidget {
                   'telefono',
                 ),
               ),
-
               if (rolActualId == 2 &&
                   curp != null &&
                   curp.toString().isNotEmpty) ...[
@@ -611,9 +593,7 @@ class SettingsScreen extends ConsumerWidget {
                   ),
                 ),
               ],
-
               const SizedBox(height: 32),
-
               const Text(
                 'Preferencias de Alertas',
                 style: TextStyle(
@@ -623,7 +603,6 @@ class SettingsScreen extends ConsumerWidget {
                 ),
               ),
               const SizedBox(height: 8),
-
               SwitchListTile(
                 secondary: const Icon(
                   Icons.notifications_active,
@@ -634,7 +613,7 @@ class SettingsScreen extends ConsumerWidget {
                   notificacionesActivas ? 'Activadas' : 'Desactivadas',
                 ),
                 value: notificacionesActivas,
-                activeColor: Colors.redAccent,
+                activeThumbColor: Colors.redAccent,
                 onChanged: (bool value) async {
                   if (value) {
                     try {
@@ -645,7 +624,6 @@ class SettingsScreen extends ConsumerWidget {
                             badge: true,
                             sound: true,
                           );
-
                       if (settings.authorizationStatus ==
                           AuthorizationStatus.authorized) {
                         final token = await messaging.getToken();
@@ -686,7 +664,6 @@ class SettingsScreen extends ConsumerWidget {
                 },
               ),
               const Divider(height: 1),
-
               ListTile(
                 leading: const Icon(Icons.radar, color: Colors.purple),
                 title: const Text('Radio de Búsqueda'),
@@ -699,9 +676,7 @@ class SettingsScreen extends ConsumerWidget {
                 onTap: () =>
                     _mostrarDialogoRadio(context, ref, radioNotificaciones),
               ),
-
               const Divider(height: 40),
-
               ListTile(
                 leading: const Icon(Icons.logout_rounded, color: Colors.red),
                 title: const Text(
@@ -718,7 +693,7 @@ class SettingsScreen extends ConsumerWidget {
                 onTap: () {
                   showDialog(
                     context: context,
-                    barrierDismissible: false, // elegir opcion
+                    barrierDismissible: false,
                     builder: (dialogContext) {
                       return AlertDialog(
                         title: const Row(
@@ -748,14 +723,14 @@ class SettingsScreen extends ConsumerWidget {
                             ),
                             onPressed: () async {
                               Navigator.pop(dialogContext);
-                              
                               try {
                                 await ref.read(authProvider.notifier).logout();
-                                
                                 if (context.mounted) {
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     const SnackBar(
-                                      content: Text('Has cerrado sesión correctamente.'),
+                                      content: Text(
+                                        'Has cerrado sesión correctamente.',
+                                      ),
                                       backgroundColor: Colors.black87,
                                     ),
                                   );
@@ -764,7 +739,9 @@ class SettingsScreen extends ConsumerWidget {
                                 if (context.mounted) {
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     SnackBar(
-                                      content: Text('Error al cerrar sesión: $e'),
+                                      content: Text(
+                                        'Error al cerrar sesión: $e',
+                                      ),
                                       backgroundColor: Colors.red,
                                     ),
                                   );
@@ -779,9 +756,11 @@ class SettingsScreen extends ConsumerWidget {
                   );
                 },
               ),
-
               ListTile(
-                leading: const Icon(Icons.delete_forever_rounded, color: Colors.red),
+                leading: const Icon(
+                  Icons.delete_forever_rounded,
+                  color: Colors.red,
+                ),
                 title: const Text(
                   'Eliminar Cuenta',
                   style: TextStyle(
@@ -796,19 +775,22 @@ class SettingsScreen extends ConsumerWidget {
                 onTap: () {
                   showDialog(
                     context: context,
-                    barrierDismissible: false, 
+                    barrierDismissible: false,
                     builder: (dialogContext) {
                       return AlertDialog(
                         title: const Row(
                           children: [
-                            Icon(Icons.warning_amber_rounded, color: Colors.red),
+                            Icon(
+                              Icons.warning_amber_rounded,
+                              color: Colors.red,
+                            ),
                             SizedBox(width: 8),
                             Text('¿Eliminar cuenta?'),
                           ],
                         ),
                         content: const Text(
-                          'Esta acción es irreversible. Se borrarán tus datos perosnales, el historial '
-                          'de alertas que has emitido y tus registros de rescates'
+                          'Esta acción es irreversible. Se borrarán tus datos personales, el historial '
+                          'de alertas que has emitido y tus registros de rescates '
                           'de los servidores de RescueNet',
                         ),
                         actions: [
@@ -825,16 +807,18 @@ class SettingsScreen extends ConsumerWidget {
                               foregroundColor: Colors.white,
                             ),
                             onPressed: () async {
-                              Navigator.pop(dialogContext); // Cierra el diálogo
-                              
+                              Navigator.pop(dialogContext);
                               try {
-                                await ref.read(authProvider.notifier).eliminarCuentaEnServidor();
+                                await ref
+                                    .read(authProvider.notifier)
+                                    .eliminarCuentaEnServidor();
                                 await ref.read(authProvider.notifier).logout();
-                                
                                 if (context.mounted) {
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     const SnackBar(
-                                      content: Text('Tu cuenta ha sido eliminada correctamente.'),
+                                      content: Text(
+                                        'Tu cuenta ha sido eliminada correctamente.',
+                                      ),
                                       backgroundColor: Colors.black87,
                                     ),
                                   );
@@ -843,7 +827,9 @@ class SettingsScreen extends ConsumerWidget {
                                 if (context.mounted) {
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     SnackBar(
-                                      content: Text('Error al eliminar cuenta: $e'),
+                                      content: Text(
+                                        'Error al eliminar cuenta: $e',
+                                      ),
                                       backgroundColor: Colors.red,
                                     ),
                                   );

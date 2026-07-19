@@ -33,30 +33,24 @@ class AuthNotifier extends Notifier<AuthState> {
     if (parts.length != 3) {
       throw const FormatException('Token JWT inválido');
     }
-
     final normalizedPayload = base64Url.normalize(parts[1]);
     final decodedPayload = utf8.decode(base64Url.decode(normalizedPayload));
     final payload = jsonDecode(decodedPayload);
-
     if (payload is! Map) {
       throw const FormatException('El payload del token no es un objeto JSON');
     }
-
     return Map<String, dynamic>.from(payload);
   }
 
   Future<void> restoreSession() async {
     final token = await _storage.read(key: 'jwt_token');
-
     if (token == null || token.isEmpty) {
       state = AuthState(isLogged: false, role: AppRole.ninguno, userId: null);
       return;
     }
-
     try {
       final payload = _decodeJwtPayload(token);
       final usuario = payload['usuario'];
-
       if (usuario is! Map) throw const FormatException('Sin datos de usuario');
 
       final userId = usuario['id'];
@@ -80,9 +74,6 @@ class AuthNotifier extends Notifier<AuthState> {
         role: _roleFromRolId(rolId),
         userId: userId,
       );
-
-      // SE ELIMINÓ: _actualizarFCMToken() automático.
-      // Las notificaciones dependen exclusivamente de la preferencia guardada en el backend.
     } catch (_) {
       await _storage.delete(key: 'jwt_token');
       state = AuthState(isLogged: false, role: AppRole.ninguno, userId: null);
@@ -101,7 +92,6 @@ class AuthNotifier extends Notifier<AuthState> {
     if (rolId == 2) userRole = AppRole.voluntario;
 
     state = AuthState(isLogged: true, role: userRole, userId: idUsuario);
-    // SE ELIMINÓ: _actualizarFCMToken() automático.
   }
 
   Future<void> login(String email, String password) async {
@@ -138,11 +128,19 @@ class AuthNotifier extends Notifier<AuthState> {
 
   Future<void> eliminarCuentaEnServidor() async {
     final token = await _storage.read(key: 'jwt_token');
-    if (token == null || token.isEmpty) throw Exception('No hay una sesión activa.');
-
+    if (token == null || token.isEmpty)
+      throw Exception('No hay una sesión activa.');
     final repository = ref.read(authRepositoryProvider);
-    
     await repository.eliminarCuenta(token);
+  }
+
+  // MÉTODO NUEVO: Actualiza el estado local tras un cambio de rol en settings
+  void updateLocalRole(int rolId) {
+    state = AuthState(
+      isLogged: state.isLogged,
+      role: _roleFromRolId(rolId),
+      userId: state.userId,
+    );
   }
 }
 
