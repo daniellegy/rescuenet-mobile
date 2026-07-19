@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-
 import '../../domain/models/report_model.dart';
 import '../providers/history_provider.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
@@ -26,7 +25,6 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
 
   List<ReportModel> _ordenarReportes(List<ReportModel> reportes) {
     List<ReportModel> lista = List.from(reportes);
-
     switch (_ordenActual) {
       case FiltroOrden.masRecientes:
         lista.sort(
@@ -68,7 +66,6 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
     final authState = ref.watch(authProvider);
     final currentUserId = authState.userId;
     final bool esVoluntario = authState.role == AppRole.voluntario;
-
     final historialAsync = ref.watch(misReportesProvider);
 
     return Scaffold(
@@ -114,24 +111,77 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
           if (historialBruto.isEmpty) {
             return const Center(child: Text('No tienes reportes registrados'));
           }
-
           final historialOrdenado = _ordenarReportes(historialBruto);
 
-          if (!esVoluntario) {
-            return _buildListaReportes(historialOrdenado);
-          }
-
-        final reportesActivos = historialOrdenado
-              .where((r) => r.usuarioReportadorId == currentUserId && r.estado != 'Rescatado')
-              .toList();
-
-          final misRescates = historialOrdenado
-              .where((r) => r.usuarioRescatistaId == currentUserId && r.estado == 'Rescatado')
+          // Lógica de separación de pestañas basada en el rol actual
+          final reportesActivos = historialOrdenado
+              .where(
+                (r) =>
+                    r.usuarioReportadorId == currentUserId &&
+                    r.estado != 'Rescatado',
+              )
               .toList();
 
           final reportesConcluidos = historialOrdenado
-              .where((r) => r.usuarioReportadorId == currentUserId && r.estado == 'Rescatado')
+              .where(
+                (r) =>
+                    r.usuarioReportadorId == currentUserId &&
+                    r.estado == 'Rescatado',
+              )
               .toList();
+
+          if (!esVoluntario) {
+            // UI para Reportante: 2 Pestañas
+            return DefaultTabController(
+              length: 2,
+              child: Column(
+                children: [
+                  const TabBar(
+                    labelColor: Colors.red,
+                    unselectedLabelColor: Colors.grey,
+                    indicatorColor: Colors.red,
+                    isScrollable: false,
+                    tabs: [
+                      Tab(
+                        icon: Icon(Icons.campaign_rounded),
+                        text: 'Mis Alertas',
+                      ),
+                      Tab(
+                        icon: Icon(Icons.check_circle_rounded),
+                        text: 'Mis Cierres',
+                      ),
+                    ],
+                  ),
+                  Expanded(
+                    child: TabBarView(
+                      children: [
+                        reportesActivos.isEmpty
+                            ? const Center(
+                                child: Text('No tienes alertas activas'),
+                              )
+                            : _buildListaReportes(reportesActivos),
+                        reportesConcluidos.isEmpty
+                            ? const Center(
+                                child: Text('No tienes casos concluidos'),
+                              )
+                            : _buildListaReportes(reportesConcluidos),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }
+
+          // UI para Voluntario: 3 Pestañas
+          final misRescates = historialOrdenado
+              .where(
+                (r) =>
+                    r.usuarioRescatistaId == currentUserId &&
+                    r.estado == 'Rescatado',
+              )
+              .toList();
+
           return DefaultTabController(
             length: 3,
             child: Column(
@@ -152,7 +202,7 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
                     ),
                     Tab(
                       icon: Icon(Icons.check_circle_rounded),
-                      text: 'Mis Cierres', 
+                      text: 'Mis Cierres',
                     ),
                   ],
                 ),
@@ -164,13 +214,11 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
                               child: Text('No tienes alertas activas'),
                             )
                           : _buildListaReportes(reportesActivos),
-                          
                       misRescates.isEmpty
                           ? const Center(
                               child: Text('No has concluido rescates'),
                             )
                           : _buildListaReportes(misRescates),
-                          
                       reportesConcluidos.isEmpty
                           ? const Center(
                               child: Text('No tienes casos concluidos'),
