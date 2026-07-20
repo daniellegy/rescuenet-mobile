@@ -10,7 +10,7 @@ import '../../../history/domain/models/report_model.dart';
 import '../../data/report_repository.dart';
 import '../providers/active_reports_provider.dart';
 import '../providers/my_active_rescue_provider.dart';
-import '../../../map/presentation/providers/map_markers_provider.dart'; // AÑADIDO PARA MAPA
+import '../../../map/presentation/providers/map_markers_provider.dart';
 import '../../../history/presentation/providers/history_provider.dart';
 import '../providers/rescue_stepper_provider.dart';
 import '../../../../core/services/camera_service.dart';
@@ -55,13 +55,19 @@ class _RescueStepperScreenState extends ConsumerState<RescueStepperScreen> {
       text: stepperState.conclusion,
     );
 
+    // LÓGICA DE FORMATO DE MONEDA MXN ($ 0,000.00)
     _costoFocusNode.addListener(() {
       if (!_costoFocusNode.hasFocus) {
-        final text = _costoController.text.trim();
+        String text = _costoController.text.replaceAll(RegExp(r'[^\d.]'), '');
         if (text.isNotEmpty) {
           final numero = double.tryParse(text);
           if (numero != null) {
-            _costoController.text = numero.toStringAsFixed(2);
+            final parts = numero.toStringAsFixed(2).split('.');
+            final wholePart = parts[0].replaceAllMapped(
+              RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
+              (Match m) => '${m[1]},',
+            );
+            _costoController.text = '\$ $wholePart.${parts[1]}';
             ref
                 .read(rescueStepperProvider.notifier)
                 .updateField(cost: _costoController.text);
@@ -131,13 +137,13 @@ class _RescueStepperScreenState extends ConsumerState<RescueStepperScreen> {
             lugarTraslado: estado.lugarTraslado,
           );
 
-      // INVALIDAR PROVIDERS PARA QUE `ReportDetailScreen` VEA EL "TRASLADO A"
       ref.invalidate(miRescateActivoProvider);
       ref.invalidate(activeReportsProvider);
       ref.invalidate(reportesActivosMapaProvider);
 
       final url = _directorios[estado.tipoTraslado]![estado.lugarTraslado]!;
       await _lanzarUrl(url);
+
       ref
           .read(rescueStepperProvider.notifier)
           .updateField(step: estado.currentStep + 1);
@@ -168,16 +174,23 @@ class _RescueStepperScreenState extends ConsumerState<RescueStepperScreen> {
     });
 
     try {
+      // Remover formato de moneda antes de enviar a DB
+      final costoLimpio = _costoController.text.replaceAll(
+        RegExp(r'[^\d.]'),
+        '',
+      );
+
       final detalles = {
         'condicion': estado.condicion ?? 'Desconocida',
         'destino': estado.destino,
-        'costo': double.tryParse(_costoController.text) ?? 0.0,
+        'costo': double.tryParse(costoLimpio) ?? 0.0,
         'conclusion': _conclusionController.text,
       };
 
       await ref
           .read(reportRepositoryProvider)
           .finalizeReport(widget.reporte.id, detalles, estado.evidenciaPath);
+
       ref.read(rescueStepperProvider.notifier).reset();
 
       if (mounted) {
@@ -190,9 +203,7 @@ class _RescueStepperScreenState extends ConsumerState<RescueStepperScreen> {
         ref.invalidate(activeReportsProvider);
         ref.invalidate(miRescateActivoProvider);
         ref.invalidate(misReportesProvider);
-        ref.invalidate(
-          reportesActivosMapaProvider,
-        ); // CORRECCIÓN: Borra el icono del mapa principal
+        ref.invalidate(reportesActivosMapaProvider);
         context.go('/map');
       }
     } catch (e) {
@@ -239,7 +250,8 @@ class _RescueStepperScreenState extends ConsumerState<RescueStepperScreen> {
                           isScrollControlled: true,
                           builder: (ctx) => CanalChatSheet(
                             reporteId: widget.reporte.id,
-                            onCanalCerrado: () => setState(() => _canalCerradoLocalmente = true),
+                            onCanalCerrado: () =>
+                                setState(() => _canalCerradoLocalmente = true),
                           ),
                         );
                         if (mounted) setState(() {});
@@ -264,7 +276,6 @@ class _RescueStepperScreenState extends ConsumerState<RescueStepperScreen> {
             ),
         ],
       ),
-
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : Stepper(
@@ -274,7 +285,11 @@ class _RescueStepperScreenState extends ConsumerState<RescueStepperScreen> {
                 if (stepperState.currentStep == 0) {
                   if (stepperState.animalPresente == null) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Por favor, indica si el animal se encuentra en el área.')),
+                      const SnackBar(
+                        content: Text(
+                          'Por favor, indica si el animal se encuentra en el área.',
+                        ),
+                      ),
                     );
                     return;
                   }
@@ -282,7 +297,7 @@ class _RescueStepperScreenState extends ConsumerState<RescueStepperScreen> {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
                         content: Text(
-                          'Seleccionaste que no está. Puedes abortar el rescate.',
+                          'Seleccionaste que no está. Puedes abortar el rescate desde el panel principal.',
                         ),
                       ),
                     );
@@ -295,14 +310,17 @@ class _RescueStepperScreenState extends ConsumerState<RescueStepperScreen> {
                           widget.reporte.id,
                           animalAvistado: true,
                         );
-                    // Actualizar el estado interno global para Reflejo Real-Time
                     ref.invalidate(miRescateActivoProvider);
                   } catch (_) {}
                 }
                 if (stepperState.currentStep == 1) {
                   if (stepperState.condicion == null) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Por favor, selecciona la condición actual del animal.')),
+                      const SnackBar(
+                        content: Text(
+                          'Por favor, selecciona la condición actual del animal.',
+                        ),
+                      ),
                     );
                     return;
                   }
@@ -317,38 +335,50 @@ class _RescueStepperScreenState extends ConsumerState<RescueStepperScreen> {
                     return;
                   }
                 }
-
                 if (stepperState.currentStep == 4) {
                   if (stepperState.evidenciaPath == null) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Es obligatorio tomar una fotografía como evidencia del rescate.')),
+                      const SnackBar(
+                        content: Text(
+                          'Es obligatorio tomar una fotografía como evidencia del rescate.',
+                        ),
+                      ),
                     );
                     return;
                   }
                 }
-
                 if (stepperState.currentStep == 5) {
                   if (stepperState.destino == null) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Por favor, selecciona el destino o ubicación final del animal.')),
+                      const SnackBar(
+                        content: Text(
+                          'Por favor, selecciona el destino o ubicación final del animal.',
+                        ),
+                      ),
                     );
                     return;
                   }
                 }
-
                 if (stepperState.currentStep == 6) {
                   if (_costoController.text.trim().isEmpty) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Por favor, indica el costo operativo. Si no hubo gastos, escribe 0.')),
+                      const SnackBar(
+                        content: Text(
+                          'Por favor, indica el costo operativo. Si no hubo gastos, escribe 0.',
+                        ),
+                      ),
                     );
                     return;
                   }
                 }
-
                 if (stepperState.currentStep == 7) {
                   if (_conclusionController.text.trim().isEmpty) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Por favor, ingresa una conclusión sobre el estado final del animal.')),
+                      const SnackBar(
+                        content: Text(
+                          'Por favor, ingresa una conclusión sobre el estado final del animal.',
+                        ),
+                      ),
                     );
                     return;
                   }
@@ -403,11 +433,14 @@ class _RescueStepperScreenState extends ConsumerState<RescueStepperScreen> {
               steps: [
                 Step(
                   title: const Text('1. Llegada y Avistamiento'),
+                  subtitle: const Text('Confirmación visual del reporte'),
                   isActive: stepperState.currentStep >= 0,
                   content: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text('¿Llegaste a la ubicación? ¿Está el animal?'),
+                      const Text(
+                        '¿Llegaste a la ubicación y visualizaste al animal?',
+                      ),
                       const SizedBox(height: 12),
                       SizedBox(
                         width: double.infinity,
@@ -442,7 +475,7 @@ class _RescueStepperScreenState extends ConsumerState<RescueStepperScreen> {
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: const Text(
-                            'Prepárate con guantes, correa, transportadora y manta.',
+                            'Prepárate con guantes, correa, transportadora y manta. Procede con precaución.',
                             style: TextStyle(color: Colors.blue),
                           ),
                         ),
@@ -450,15 +483,33 @@ class _RescueStepperScreenState extends ConsumerState<RescueStepperScreen> {
                   ),
                 ),
                 Step(
-                  title: const Text('2. Condiciones'),
+                  title: const Text('2. Condiciones de Rescate'),
+                  subtitle: const Text('Evaluación del entorno y del animal'),
                   isActive: stepperState.currentStep >= 1,
                   content: DropdownButtonFormField<String>(
                     key: ValueKey(stepperState.condicion),
                     value: stepperState.condicion,
                     hint: const Text('Selecciona una condición'),
-                    items: ['Accesible', 'Atrapado / Encerrado', 'Herido']
-                        .map((e) => DropdownMenuItem(value: e, child: Text(e)))
-                        .toList(),
+                    items: const [
+                      DropdownMenuItem(
+                        value: 'Accesible',
+                        child: Text('Accesible y dócil'),
+                      ),
+                      DropdownMenuItem(
+                        value: 'Atrapado / Encerrado',
+                        child: Text('Atrapado / Requiere herramientas'),
+                      ),
+                      DropdownMenuItem(
+                        value: 'Herido',
+                        child: Text(
+                          'Herido / Requiere soporte médico inmediato',
+                        ),
+                      ),
+                      DropdownMenuItem(
+                        value: 'Asustado',
+                        child: Text('Asustado / Riesgo de fuga'),
+                      ),
+                    ],
                     onChanged: (v) => notifier.updateField(cond: v),
                     decoration: const InputDecoration(
                       border: OutlineInputBorder(),
@@ -467,30 +518,40 @@ class _RescueStepperScreenState extends ConsumerState<RescueStepperScreen> {
                 ),
                 Step(
                   title: const Text('3. Acción y Protocolo'),
+                  subtitle: const Text('Recomendaciones de seguridad'),
                   isActive: stepperState.currentStep >= 2,
                   content: Container(
-                    padding: const EdgeInsets.all(12),
+                    padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
                       color: Colors.orange.shade50,
-                      border: Border.all(color: Colors.orange),
+                      border: Border.all(color: Colors.orange.shade300),
+                      borderRadius: BorderRadius.circular(8),
                     ),
                     child: Text(
                       stepperState.condicion == 'Herido'
-                          ? 'Manejo crítico: Usa guantes gruesos y manta.'
+                          ? 'Manejo crítico: Usa guantes gruesos y manta para evitar mordeduras por dolor. Traslada con urgencia.'
                           : stepperState.condicion == 'Atrapado / Encerrado'
-                          ? 'Si requiere romper rejas, solicita apoyo. Si es seguro, usa correa.'
-                          : 'Acércate despacio usando comida.',
-                      style: const TextStyle(fontSize: 15),
+                          ? 'Si requiere romper rejas o estructuras, solicita apoyo a bomberos. Si es seguro, usa correa de ahorque o pértiga.'
+                          : stepperState.condicion == 'Asustado'
+                          ? 'No hagas movimientos bruscos. Acércate a nivel del suelo ofreciendo alimento y evita el contacto visual directo.'
+                          : 'Acércate despacio, háblale con voz suave y asegúralo con collar/correa o transportadora.',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.orange.shade900,
+                      ),
                     ),
                   ),
                 ),
                 Step(
                   title: const Text('4. Traslado (Directorio)'),
+                  subtitle: const Text('Selecciona el centro de apoyo destino'),
                   isActive: stepperState.currentStep >= 3,
                   content: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      const Text('¿A dónde llevarás al animal?'),
+                      const Text(
+                        '¿Hacia dónde llevarás al animal para su evaluación?',
+                      ),
                       const SizedBox(height: 12),
                       SegmentedButton<String>(
                         segments: const [
@@ -527,7 +588,6 @@ class _RescueStepperScreenState extends ConsumerState<RescueStepperScreen> {
                                 )
                                 ? stepperState.lugarTraslado
                                 : null;
-
                             return DropdownButtonFormField<String>(
                               key: ValueKey(valorSeguro),
                               value: valorSeguro,
@@ -552,7 +612,7 @@ class _RescueStepperScreenState extends ConsumerState<RescueStepperScreen> {
                         FilledButton.icon(
                           onPressed: _confirmarTraslado,
                           icon: const Icon(Icons.navigation),
-                          label: const Text('Confirmar y Navegar'),
+                          label: const Text('Confirmar y Navegar GPS'),
                           style: FilledButton.styleFrom(
                             backgroundColor: Colors.blue.shade700,
                             padding: const EdgeInsets.symmetric(vertical: 14),
@@ -564,12 +624,13 @@ class _RescueStepperScreenState extends ConsumerState<RescueStepperScreen> {
                 ),
                 Step(
                   title: const Text('5. Evidencia de Rescate'),
+                  subtitle: const Text('Respaldo fotográfico oficial'),
                   isActive: stepperState.currentStep >= 4,
                   content: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       const Text(
-                        'Toma una foto del animal ya asegurado o en camino.',
+                        'Toma una foto clara del animal ya asegurado en el vehículo o al llegar a las instalaciones correspondientes.',
                       ),
                       const SizedBox(height: 12),
                       if (stepperState.evidenciaPath != null)
@@ -587,31 +648,47 @@ class _RescueStepperScreenState extends ConsumerState<RescueStepperScreen> {
                         icon: const Icon(Icons.camera_alt),
                         label: Text(
                           stepperState.evidenciaPath != null
-                              ? 'Cambiar Foto'
-                              : 'Tomar Foto',
+                              ? 'Reemplazar Fotografía'
+                              : 'Abrir Cámara',
                         ),
                       ),
                     ],
                   ),
                 ),
                 Step(
-                  title: const Text('6. Seguimiento'),
+                  title: const Text('6. Destino Final'),
+                  subtitle: const Text('Ubicación actual de resguardo'),
                   isActive: stepperState.currentStep >= 5,
                   content: DropdownButtonFormField<String>(
                     key: ValueKey(stepperState.destino),
                     value: stepperState.destino,
-                    hint: const Text('¿Dónde ubicaste al animal?'),
-                    items:
-                        [
-                              'Veterinaria',
-                              'Albergue / Refugio',
-                              'Retención Temporal (Mi casa)',
-                              'Se escapó en el traslado',
-                            ]
-                            .map(
-                              (e) => DropdownMenuItem(value: e, child: Text(e)),
-                            )
-                            .toList(),
+                    hint: const Text('¿Dónde quedó resguardado el animal?'),
+                    items: const [
+                      DropdownMenuItem(
+                        value: 'Veterinaria',
+                        child: Text('Internado en Veterinaria'),
+                      ),
+                      DropdownMenuItem(
+                        value: 'Albergue / Refugio',
+                        child: Text('Aceptado en Refugio / Albergue'),
+                      ),
+                      DropdownMenuItem(
+                        value: 'Retención Temporal (Mi casa)',
+                        child: Text('En hogar temporal (Mi casa)'),
+                      ),
+                      DropdownMenuItem(
+                        value: 'Adoptado Inmediatamente',
+                        child: Text('Adoptado inmediatamente'),
+                      ),
+                      DropdownMenuItem(
+                        value: 'Fallecimiento',
+                        child: Text('Falleció durante traslado/atención'),
+                      ),
+                      DropdownMenuItem(
+                        value: 'Se escapó en el traslado',
+                        child: Text('Se escapó durante el traslado'),
+                      ),
+                    ],
                     onChanged: (v) => notifier.updateField(dest: v),
                     decoration: const InputDecoration(
                       border: OutlineInputBorder(),
@@ -620,6 +697,7 @@ class _RescueStepperScreenState extends ConsumerState<RescueStepperScreen> {
                 ),
                 Step(
                   title: const Text('7. Costo Operativo'),
+                  subtitle: const Text('Gastos generados (MXN)'),
                   isActive: stepperState.currentStep >= 6,
                   content: Column(
                     children: [
@@ -632,14 +710,17 @@ class _RescueStepperScreenState extends ConsumerState<RescueStepperScreen> {
                         ),
                         decoration: const InputDecoration(
                           labelText: 'Costo Total (MXN)',
-                          helperText: 'Gastos de clínica o cuotas del refugio.',
+                          helperText:
+                              'Gastos médicos, gasolina o cuotas del refugio.',
                           prefixIcon: Icon(Icons.attach_money),
-                          hintText: '0.00',
+                          hintText: '\$ 0.00',
                           border: OutlineInputBorder(),
                         ),
                         inputFormatters: [
                           FilteringTextInputFormatter.allow(
-                            RegExp(r'^\d+\.?\d{0,2}'),
+                            RegExp(
+                              r'[0-9.,\$ ]',
+                            ), // Permite caracteres de moneda
                           ),
                         ],
                         onChanged: (v) => notifier.updateField(cost: v),
@@ -649,6 +730,7 @@ class _RescueStepperScreenState extends ConsumerState<RescueStepperScreen> {
                 ),
                 Step(
                   title: const Text('8. Conclusión Final'),
+                  subtitle: const Text('Resumen del caso'),
                   isActive: stepperState.currentStep >= 7,
                   content: Column(
                     children: [
@@ -658,8 +740,9 @@ class _RescueStepperScreenState extends ConsumerState<RescueStepperScreen> {
                         maxLines: 3,
                         textCapitalization: TextCapitalization.sentences,
                         decoration: const InputDecoration(
-                          labelText: 'Estado final del animal',
-                          hintText: 'Ej. Está estable internado en la clínica.',
+                          labelText: 'Estado médico y observaciones finales',
+                          hintText:
+                              'Ej. Se encuentra estable internado en la clínica tras cirugía de emergencia.',
                           border: OutlineInputBorder(),
                         ),
                         onChanged: (v) => notifier.updateField(concl: v),
@@ -676,6 +759,7 @@ class _RescueStepperScreenState extends ConsumerState<RescueStepperScreen> {
 class WidgetRefBuilder extends StatelessWidget {
   final Widget Function(BuildContext context) builder;
   const WidgetRefBuilder({super.key, required this.builder});
+
   @override
   Widget build(BuildContext context) => builder(context);
 }
