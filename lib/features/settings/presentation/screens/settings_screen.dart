@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../providers/settings_provider.dart';
@@ -565,6 +566,7 @@ class SettingsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final perfilAsync = ref.watch(userProfileProvider);
+    final authState = ref.watch(authProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -597,19 +599,26 @@ class SettingsScreen extends ConsumerWidget {
                 child: Stack(
                   alignment: Alignment.bottomRight,
                   children: [
-                    CircleAvatar(
-                      radius: 50,
-                      backgroundColor: Colors.grey.shade200,
-                      backgroundImage: fotoUrl != null
-                          ? NetworkImage(fotoUrl)
-                          : null,
-                      child: fotoUrl == null
-                          ? const Icon(
-                              Icons.person,
-                              size: 50,
-                              color: Colors.grey,
-                            )
-                          : null,
+                    GestureDetector(
+                      onTap: () {
+                        if (authState.userId != null) {
+                          context.push('/user-info', extra: authState.userId);
+                        }
+                      },
+                      child: CircleAvatar(
+                        radius: 50,
+                        backgroundColor: Colors.grey.shade200,
+                        backgroundImage: fotoUrl != null
+                            ? NetworkImage(fotoUrl)
+                            : null,
+                        child: fotoUrl == null
+                            ? const Icon(
+                                Icons.person,
+                                size: 50,
+                                color: Colors.grey,
+                              )
+                            : null,
+                      ),
                     ),
                     Positioned(
                       bottom: 0,
