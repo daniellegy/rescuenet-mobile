@@ -16,21 +16,46 @@ class CanalMensajeModel {
   });
 
   factory CanalMensajeModel.fromJson(Map<String, dynamic> json) {
+    // Manejo de zona horaria:
+    // NeonDB guarda en UTC pero como "timestamp without timezone".
+    // Forzamos a Flutter a interpretarlo como UTC añadiendo una 'Z'
+    // y luego lo pasamos a la hora local del dispositivo.
+    DateTime parsearFechaLocal(String? fechaStr) {
+      if (fechaStr == null) return DateTime.now();
+      String fechaCorregida = fechaStr;
+
+      // Si el backend no le puso la Z de UTC, se la agregamos
+      if (!fechaCorregida.endsWith('Z')) {
+        fechaCorregida += 'Z';
+      }
+
+      // toLocal() automáticamente calculará el desfase correcto
+      return DateTime.parse(fechaCorregida).toLocal();
+    }
+
     return CanalMensajeModel(
       id: json['id'],
       reporteId: json['reporte_id'],
       autorId: json['autor_id'],
       contenido: json['contenido'] ?? '',
-      creadoEl: json['creado_el'] != null
-          ? DateTime.parse(json['creado_el'])
-          : DateTime.now(),
+      creadoEl: parsearFechaLocal(json['creado_el']),
       nombreAutor: json['nombre_autor'],
     );
   }
 
   String get horaFormateada {
-    final hora = creadoEl.hour.toString().padLeft(2, '0');
+    // Formateo amigable a 12 horas (AM/PM) que es el estándar visual
+    int hora = creadoEl.hour;
     final minuto = creadoEl.minute.toString().padLeft(2, '0');
-    return '$hora:$minuto';
+    final periodo = hora >= 12 ? 'PM' : 'AM';
+
+    if (hora > 12) {
+      hora -= 12;
+    } else if (hora == 0) {
+      hora = 12;
+    }
+
+    final horaStr = hora.toString().padLeft(2, '0');
+    return '$horaStr:$minuto $periodo';
   }
 }
