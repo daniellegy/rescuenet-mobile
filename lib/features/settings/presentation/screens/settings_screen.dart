@@ -1,13 +1,108 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../providers/settings_provider.dart';
 import '../../../map/presentation/providers/map_markers_provider.dart';
 import '../../../reports/presentation/providers/active_reports_provider.dart';
+import '../../../../core/services/camera_service.dart';
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
+
+  void _mostrarOpcionesDeFoto(BuildContext parentContext, WidgetRef ref) {
+    showModalBottomSheet(
+      context: parentContext,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (modalContext) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Padding(
+                padding: EdgeInsets.all(16.0),
+                child: Text(
+                  'Actualizar foto de perfil',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+              ),
+              ListTile(
+                leading: const Icon(Icons.camera_alt, color: Colors.blue),
+                title: const Text('Tomar fotografía'),
+                onTap: () async {
+                  Navigator.pop(modalContext);
+                  await _procesarSubidaFoto(
+                    parentContext,
+                    ref,
+                    fromGallery: false,
+                  );
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.photo_library, color: Colors.green),
+                title: const Text('Elegir de la galería'),
+                onTap: () async {
+                  Navigator.pop(modalContext);
+                  await _procesarSubidaFoto(
+                    parentContext,
+                    ref,
+                    fromGallery: true,
+                  );
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _procesarSubidaFoto(
+    BuildContext context,
+    WidgetRef ref, {
+    required bool fromGallery,
+  }) async {
+    try {
+      final cameraService = ref.read(cameraServiceProvider);
+      final pickedFile = await cameraService.takePicture(
+        fromGallery: fromGallery,
+      );
+
+      if (pickedFile != null && context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Subiendo foto...'),
+            duration: Duration(seconds: 2),
+          ),
+        );
+
+        await ref
+            .read(userProfileProvider.notifier)
+            .actualizarFotoPerfil(pickedFile.path);
+
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Foto actualizada exitosamente'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(e.toString().replaceAll('Exception: ', '')),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
 
   void _mostrarModalRoles(
     BuildContext parentContext,
@@ -237,7 +332,6 @@ class SettingsScreen extends ConsumerWidget {
             fcmToken: tokenFCM,
           );
 
-      // SOLUCIÓN: Actualizamos el provider de autenticación para propagar el cambio
       ref.read(authProvider.notifier).updateLocalRole(rolTarget);
 
       if (parentContext.mounted) {
@@ -471,6 +565,7 @@ class SettingsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final perfilAsync = ref.watch(userProfileProvider);
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Configuración'),
@@ -482,6 +577,7 @@ class SettingsScreen extends ConsumerWidget {
           final telefono = datos['telefono'] ?? 'Sin registrar';
           final email = datos['email'] ?? 'Sin registrar';
           final curp = datos['curp'];
+          final String? fotoUrl = datos['foto_perfil'];
           final int rolActualId = datos['role'] ?? 1;
           final int radioNotificaciones = datos['radio_notificaciones'] ?? 30;
           final String? tokenFCMActual = datos['fcm_token'];
@@ -497,11 +593,44 @@ class SettingsScreen extends ConsumerWidget {
             ),
             children: [
               const SizedBox(height: 20),
-              const Center(
-                child: CircleAvatar(
-                  radius: 40,
-                  backgroundColor: Colors.redAccent,
-                  child: Icon(Icons.person, size: 40, color: Colors.white),
+              Center(
+                child: Stack(
+                  alignment: Alignment.bottomRight,
+                  children: [
+                    CircleAvatar(
+                      radius: 50,
+                      backgroundColor: Colors.grey.shade200,
+                      backgroundImage: fotoUrl != null
+                          ? NetworkImage(fotoUrl)
+                          : null,
+                      child: fotoUrl == null
+                          ? const Icon(
+                              Icons.person,
+                              size: 50,
+                              color: Colors.grey,
+                            )
+                          : null,
+                    ),
+                    Positioned(
+                      bottom: 0,
+                      right: 0,
+                      child: GestureDetector(
+                        onTap: () => _mostrarOpcionesDeFoto(context, ref),
+                        child: Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: const BoxDecoration(
+                            color: Colors.redAccent,
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(
+                            Icons.camera_alt,
+                            color: Colors.white,
+                            size: 20,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
               const SizedBox(height: 16),
@@ -613,7 +742,7 @@ class SettingsScreen extends ConsumerWidget {
                   notificacionesActivas ? 'Activadas' : 'Desactivadas',
                 ),
                 value: notificacionesActivas,
-                activeThumbColor: Colors.redAccent,
+                activeColor: Colors.redAccent,
                 onChanged: (bool value) async {
                   if (value) {
                     try {

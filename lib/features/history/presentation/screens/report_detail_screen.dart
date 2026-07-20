@@ -440,19 +440,28 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
                     ),
                   ),
                   const Divider(height: 32),
+
+                  // NUEVA INTEGRACIÓN DE FOTO DE PERFIL EN DETALLES
                   _buildPersonRow(
-                    Icons.person_pin_circle_rounded,
-                    'Reportado por',
-                    reporteActual.nombreReportador ?? 'Ciudadano',
+                    context: context,
+                    role: 'Reportado por',
+                    name: reporteActual.nombreReportador ?? 'Ciudadano',
+                    fotoUrl: reporteActual.fotoReportador,
+                    userId: reporteActual.usuarioReportadorId,
                   ),
+
                   if (reporteActual.nombreRescatista != null)
                     _buildPersonRow(
-                      Icons.volunteer_activism_rounded,
-                      reporteActual.estado == 'Rescatado'
+                      context: context,
+                      role: reporteActual.estado == 'Rescatado'
                           ? 'Completado por'
                           : 'Rescatista',
-                      reporteActual.nombreRescatista!,
+                      name: reporteActual.nombreRescatista!,
+                      fotoUrl: reporteActual.fotoRescatista,
+                      userId: reporteActual.usuarioRescatistaId,
+                      isRescatista: true,
                     ),
+
                   const Divider(height: 32),
                   _buildDetailRow(
                     Icons.warning_amber_rounded,
@@ -765,24 +774,66 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
     );
   }
 
-  Widget _buildPersonRow(IconData icon, String role, String name) {
+  // MÉTODO ACTUALIZADO PARA MOSTRAR FOTO Y NAVEGAR
+  Widget _buildPersonRow({
+    required BuildContext context,
+    required String role,
+    required String name,
+    required String? fotoUrl,
+    required int? userId,
+    bool isRescatista = false,
+  }) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8.0),
-      child: Row(
-        children: [
-          Icon(icon, size: 20, color: Colors.blueGrey),
-          const SizedBox(width: 12),
-          Text(
-            '$role: ',
-            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+      child: InkWell(
+        onTap: userId != null
+            ? () => context.push('/user-info', extra: userId)
+            : null,
+        borderRadius: BorderRadius.circular(8),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 4.0),
+          child: Row(
+            children: [
+              CircleAvatar(
+                radius: 16,
+                backgroundColor: isRescatista
+                    ? Colors.green.shade100
+                    : Colors.blueGrey.shade100,
+                backgroundImage: fotoUrl != null ? NetworkImage(fotoUrl) : null,
+                child: fotoUrl == null
+                    ? Icon(
+                        isRescatista
+                            ? Icons.volunteer_activism_rounded
+                            : Icons.person,
+                        size: 16,
+                        color: isRescatista
+                            ? Colors.green.shade800
+                            : Colors.blueGrey.shade800,
+                      )
+                    : null,
+              ),
+              const SizedBox(width: 12),
+              Text(
+                '$role: ',
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 15,
+                ),
+              ),
+              Expanded(
+                child: Text(
+                  name,
+                  style: const TextStyle(
+                    fontSize: 15,
+                    color: Colors.black87,
+                    decoration:
+                        TextDecoration.underline, // Indica que es "clickeable"
+                  ),
+                ),
+              ),
+            ],
           ),
-          Expanded(
-            child: Text(
-              name,
-              style: const TextStyle(fontSize: 15, color: Colors.black87),
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }
