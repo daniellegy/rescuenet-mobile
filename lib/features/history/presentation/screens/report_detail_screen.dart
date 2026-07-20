@@ -4,15 +4,16 @@ import 'package:geocoding/geocoding.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
 import '../../domain/models/report_model.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../reports/data/report_repository.dart';
-import '../../../map/presentation/providers/map_markers_provider.dart'; 
+import '../../../map/presentation/providers/map_markers_provider.dart';
 import '../../../reports/presentation/providers/active_reports_provider.dart';
 import '../../../reports/presentation/providers/my_active_rescue_provider.dart';
 import '../providers/history_provider.dart';
 import '../../../reports/presentation/providers/rescue_stepper_provider.dart';
-import '../../../reports/presentation/widgets/canal_chat_sheet.dart'; 
+import '../../../reports/presentation/widgets/canal_chat_sheet.dart';
 
 class ReportDetailScreen extends ConsumerStatefulWidget {
   final ReportModel reporte;
@@ -32,12 +33,12 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
   Color _obtenerColorPorEstado(String estado) {
     switch (estado.toLowerCase()) {
       case 'nuevo':
-        return const Color(0xFF0288D1); 
+        return const Color(0xFF0288D1);
       case 'en_proceso':
       case 'en proceso':
-        return const Color(0xFFF57C00); 
+        return const Color(0xFFF57C00);
       case 'rescatado':
-        return const Color(0xFF388E3C); 
+        return const Color(0xFF388E3C);
       default:
         return Colors.grey;
     }
@@ -143,7 +144,7 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
     final confirmar = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('¿Estás seguro de abortar?'),
+        title: const Text('¿Seguro de abortar?'),
         content: const Text(
           'El reporte volverá a estar activo para que otro voluntario pueda tomarlo y tu progreso en el asistente se perderá.',
         ),
@@ -160,7 +161,6 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
         ],
       ),
     );
-
     if (confirmar == true) {
       setState(() => _isLoading = true);
       try {
@@ -209,7 +209,6 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
     final esVoluntario = authState.role == AppRole.voluntario;
     final esMiRescate = widget.reporte.usuarioRescatistaId == authState.userId;
 
-    // Inicializamos localmente si no se ha hecho
     _reporteLocal ??= widget.reporte;
 
     if (esMiRescate) {
@@ -223,7 +222,6 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
 
     ReportModel reporteActual = _reporteLocal!;
     final esReportador = reporteActual.usuarioReportadorId == authState.userId;
-
     final estaNuevo = reporteActual.estado == 'Nuevo';
     final estaEnProceso = reporteActual.estado == 'En_Proceso';
 
@@ -309,9 +307,9 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
                           vertical: 6,
                         ),
                         decoration: BoxDecoration(
-                          color: _obtenerColorPorEstado(reporteActual.estado).withValues(
-                            alpha: 0.15,
-                          ),
+                          color: _obtenerColorPorEstado(
+                            reporteActual.estado,
+                          ).withValues(alpha: 0.15),
                           borderRadius: BorderRadius.circular(20),
                           border: Border.all(
                             color: _obtenerColorPorEstado(reporteActual.estado),
@@ -330,7 +328,6 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
                     ],
                   ),
                   const SizedBox(height: 16),
-
                   if (!estaNuevo) ...[
                     Card(
                       elevation: 0,
@@ -385,7 +382,6 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
                     ),
                     const SizedBox(height: 16),
                   ],
-
                   Material(
                     color: Colors.blue.shade50,
                     borderRadius: BorderRadius.circular(12),
@@ -410,13 +406,27 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
                             ),
                             const SizedBox(width: 12),
                             Expanded(
-                              child: Text(
-                                _direccion,
-                                style: TextStyle(
-                                  fontSize: 15,
-                                  color: Colors.blue.shade800,
-                                  fontWeight: FontWeight.w600,
-                                ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Presione aquí para ir al lugar',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: Colors.blue.shade700,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    _direccion,
+                                    style: TextStyle(
+                                      fontSize: 15,
+                                      color: Colors.blue.shade900,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
                             Icon(
@@ -486,7 +496,6 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
                     style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                   ),
                   const SizedBox(height: 8),
-
                   Text(
                     reporteActual.notasAdicionales.isNotEmpty &&
                             reporteActual.notasAdicionales != 'Ninguna'
@@ -496,7 +505,6 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
                               : 'Sin notas adicionales.'),
                     style: const TextStyle(fontSize: 15, height: 1.5),
                   ),
-
                   if (reporteActual.conclusion != null &&
                       reporteActual.conclusion!.isNotEmpty) ...[
                     const Divider(height: 32),
@@ -513,8 +521,6 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
                       style: const TextStyle(fontSize: 15, height: 1.5),
                     ),
                   ],
-
-                  // ESTRUCTURA DEL CANAL DE CHAT CON SU FUTUREBUILDER
                   if (reporteActual.canalComunicacionHabilitado &&
                       reporteActual.canalComunicacionEstado == 'activo' &&
                       !_canalCerradoLocalmente) ...[
@@ -530,16 +536,24 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
                               onPressed: _abrirCanalComunicacion,
                               style: FilledButton.styleFrom(
                                 backgroundColor: Colors.green.shade700,
-                                padding: const EdgeInsets.symmetric(vertical: 16),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 16,
+                                ),
                                 minimumSize: const Size(double.infinity, 50),
                               ),
-                              icon: const Icon(Icons.chat_bubble_outline, color: Colors.white),
+                              icon: const Icon(
+                                Icons.chat_bubble_outline,
+                                color: Colors.white,
+                              ),
                               label: const Text(
                                 'Canal de comunicación',
-                                style: TextStyle(fontSize: 16, color: Colors.white),
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  color: Colors.white,
+                                ),
                               ),
                             ),
-                            if (hayNuevos) 
+                            if (hayNuevos)
                               Positioned(
                                 top: -4,
                                 right: 12,
@@ -557,9 +571,8 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
                       },
                     ),
                   ],
-
                   if (!reporteActual.canalComunicacionHabilitado &&
-                      esReportador && 
+                      esReportador &&
                       reporteActual.estado != 'Resuelto' &&
                       reporteActual.estado != 'Cancelado') ...[
                     const SizedBox(height: 16),
@@ -573,43 +586,65 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
                               'Esto habilitará el chat con el voluntario asignado a tu caso.',
                             ),
                             actions: [
-                              TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancelar')),
-                              FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Activar')),
+                              TextButton(
+                                onPressed: () => Navigator.pop(ctx, false),
+                                child: const Text('Cancelar'),
+                              ),
+                              FilledButton(
+                                onPressed: () => Navigator.pop(ctx, true),
+                                child: const Text('Activar'),
+                              ),
                             ],
                           ),
                         );
                         if (confirmar != true) return;
                         try {
-                          await ref.read(reportRepositoryProvider).activarCanalManual(reporteActual.id);
+                          await ref
+                              .read(reportRepositoryProvider)
+                              .activarCanalManual(reporteActual.id);
                           setState(() {
                             _reporteLocal = reporteActual.copyWithCanal(
                               canalComunicacionHabilitado: true,
                               canalComunicacionEstado:
-                                  reporteActual.estado == 'En_Proceso' ? 'activo' : 'inactivo',
+                                  reporteActual.estado == 'En_Proceso'
+                                  ? 'activo'
+                                  : 'inactivo',
                             );
                           });
                         } catch (e) {
                           if (context.mounted) {
                             ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text(e.toString().replaceAll('Exception: ', ''))),
+                              SnackBar(
+                                content: Text(
+                                  e.toString().replaceAll('Exception: ', ''),
+                                ),
+                              ),
                             );
                           }
                         }
                       },
                       style: OutlinedButton.styleFrom(
-                        side: BorderSide(color: Colors.green.shade700, width: 1.5),
+                        side: BorderSide(
+                          color: Colors.green.shade700,
+                          width: 1.5,
+                        ),
                         padding: const EdgeInsets.symmetric(vertical: 16),
                         minimumSize: const Size(double.infinity, 50),
                       ),
-                      icon: Icon(Icons.chat_bubble_outline, color: Colors.green.shade700),
+                      icon: Icon(
+                        Icons.chat_bubble_outline,
+                        color: Colors.green.shade700,
+                      ),
                       label: Text(
                         'Activar canal de comunicación',
-                        style: TextStyle(fontSize: 16, color: Colors.green.shade700, fontWeight: FontWeight.bold),
+                        style: TextStyle(
+                          fontSize: 16,
+                          color: Colors.green.shade700,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ),
                   ],
-                  // =========================================================================
-
                   if (esVoluntario &&
                       (estaNuevo || (estaEnProceso && esMiRescate))) ...[
                     const SizedBox(height: 24),
