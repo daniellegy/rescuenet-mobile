@@ -84,25 +84,29 @@ class UserInfoScreen extends ConsumerWidget {
                   ),
                 ),
                 const SizedBox(height: 40),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                  children: [
-                    _buildStatCard(
-                      'Reportes Emitidos',
-                      reportesCreados.toString(),
-                      Icons.campaign_rounded,
-                      Colors.blue,
-                    ),
-                    if (esVoluntario) ...[
-                      const SizedBox(width: 16),
+
+                // SOLUCIÓN APLICADA: IntrinsicHeight + CrossAxisAlignment.stretch
+                IntrinsicHeight(
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
                       _buildStatCard(
-                        'Rescates Concluidos',
-                        rescatesRealizados.toString(),
-                        Icons.volunteer_activism,
-                        Colors.green,
+                        'Reportes Emitidos',
+                        reportesCreados.toString(),
+                        Icons.campaign_rounded,
+                        Colors.blue,
                       ),
+                      if (esVoluntario) ...[
+                        const SizedBox(width: 16),
+                        _buildStatCard(
+                          'Rescates Concluidos',
+                          rescatesRealizados.toString(),
+                          Icons.volunteer_activism,
+                          Colors.green,
+                        ),
+                      ],
                     ],
-                  ],
+                  ),
                 ),
               ],
             ),
@@ -128,6 +132,8 @@ class UserInfoScreen extends ConsumerWidget {
         child: Padding(
           padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 12),
           child: Column(
+            mainAxisAlignment:
+                MainAxisAlignment.center, // Centra el contenido verticalmente
             children: [
               Icon(icon, size: 40, color: color),
               const SizedBox(height: 12),
