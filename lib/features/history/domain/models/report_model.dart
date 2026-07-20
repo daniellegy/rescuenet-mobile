@@ -18,10 +18,14 @@ class ReportModel {
   final String? fotoUrl;
   final String? fotoEvidenciaUrl;
   final DateTime? fechaCreacion;
+
   final int? usuarioReportadorId;
   final int? usuarioRescatistaId;
   final String? nombreReportador;
+  final String? fotoReportador; // NUEVO
   final String? nombreRescatista;
+  final String? fotoRescatista; // NUEVO
+
   final bool? animalAvistado;
   final String? lugarTraslado;
   final String? destinoFinal;
@@ -29,7 +33,8 @@ class ReportModel {
   final double? costoRescate;
   final int? radio;
   final String? referencias;
-  final String? conclusion; 
+  final String? conclusion;
+
   final bool canalComunicacionHabilitado;
   final String? canalComunicacionEstado;
 
@@ -54,7 +59,9 @@ class ReportModel {
     this.usuarioReportadorId,
     this.usuarioRescatistaId,
     this.nombreReportador,
+    this.fotoReportador,
     this.nombreRescatista,
+    this.fotoRescatista,
     this.animalAvistado,
     this.lugarTraslado,
     this.destinoFinal,
@@ -62,7 +69,7 @@ class ReportModel {
     this.costoRescate,
     this.radio,
     this.referencias,
-    this.conclusion, 
+    this.conclusion,
     required this.canalComunicacionHabilitado,
     this.canalComunicacionEstado,
   });
@@ -92,7 +99,9 @@ class ReportModel {
       usuarioReportadorId: json['usuario_reportador_id'],
       usuarioRescatistaId: json['usuario_rescatista_id'],
       nombreReportador: json['nombre_reportador'],
+      fotoReportador: json['foto_reportador'],
       nombreRescatista: json['nombre_rescatista'],
+      fotoRescatista: json['foto_rescatista'],
       animalAvistado: json['animal_avistado'],
       lugarTraslado: json['lugar_traslado'],
       destinoFinal: json['destino_final'],
@@ -102,8 +111,9 @@ class ReportModel {
           : null,
       radio: json['radio'],
       referencias: json['referencias'] ?? 'Sin referencias',
-      conclusion: json['conclusion'], 
-      canalComunicacionHabilitado: json['canal_comunicacion_habilitado'] ?? false,
+      conclusion: json['conclusion'],
+      canalComunicacionHabilitado:
+          json['canal_comunicacion_habilitado'] ?? false,
       canalComunicacionEstado: json['canal_comunicacion_estado'],
     );
   }
@@ -113,9 +123,6 @@ class ReportModel {
   bool get canalActivo =>
       canalComunicacionHabilitado && canalComunicacionEstado == 'activo';
 
-  // =========================================================================
-  // ZONA F: NUEVO MÉTODO copyWithCanal PARA ACTUALIZACIÓN LOCAL SIN RE-FETCH
-  // =========================================================================
   ReportModel copyWithCanal({
     bool? canalComunicacionHabilitado,
     String? canalComunicacionEstado,
@@ -141,7 +148,9 @@ class ReportModel {
       usuarioReportadorId: usuarioReportadorId,
       usuarioRescatistaId: usuarioRescatistaId,
       nombreReportador: nombreReportador,
+      fotoReportador: fotoReportador,
       nombreRescatista: nombreRescatista,
+      fotoRescatista: fotoRescatista,
       animalAvistado: animalAvistado,
       lugarTraslado: lugarTraslado,
       destinoFinal: destinoFinal,
@@ -156,7 +165,6 @@ class ReportModel {
           canalComunicacionEstado ?? this.canalComunicacionEstado,
     );
   }
-  // =========================================================================
 
   Color get colorUrgencia {
     switch (urgencia.toLowerCase()) {

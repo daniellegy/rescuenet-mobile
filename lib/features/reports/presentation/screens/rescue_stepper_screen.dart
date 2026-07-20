@@ -487,6 +487,7 @@ class _RescueStepperScreenState extends ConsumerState<RescueStepperScreen> {
                   subtitle: const Text('Evaluación del entorno y del animal'),
                   isActive: stepperState.currentStep >= 1,
                   content: DropdownButtonFormField<String>(
+                    isExpanded: true, // PREVIENE EL OVERFLOW DE TEXTO LARGO
                     key: ValueKey(stepperState.condicion),
                     value: stepperState.condicion,
                     hint: const Text('Selecciona una condición'),
@@ -589,6 +590,8 @@ class _RescueStepperScreenState extends ConsumerState<RescueStepperScreen> {
                                 ? stepperState.lugarTraslado
                                 : null;
                             return DropdownButtonFormField<String>(
+                              isExpanded:
+                                  true, // PREVIENE EL OVERFLOW DE TEXTO LARGO
                               key: ValueKey(valorSeguro),
                               value: valorSeguro,
                               hint: const Text('Selecciona el lugar exacto'),
@@ -660,6 +663,7 @@ class _RescueStepperScreenState extends ConsumerState<RescueStepperScreen> {
                   subtitle: const Text('Ubicación actual de resguardo'),
                   isActive: stepperState.currentStep >= 5,
                   content: DropdownButtonFormField<String>(
+                    isExpanded: true, // PREVIENE EL OVERFLOW DE TEXTO LARGO
                     key: ValueKey(stepperState.destino),
                     value: stepperState.destino,
                     hint: const Text('¿Dónde quedó resguardado el animal?'),
