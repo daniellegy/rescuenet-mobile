@@ -13,6 +13,7 @@ class RegisterScreen extends ConsumerStatefulWidget {
 
 class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   final _formKey = GlobalKey<FormState>();
+
   final _nameController = TextEditingController();
   final _phoneController = TextEditingController();
   final _emailController = TextEditingController();
@@ -31,6 +32,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   );
 
   final _curpRegex = RegExp(r'^[A-Z]{4}\d{6}[HM][A-Z]{5}[A-Z\d]\d$');
+  final _emailRegex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
+  final _nameRegex = RegExp(r'^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$');
 
   @override
   void dispose() {
@@ -41,6 +44,63 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     _confirmPasswordController.dispose();
     _curpController.dispose();
     super.dispose();
+  }
+
+  // GETTERS BOOLEANOS DE VALIDACIÓN
+  bool get _isNameValid =>
+      _nameRegex.hasMatch(_nameController.text.trim()) &&
+      _nameController.text.trim().isNotEmpty;
+  bool get _isPhoneValid => _phoneMaskFormatter.getUnmaskedText().length == 10;
+  bool get _isEmailValid => _emailRegex.hasMatch(_emailController.text.trim());
+  bool get _isPasswordValid => _passwordController.text.length >= 6;
+  bool get _isConfirmPasswordValid =>
+      _confirmPasswordController.text.isNotEmpty &&
+      _confirmPasswordController.text == _passwordController.text;
+  bool get _isCurpValid =>
+      _curpRegex.hasMatch(_curpController.text.trim().toUpperCase());
+
+  // MÉTODO CONSTRUCTOR DE BORDES DINÁMICOS UX (Gris -> Rojo -> Verde)
+  InputDecoration _buildInputDecoration({
+    required String labelText,
+    required IconData prefixIcon,
+    required bool isValid,
+    required bool isEmpty,
+    String? hintText,
+    Widget? suffixIcon,
+  }) {
+    Color borderColor = isEmpty
+        ? Colors.grey
+        : (isValid ? Colors.green.shade600 : Colors.red);
+    Color iconColor = isEmpty
+        ? Colors.grey.shade600
+        : (isValid ? Colors.green.shade600 : Colors.red);
+
+    return InputDecoration(
+      labelText: labelText,
+      hintText: hintText,
+      prefixIcon: Icon(prefixIcon, color: iconColor),
+      suffixIcon:
+          suffixIcon ??
+          (isEmpty
+              ? null
+              : Icon(
+                  isValid ? Icons.check_circle : Icons.error,
+                  color: iconColor,
+                )),
+      border: OutlineInputBorder(borderSide: BorderSide(color: borderColor)),
+      enabledBorder: OutlineInputBorder(
+        borderSide: BorderSide(color: borderColor),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderSide: BorderSide(color: borderColor, width: 2.0),
+      ),
+      errorBorder: const OutlineInputBorder(
+        borderSide: BorderSide(color: Colors.red),
+      ),
+      focusedErrorBorder: const OutlineInputBorder(
+        borderSide: BorderSide(color: Colors.red, width: 2.0),
+      ),
+    );
   }
 
   Future<bool> _mostrarManifiestoVoluntario() async {
@@ -88,8 +148,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       if (_selectedRole == 'Voluntario') {
         final acepto = await _mostrarManifiestoVoluntario();
         if (!acepto) return;
-
-        // MODIFICADO: Solicitud de permisos Push oportuna sólo para Voluntarios
         try {
           await FirebaseMessaging.instance.requestPermission(
             alert: true,
@@ -100,7 +158,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
           debugPrint('Error al solicitar permisos FCM en registro: $e');
         }
       }
-
       try {
         await ref
             .read(authProvider.notifier)
@@ -121,6 +178,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
           ).showSnackBar(SnackBar(content: Text(e.toString())));
         }
       }
+    } else {
+      // Activa la autovalidación de todo el formulario para poner rojos los que falten
+      setState(() {});
     }
   }
 
@@ -133,6 +193,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
           padding: const EdgeInsets.all(24.0),
           child: Form(
             key: _formKey,
+            autovalidateMode:
+                AutovalidateMode.onUserInteraction, // Valida al interactuar
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
@@ -146,34 +208,40 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                   style: TextStyle(fontSize: 16, color: Colors.grey),
                 ),
                 const SizedBox(height: 32),
+
                 TextFormField(
                   controller: _nameController,
                   textCapitalization: TextCapitalization.words,
                   textInputAction: TextInputAction.next,
-                  decoration: const InputDecoration(
+                  onChanged: (_) => setState(() {}),
+                  decoration: _buildInputDecoration(
                     labelText: 'Nombre Completo',
-                    prefixIcon: Icon(Icons.person),
-                    border: OutlineInputBorder(),
+                    prefixIcon: Icons.person,
+                    isValid: _isNameValid,
+                    isEmpty: _nameController.text.isEmpty,
                   ),
                   validator: (value) {
                     if (value == null || value.trim().isEmpty)
                       return 'El nombre es obligatorio';
-                    if (!RegExp(r'^[a-zA-ZáéíóúÁÉÍÓÚñÑ \s]+$').hasMatch(value))
+                    if (!_nameRegex.hasMatch(value))
                       return 'Ingresa un nombre válido (sin números)';
                     return null;
                   },
                 ),
                 const SizedBox(height: 16),
+
                 TextFormField(
                   controller: _phoneController,
                   keyboardType: TextInputType.phone,
                   textInputAction: TextInputAction.next,
                   inputFormatters: [_phoneMaskFormatter],
-                  decoration: const InputDecoration(
+                  onChanged: (_) => setState(() {}),
+                  decoration: _buildInputDecoration(
                     labelText: 'Teléfono',
                     hintText: '(LADA) 123-4567',
-                    prefixIcon: Icon(Icons.phone),
-                    border: OutlineInputBorder(),
+                    prefixIcon: Icons.phone,
+                    isValid: _isPhoneValid,
+                    isEmpty: _phoneController.text.isEmpty,
                   ),
                   validator: (value) {
                     if (value == null || value.isEmpty)
@@ -184,45 +252,53 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                   },
                 ),
                 const SizedBox(height: 16),
+
                 TextFormField(
                   controller: _emailController,
                   keyboardType: TextInputType.emailAddress,
                   textInputAction: TextInputAction.next,
-                  decoration: const InputDecoration(
+                  onChanged: (_) => setState(() {}),
+                  decoration: _buildInputDecoration(
                     labelText: 'Correo Electrónico',
-                    prefixIcon: Icon(Icons.email),
-                    border: OutlineInputBorder(),
+                    prefixIcon: Icons.email,
+                    isValid: _isEmailValid,
+                    isEmpty: _emailController.text.isEmpty,
                   ),
                   validator: (value) {
                     if (value == null || value.isEmpty)
                       return 'El correo es obligatorio';
-                    final emailRegex = RegExp(
-                      r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$',
-                    );
-                    if (!emailRegex.hasMatch(value))
+                    if (!_emailRegex.hasMatch(value))
                       return 'Ingresa un formato de correo válido';
                     return null;
                   },
                 ),
                 const SizedBox(height: 16),
+
                 TextFormField(
                   controller: _passwordController,
                   obscureText: !_isPasswordVisible,
                   textInputAction: TextInputAction.next,
-                  decoration: InputDecoration(
+                  onChanged: (_) => setState(() {}),
+                  decoration: _buildInputDecoration(
                     labelText: 'Contraseña',
-                    prefixIcon: const Icon(Icons.lock),
+                    prefixIcon: Icons.lock,
+                    isValid: _isPasswordValid,
+                    isEmpty: _passwordController.text.isEmpty,
                     suffixIcon: IconButton(
                       icon: Icon(
                         _isPasswordVisible
                             ? Icons.visibility
                             : Icons.visibility_off,
+                        color: _passwordController.text.isEmpty
+                            ? Colors.grey
+                            : (_isPasswordValid
+                                  ? Colors.green.shade600
+                                  : Colors.red),
                       ),
                       onPressed: () => setState(
                         () => _isPasswordVisible = !_isPasswordVisible,
                       ),
                     ),
-                    border: const OutlineInputBorder(),
                   ),
                   validator: (value) {
                     if (value == null || value.isEmpty)
@@ -233,25 +309,33 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                   },
                 ),
                 const SizedBox(height: 16),
+
                 TextFormField(
                   controller: _confirmPasswordController,
                   obscureText: !_isConfirmPasswordVisible,
                   textInputAction: TextInputAction.next,
-                  decoration: InputDecoration(
+                  onChanged: (_) => setState(() {}),
+                  decoration: _buildInputDecoration(
                     labelText: 'Confirmar Contraseña',
-                    prefixIcon: const Icon(Icons.lock_outline),
+                    prefixIcon: Icons.lock_outline,
+                    isValid: _isConfirmPasswordValid,
+                    isEmpty: _confirmPasswordController.text.isEmpty,
                     suffixIcon: IconButton(
                       icon: Icon(
                         _isConfirmPasswordVisible
                             ? Icons.visibility
                             : Icons.visibility_off,
+                        color: _confirmPasswordController.text.isEmpty
+                            ? Colors.grey
+                            : (_isConfirmPasswordValid
+                                  ? Colors.green.shade600
+                                  : Colors.red),
                       ),
                       onPressed: () => setState(
                         () => _isConfirmPasswordVisible =
                             !_isConfirmPasswordVisible,
                       ),
                     ),
-                    border: const OutlineInputBorder(),
                   ),
                   validator: (value) {
                     if (value == null || value.isEmpty)
@@ -262,12 +346,21 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                   },
                 ),
                 const SizedBox(height: 16),
+
                 DropdownButtonFormField<String>(
                   value: _selectedRole,
-                  decoration: const InputDecoration(
+                  decoration: InputDecoration(
                     labelText: '¿Cómo deseas participar?',
-                    prefixIcon: Icon(Icons.volunteer_activism),
-                    border: OutlineInputBorder(),
+                    prefixIcon: const Icon(
+                      Icons.volunteer_activism,
+                      color: Colors.blueGrey,
+                    ),
+                    border: OutlineInputBorder(
+                      borderSide: BorderSide(color: Colors.green.shade600),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderSide: BorderSide(color: Colors.green.shade600),
+                    ),
                   ),
                   items: const [
                     DropdownMenuItem(
@@ -279,8 +372,14 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                       child: Text('Voluntario de rescate'),
                     ),
                   ],
-                  onChanged: (String? newValue) =>
-                      setState(() => _selectedRole = newValue!),
+                  onChanged: (String? newValue) {
+                    setState(() {
+                      _selectedRole = newValue!;
+                      if (_selectedRole != 'Voluntario') {
+                        _curpController.clear();
+                      }
+                    });
+                  },
                 ),
                 if (_selectedRole == 'Voluntario') ...[
                   const SizedBox(height: 16),
@@ -289,26 +388,26 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                     textCapitalization: TextCapitalization.characters,
                     textInputAction: TextInputAction.done,
                     maxLength: 18,
-                    decoration: const InputDecoration(
+                    onChanged: (_) => setState(() {}),
+                    decoration: _buildInputDecoration(
                       labelText: 'CURP',
-                      prefixIcon: Icon(Icons.badge),
-                      border: OutlineInputBorder(),
-                      counterText: "",
-                    ),
+                      prefixIcon: Icons.badge,
+                      isValid: _isCurpValid,
+                      isEmpty: _curpController.text.isEmpty,
+                    ).copyWith(counterText: ""),
                     validator: (value) {
                       if (_selectedRole == 'Voluntario') {
-                        if (value == null || value.trim().isEmpty) {
+                        if (value == null || value.trim().isEmpty)
                           return 'El CURP es obligatorio para voluntarios';
-                        }
-                        if (!_curpRegex.hasMatch(value.trim().toUpperCase())) {
+                        if (!_curpRegex.hasMatch(value.trim().toUpperCase()))
                           return 'El formato del CURP es inválido';
-                        }
                       }
                       return null;
                     },
                   ),
                 ],
                 const SizedBox(height: 32),
+
                 FilledButton(
                   onPressed: _ejecutarRegistro,
                   style: FilledButton.styleFrom(
