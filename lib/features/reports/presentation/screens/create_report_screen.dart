@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../../../core/errors/app_exception.dart'; // IMPORTACIÓN DEL GESTOR DE ERRORES
 import '../../../map/presentation/providers/map_markers_provider.dart';
 import '../providers/active_reports_provider.dart';
 import '../providers/create_report_provider.dart';
@@ -26,7 +27,7 @@ final List<String> _razasGatos = [
   'Siamés',
   'Carey / Calicó',
   'Persa / Angora',
-  'Otro', // MODIFICADO
+  'Otro',
 ];
 
 final List<String> _silvestresPuebla = [
@@ -74,8 +75,7 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
   final _formKey = GlobalKey<FormState>();
   final _caracController = TextEditingController();
   final _referenciasController = TextEditingController();
-  final _razaPersonalizadaController =
-      TextEditingController(); // NUEVO CONTROLADOR
+  final _razaPersonalizadaController = TextEditingController();
 
   @override
   void initState() {
@@ -105,7 +105,7 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
         imagePath: widget.imagePath,
         caracteristicas: _caracController.text,
         referencias: _referenciasController.text,
-        razaPersonalizada: _razaPersonalizadaController.text, // ENVIANDO DATO
+        razaPersonalizada: _razaPersonalizadaController.text,
       );
 
       if (mounted) {
@@ -121,13 +121,65 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
           const SnackBar(content: Text('Reporte creado con éxito')),
         );
       }
+    } on AppException catch (e) {
+      if (mounted) {
+        if (e.statusCode == 409) {
+          _mostrarDialogoDuplicado();
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(e.toString()),
+              backgroundColor: Colors.redAccent,
+            ),
+          );
+        }
+      }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.toString().replaceAll('Exception: ', ''))),
+          SnackBar(
+            content: Text(e.toString().replaceAll('Exception: ', '')),
+            backgroundColor: Colors.redAccent,
+          ),
         );
       }
     }
+  }
+
+  void _mostrarDialogoDuplicado() {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 28),
+            SizedBox(width: 8),
+            Expanded(child: Text('Reporte duplicado')),
+          ],
+        ),
+        content: const Text(
+          'Parece que alguien ya reportó a un animal de la misma especie muy cerca de esta ubicación recientemente.\n\n¿Deseas ver las emergencias activas en tu mapa para confirmar si ya están pidiendo ayuda?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text(
+              'Cerrar aviso',
+              style: TextStyle(color: Colors.grey),
+            ),
+          ),
+          FilledButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              context.pop();
+              context.push('/active-reports');
+            },
+            style: FilledButton.styleFrom(backgroundColor: Colors.orange),
+            child: const Text('Ver emergencias'),
+          ),
+        ],
+      ),
+    );
   }
 
   String _obtenerMensajeAgresividad(int nivel) {
@@ -183,7 +235,6 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
                       ),
                     ),
                     const SizedBox(height: 16),
-
                     Container(
                       decoration: BoxDecoration(
                         border: Border.all(color: Colors.grey.shade400),
@@ -216,7 +267,6 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
                               ),
                             ),
                           );
-
                           if (result != null && result is Map<String, double>) {
                             notifier.updateLocation(
                               result['lat']!,
@@ -227,7 +277,6 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
                       ),
                     ),
                     const SizedBox(height: 16),
-
                     DropdownButtonFormField<String>(
                       value: state.especie,
                       hint: const Text('Selecciona especie'),
@@ -250,7 +299,6 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
                       onChanged: (val) => notifier.updateField(especie: val),
                     ),
                     const SizedBox(height: 16),
-
                     if (state.especie != null) ...[
                       DropdownButtonFormField<String>(
                         value: state.razaSeleccionada,
@@ -281,8 +329,6 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
                             : null,
                       ),
                       const SizedBox(height: 16),
-
-                      // CAMPO ABIERTO DINÁMICO
                       if (state.razaSeleccionada == 'Otro') ...[
                         TextFormField(
                           controller: _razaPersonalizadaController,
@@ -301,7 +347,6 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
                         const SizedBox(height: 16),
                       ],
                     ],
-
                     const Text(
                       'Nivel de Urgencia',
                       style: TextStyle(fontWeight: FontWeight.bold),
@@ -331,16 +376,14 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
                         ),
                         foregroundColor: WidgetStateProperty.resolveWith<Color>(
                           (Set<WidgetState> states) {
-                            if (states.contains(WidgetState.selected)) {
+                            if (states.contains(WidgetState.selected))
                               return Colors.white;
-                            }
                             return Colors.black87;
                           },
                         ),
                       ),
                     ),
                     const SizedBox(height: 12),
-
                     AnimatedSwitcher(
                       duration: const Duration(milliseconds: 300),
                       child: Container(
@@ -456,24 +499,21 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
                       style: ButtonStyle(
                         backgroundColor: WidgetStateProperty.resolveWith<Color>(
                           (Set<WidgetState> states) {
-                            if (states.contains(WidgetState.selected)) {
+                            if (states.contains(WidgetState.selected))
                               return Colors.blue.shade700;
-                            }
                             return Colors.white;
                           },
                         ),
                         foregroundColor: WidgetStateProperty.resolveWith<Color>(
                           (Set<WidgetState> states) {
-                            if (states.contains(WidgetState.selected)) {
+                            if (states.contains(WidgetState.selected))
                               return Colors.white;
-                            }
                             return Colors.black87;
                           },
                         ),
                       ),
                     ),
                     const SizedBox(height: 16),
-
                     DropdownButtonFormField<String>(
                       isExpanded: true,
                       value: state.colorSeleccionado,
@@ -549,7 +589,6 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
                       onChanged: (val) => notifier.updateField(tamano: val),
                     ),
                     const SizedBox(height: 24),
-
                     const Text(
                       'Nivel de Agresividad',
                       style: TextStyle(fontWeight: FontWeight.bold),
@@ -577,13 +616,17 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
                         children: [
                           Icon(
                             Icons.info_outline,
-                            color: state.agresividad >= 7 ? Colors.red : Colors.blueGrey,
+                            color: state.agresividad >= 7
+                                ? Colors.red
+                                : Colors.blueGrey,
                             size: 20,
                           ),
                           const SizedBox(width: 10),
                           Expanded(
                             child: Text(
-                              _obtenerMensajeAgresividad(state.agresividad.round()),
+                              _obtenerMensajeAgresividad(
+                                state.agresividad.round(),
+                              ),
                               style: TextStyle(
                                 fontSize: 13,
                                 color: Colors.grey.shade800,
@@ -594,9 +637,7 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
                         ],
                       ),
                     ),
-
                     const SizedBox(height: 24),
-
                     TextFormField(
                       controller: _caracController,
                       textCapitalization: TextCapitalization.sentences,
@@ -609,7 +650,6 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
                           value!.isEmpty ? 'Ingresa las características' : null,
                     ),
                     const SizedBox(height: 16),
-
                     TextFormField(
                       controller: _referenciasController,
                       textCapitalization: TextCapitalization.sentences,
@@ -623,7 +663,6 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
                           : null,
                     ),
                     const SizedBox(height: 32),
-
                     Card(
                       elevation: 0,
                       color: Colors.blue.shade50,
@@ -639,15 +678,13 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
                           style: TextStyle(fontWeight: FontWeight.bold),
                         ),
                         subtitle: const Text(
-                          'Podrás chatear con el voluntario que tome tu caso. '
-                          'El canal se cerrará automáticamente cuando el caso se resuelva.',
+                          'Podrás chatear con el voluntario que tome tu caso. El canal se cerrará automáticamente cuando el caso se resuelva.',
                           style: TextStyle(fontSize: 12),
                         ),
                         activeColor: Colors.blue.shade700,
                       ),
                     ),
                     const SizedBox(height: 16),
-
                     FilledButton.icon(
                       onPressed: _enviarFormulario,
                       icon: const Icon(Icons.send),
