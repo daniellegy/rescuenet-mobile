@@ -2,7 +2,8 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import '../../../../core/errors/app_exception.dart'; // IMPORTACIÓN DEL GESTOR DE ERRORES
+
+import '../../../../core/errors/app_exception.dart';
 import '../../../map/presentation/providers/map_markers_provider.dart';
 import '../providers/active_reports_provider.dart';
 import '../providers/create_report_provider.dart';
@@ -95,8 +96,51 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
     super.dispose();
   }
 
+  // MÉTODO CONSTRUCTOR DE BORDES DINÁMICOS UX (Gris -> Rojo -> Verde)
+  InputDecoration _buildInputDecoration({
+    required String labelText,
+    IconData? prefixIcon,
+    required bool isValid,
+    required bool isEmpty,
+    String? hintText,
+  }) {
+    Color borderColor = isEmpty
+        ? Colors.grey
+        : (isValid ? Colors.green.shade600 : Colors.red);
+    Color iconColor = isEmpty
+        ? Colors.grey.shade600
+        : (isValid ? Colors.green.shade600 : Colors.red);
+
+    return InputDecoration(
+      labelText: labelText,
+      hintText: hintText,
+      prefixIcon: prefixIcon != null
+          ? Icon(prefixIcon, color: iconColor)
+          : null,
+      suffixIcon: isEmpty
+          ? null
+          : Icon(isValid ? Icons.check_circle : Icons.error, color: iconColor),
+      border: OutlineInputBorder(borderSide: BorderSide(color: borderColor)),
+      enabledBorder: OutlineInputBorder(
+        borderSide: BorderSide(color: borderColor),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderSide: BorderSide(color: borderColor, width: 2.0),
+      ),
+      errorBorder: const OutlineInputBorder(
+        borderSide: BorderSide(color: Colors.red),
+      ),
+      focusedErrorBorder: const OutlineInputBorder(
+        borderSide: BorderSide(color: Colors.red, width: 2.0),
+      ),
+    );
+  }
+
   Future<void> _enviarFormulario() async {
-    if (!_formKey.currentState!.validate()) return;
+    if (!_formKey.currentState!.validate()) {
+      setState(() {}); // Fuerza el repintado para mostrar los bordes rojos
+      return;
+    }
 
     final notifier = ref.read(createReportProvider.notifier);
 
@@ -222,6 +266,7 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
               padding: const EdgeInsets.all(24),
               child: Form(
                 key: _formKey,
+                autovalidateMode: AutovalidateMode.onUserInteraction,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
@@ -281,10 +326,11 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
                       value: state.especie,
                       hint: const Text('Selecciona especie'),
                       icon: const Icon(Icons.arrow_drop_down),
-                      decoration: const InputDecoration(
+                      decoration: _buildInputDecoration(
                         labelText: 'Especie',
-                        border: OutlineInputBorder(),
-                        prefixIcon: Icon(Icons.pets),
+                        prefixIcon: Icons.pets,
+                        isValid: state.especie != null,
+                        isEmpty: state.especie == null,
                       ),
                       items: ['Perro', 'Gato', 'Silvestre']
                           .map(
@@ -297,18 +343,21 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
                           )
                           .toList(),
                       onChanged: (val) => notifier.updateField(especie: val),
+                      validator: (value) =>
+                          value == null ? 'Selecciona una especie' : null,
                     ),
                     const SizedBox(height: 16),
                     if (state.especie != null) ...[
                       DropdownButtonFormField<String>(
                         value: state.razaSeleccionada,
                         icon: const Icon(Icons.arrow_drop_down),
-                        decoration: InputDecoration(
+                        decoration: _buildInputDecoration(
                           labelText: state.especie == 'Silvestre'
                               ? 'Especie / Tipo de animal'
                               : 'Raza Aproximada',
-                          border: const OutlineInputBorder(),
-                          prefixIcon: const Icon(Icons.search),
+                          prefixIcon: Icons.search,
+                          isValid: state.razaSeleccionada != null,
+                          isEmpty: state.razaSeleccionada == null,
                         ),
                         items:
                             (state.especie == 'Perro'
@@ -333,11 +382,15 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
                         TextFormField(
                           controller: _razaPersonalizadaController,
                           textCapitalization: TextCapitalization.words,
-                          decoration: const InputDecoration(
+                          onChanged: (_) => setState(() {}),
+                          decoration: _buildInputDecoration(
                             labelText: 'Especificar Raza / Especie',
-                            border: OutlineInputBorder(),
-                            prefixIcon: Icon(Icons.edit),
+                            prefixIcon: Icons.edit,
                             hintText: 'Ej. Cruza de pastor',
+                            isValid: _razaPersonalizadaController.text
+                                .trim()
+                                .isNotEmpty,
+                            isEmpty: _razaPersonalizadaController.text.isEmpty,
                           ),
                           validator: (value) =>
                               value == null || value.trim().isEmpty
@@ -519,10 +572,11 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
                       value: state.colorSeleccionado,
                       hint: const Text('Selecciona Color Dominante'),
                       icon: const Icon(Icons.arrow_drop_down),
-                      decoration: const InputDecoration(
+                      decoration: _buildInputDecoration(
                         labelText: 'Color Dominante',
-                        border: OutlineInputBorder(),
-                        prefixIcon: Icon(Icons.color_lens_outlined),
+                        prefixIcon: Icons.color_lens_outlined,
+                        isValid: state.colorSeleccionado != null,
+                        isEmpty: state.colorSeleccionado == null,
                       ),
                       items: _coloresGenerales
                           .map(
@@ -538,9 +592,10 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
                     DropdownButtonFormField<String>(
                       value: state.sexo,
                       icon: const Icon(Icons.arrow_drop_down),
-                      decoration: const InputDecoration(
+                      decoration: _buildInputDecoration(
                         labelText: 'Sexo',
-                        border: OutlineInputBorder(),
+                        isValid: true,
+                        isEmpty: false,
                       ),
                       items: ['Desconocido', 'Macho', 'Hembra']
                           .map(
@@ -553,9 +608,10 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
                     DropdownButtonFormField<String>(
                       value: state.edad,
                       icon: const Icon(Icons.arrow_drop_down),
-                      decoration: const InputDecoration(
+                      decoration: _buildInputDecoration(
                         labelText: 'Edad',
-                        border: OutlineInputBorder(),
+                        isValid: true,
+                        isEmpty: false,
                       ),
                       items: ['Cachorro', 'Adulto', 'Senior']
                           .map(
@@ -568,9 +624,10 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
                     DropdownButtonFormField<String>(
                       value: state.tamano,
                       icon: const Icon(Icons.arrow_drop_down),
-                      decoration: const InputDecoration(
+                      decoration: _buildInputDecoration(
                         labelText: 'Tamaño',
-                        border: OutlineInputBorder(),
+                        isValid: true,
+                        isEmpty: false,
                       ),
                       items: const [
                         DropdownMenuItem(
@@ -641,10 +698,12 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
                     TextFormField(
                       controller: _caracController,
                       textCapitalization: TextCapitalization.sentences,
-                      decoration: const InputDecoration(
+                      onChanged: (_) => setState(() {}),
+                      decoration: _buildInputDecoration(
                         labelText: 'Características Especiales',
-                        border: OutlineInputBorder(),
                         hintText: 'Ej. Sin cola, Heridas.',
+                        isValid: _caracController.text.trim().isNotEmpty,
+                        isEmpty: _caracController.text.isEmpty,
                       ),
                       validator: (value) =>
                           value!.isEmpty ? 'Ingresa las características' : null,
@@ -653,10 +712,12 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
                     TextFormField(
                       controller: _referenciasController,
                       textCapitalization: TextCapitalization.sentences,
-                      decoration: const InputDecoration(
+                      onChanged: (_) => setState(() {}),
+                      decoration: _buildInputDecoration(
                         labelText: 'Referencias del lugar',
-                        border: OutlineInputBorder(),
                         hintText: 'Ej. Junto al portón azul o local comercial',
+                        isValid: _referenciasController.text.trim().isNotEmpty,
+                        isEmpty: _referenciasController.text.isEmpty,
                       ),
                       validator: (value) => value!.isEmpty
                           ? 'Por favor ingresa las referencias de la zona'
