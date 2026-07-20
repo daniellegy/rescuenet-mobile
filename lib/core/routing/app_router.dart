@@ -15,6 +15,7 @@ import '../../features/reports/presentation/screens/active_reports_screen.dart';
 import '../../features/settings/presentation/screens/settings_screen.dart';
 import '../../features/history/presentation/screens/search_radar.dart';
 import '../../features/reports/presentation/screens/rescue_stepper_screen.dart';
+import '../../features/history/presentation/screens/user_info_screen.dart'; // NUEVO
 
 final routerProvider = Provider<GoRouter>((ref) {
   final authStateNotifier = ValueNotifier<AuthState>(ref.read(authProvider));
@@ -59,20 +60,15 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/report-detail',
         builder: (context, state) {
-          final reporteData =
-              state.extra as ReportModel; // <- Ahora usa el modelo
+          final reporteData = state.extra as ReportModel;
           return ReportDetailScreen(reporte: reporteData);
         },
       ),
       GoRoute(
         path: '/search-radar',
         builder: (context, state) {
-          final reporteData =
-              state.extra
-                  as ReportModel; // Extrae el modelo que mandamos por extra
-          return SearchRadarScreen(
-            reporte: reporteData,
-          ); // Inyecta el reporte al Radar
+          final reporteData = state.extra as ReportModel;
+          return SearchRadarScreen(reporte: reporteData);
         },
       ),
       GoRoute(
@@ -99,6 +95,14 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state) {
           final reporteData = state.extra as ReportModel;
           return RescueStepperScreen(reporte: reporteData);
+        },
+      ),
+      // NUEVA RUTA PARA PERFIL PÚBLICO
+      GoRoute(
+        path: '/user-info',
+        builder: (context, state) {
+          final userId = state.extra as int;
+          return UserInfoScreen(userId: userId);
         },
       ),
     ],

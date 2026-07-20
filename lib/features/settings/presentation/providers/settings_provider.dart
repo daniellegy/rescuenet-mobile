@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+
 import '../../../../core/network/dio_client.dart';
 import '../../../../core/errors/app_exception.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
@@ -11,7 +12,6 @@ class UserProfileNotifier extends AsyncNotifier<Map<String, dynamic>> {
     if (!authState.isLogged) return {};
 
     final dio = ref.read(dioProvider).instance;
-
     try {
       final response = await dio.get('/auth/perfil');
       return response.data as Map<String, dynamic>;
@@ -31,10 +31,8 @@ class UserProfileNotifier extends AsyncNotifier<Map<String, dynamic>> {
     String? fcmToken,
   }) async {
     final dio = ref.read(dioProvider).instance;
-
     try {
       final Map<String, dynamic> datosAActualizar = {};
-
       if (telefono != null) datosAActualizar['telefono'] = telefono;
       if (email != null) datosAActualizar['email'] = email;
       if (role != null) datosAActualizar['role'] = role;
@@ -46,12 +44,34 @@ class UserProfileNotifier extends AsyncNotifier<Map<String, dynamic>> {
       final response = await dio.put('/auth/perfil', data: datosAActualizar);
       final datosActualizados =
           response.data['usuario'] as Map<String, dynamic>;
-
       state = AsyncData(datosActualizados);
     } on DioException catch (e) {
       throw AppException.fromDioException(e);
     } catch (e) {
       throw AppException('Ocurrió un error inesperado al actualizar los datos');
+    }
+  }
+
+  // NUEVO: Método para subir foto de perfil
+  Future<void> actualizarFotoPerfil(String imagePath) async {
+    final dio = ref.read(dioProvider).instance;
+    try {
+      FormData formData = FormData.fromMap({
+        'foto': await MultipartFile.fromFile(imagePath, filename: 'perfil.jpg'),
+      });
+      final response = await dio.put('/auth/perfil/foto', data: formData);
+      final nuevaUrl = response.data['foto_perfil'];
+
+      // Actualizamos el estado local agregando la nueva URL
+      if (state.hasValue && state.value != null) {
+        final currentData = Map<String, dynamic>.from(state.value!);
+        currentData['foto_perfil'] = nuevaUrl;
+        state = AsyncData(currentData);
+      }
+    } on DioException catch (e) {
+      throw AppException.fromDioException(e);
+    } catch (e) {
+      throw AppException('Ocurrió un error inesperado al subir la foto');
     }
   }
 }
