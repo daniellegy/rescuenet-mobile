@@ -41,10 +41,26 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
         );
         break;
       case FiltroOrden.urgenciaAlta:
-        lista.sort((a, b) => b.pesoUrgencia.compareTo(a.pesoUrgencia));
+        lista.sort((a, b) {
+          int cmp = b.pesoUrgencia.compareTo(a.pesoUrgencia);
+          if (cmp == 0) {
+            return (b.fechaCreacion ?? DateTime.now()).compareTo(
+              a.fechaCreacion ?? DateTime.now(),
+            );
+          }
+          return cmp;
+        });
         break;
       case FiltroOrden.urgenciaBaja:
-        lista.sort((a, b) => a.pesoUrgencia.compareTo(b.pesoUrgencia));
+        lista.sort((a, b) {
+          int cmp = a.pesoUrgencia.compareTo(b.pesoUrgencia);
+          if (cmp == 0) {
+            return (b.fechaCreacion ?? DateTime.now()).compareTo(
+              a.fechaCreacion ?? DateTime.now(),
+            );
+          }
+          return cmp;
+        });
         break;
       case FiltroOrden.urgenciaMedia:
         lista.sort((a, b) {
@@ -54,7 +70,14 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
           if (b.urgencia.toLowerCase() == 'media' &&
               a.urgencia.toLowerCase() != 'media')
             return 1;
-          return 0;
+
+          int cmp = b.pesoUrgencia.compareTo(a.pesoUrgencia);
+          if (cmp == 0) {
+            return (b.fechaCreacion ?? DateTime.now()).compareTo(
+              a.fechaCreacion ?? DateTime.now(),
+            );
+          }
+          return cmp;
         });
         break;
     }
@@ -111,9 +134,9 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
           if (historialBruto.isEmpty) {
             return const Center(child: Text('No tienes reportes registrados'));
           }
+
           final historialOrdenado = _ordenarReportes(historialBruto);
 
-          // Lógica de separación de pestañas basada en el rol actual
           final reportesActivos = historialOrdenado
               .where(
                 (r) =>
@@ -121,7 +144,6 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
                     r.estado != 'Rescatado',
               )
               .toList();
-
           final reportesConcluidos = historialOrdenado
               .where(
                 (r) =>
@@ -131,7 +153,6 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
               .toList();
 
           if (!esVoluntario) {
-            // UI para Reportante: 2 Pestañas
             return DefaultTabController(
               length: 2,
               child: Column(
@@ -173,7 +194,6 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
             );
           }
 
-          // UI para Voluntario: 3 Pestañas
           final misRescates = historialOrdenado
               .where(
                 (r) =>

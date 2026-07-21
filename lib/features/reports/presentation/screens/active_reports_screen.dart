@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-
 import '../../../history/domain/models/report_model.dart';
 import '../providers/active_reports_provider.dart';
 
@@ -26,7 +25,6 @@ class _ActiveReportsScreenState extends ConsumerState<ActiveReportsScreen> {
 
   List<ReportModel> _ordenarReportes(List<ReportModel> reportes) {
     List<ReportModel> lista = List.from(reportes);
-
     switch (_ordenActual) {
       case FiltroOrden.masRecientes:
         lista.sort(
@@ -43,24 +41,44 @@ class _ActiveReportsScreenState extends ConsumerState<ActiveReportsScreen> {
         );
         break;
       case FiltroOrden.urgenciaAlta:
-        lista.sort((a, b) => b.pesoUrgencia.compareTo(a.pesoUrgencia));
+        lista.sort((a, b) {
+          int cmp = b.pesoUrgencia.compareTo(a.pesoUrgencia);
+          // Fallback: Si tienen la misma urgencia, el más reciente va primero
+          if (cmp == 0) {
+            return (b.fechaCreacion ?? DateTime.now()).compareTo(
+              a.fechaCreacion ?? DateTime.now(),
+            );
+          }
+          return cmp;
+        });
         break;
       case FiltroOrden.urgenciaBaja:
-        lista.sort((a, b) => a.pesoUrgencia.compareTo(b.pesoUrgencia));
+        lista.sort((a, b) {
+          int cmp = a.pesoUrgencia.compareTo(b.pesoUrgencia);
+          if (cmp == 0) {
+            return (b.fechaCreacion ?? DateTime.now()).compareTo(
+              a.fechaCreacion ?? DateTime.now(),
+            );
+          }
+          return cmp;
+        });
         break;
       case FiltroOrden.urgenciaMedia:
         lista.sort((a, b) {
-          // Si uno es 'media' y el otro no, dale prioridad absoluta al 'media'
           if (a.urgencia.toLowerCase() == 'media' &&
-              b.urgencia.toLowerCase() != 'media') {
+              b.urgencia.toLowerCase() != 'media')
             return -1;
-          }
           if (b.urgencia.toLowerCase() == 'media' &&
-              a.urgencia.toLowerCase() != 'media') {
+              a.urgencia.toLowerCase() != 'media')
             return 1;
+
+          int cmp = b.pesoUrgencia.compareTo(a.pesoUrgencia);
+          if (cmp == 0) {
+            return (b.fechaCreacion ?? DateTime.now()).compareTo(
+              a.fechaCreacion ?? DateTime.now(),
+            );
           }
-          // CORRECCIÓN AQUÍ: Si ambos son iguales, o si NINGUNO es media, los ordena lógicamente por peso (Alta > Media > Baja)
-          return b.pesoUrgencia.compareTo(a.pesoUrgencia);
+          return cmp;
         });
         break;
     }
