@@ -4,7 +4,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:socket_io_client/socket_io_client.dart' as IO;
-
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../data/report_repository.dart';
 import '../../domain/models/canal_mensaje_model.dart';
@@ -26,9 +25,7 @@ class CanalChatSheet extends ConsumerStatefulWidget {
 class _CanalChatSheetState extends ConsumerState<CanalChatSheet> {
   final TextEditingController _mensajeController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
-
   IO.Socket? _socket;
-
   List<CanalMensajeModel> _mensajes = [];
   bool _isLoadingInicial = true;
   bool _isSending = false;
@@ -52,9 +49,6 @@ class _CanalChatSheetState extends ConsumerState<CanalChatSheet> {
 
   void _iniciarConexionWebSocket() {
     final apiUrl = dotenv.env['API_URL'] ?? '';
-
-    // MEJORA: Asegurar que el socket se conecte a la raíz del dominio
-    // Si apiUrl es "https://midominio.com/api", el socket necesita "https://midominio.com"
     final uri = Uri.tryParse(apiUrl);
     final socketUrl = uri != null
         ? '${uri.scheme}://${uri.host}${uri.hasPort ? ':${uri.port}' : ''}'
@@ -72,6 +66,14 @@ class _CanalChatSheetState extends ConsumerState<CanalChatSheet> {
 
     _socket?.onConnect((_) {
       debugPrint('Conectado al WebSocket del servidor');
+      _socket?.emit('join_canal', widget.reporteId);
+    });
+
+    // CORRECCIÓN SENIOR: Re-unión automática a la sala si ocurre una reconexión por pérdida de red
+    _socket?.on('reconnect', (_) {
+      debugPrint(
+        'Reconectado al WebSocket. Reuniéndose a la sala del canal...',
+      );
       _socket?.emit('join_canal', widget.reporteId);
     });
 
@@ -143,9 +145,7 @@ class _CanalChatSheetState extends ConsumerState<CanalChatSheet> {
       final data = await ref
           .read(reportRepositoryProvider)
           .obtenerMensajesCanal(widget.reporteId);
-
       final mensajes = data.map((m) => CanalMensajeModel.fromJson(m)).toList();
-
       if (mounted) {
         setState(() {
           _mensajes = mensajes;
@@ -153,7 +153,6 @@ class _CanalChatSheetState extends ConsumerState<CanalChatSheet> {
         });
         _irAlFinal();
       }
-
       if (mensajes.isNotEmpty) {
         await _marcarUltimoMensajeComoLeido(mensajes.last.id);
       }
@@ -185,15 +184,13 @@ class _CanalChatSheetState extends ConsumerState<CanalChatSheet> {
     if (texto.isEmpty || _isSending) return;
 
     setState(() => _isSending = true);
+
     try {
-      // MEJORA: Capturamos la respuesta HTTP que ya trae el mensaje creado
       final response = await ref
           .read(reportRepositoryProvider)
           .enviarMensajeCanal(widget.reporteId, texto);
-
       final nuevoMensaje = CanalMensajeModel.fromJson(response);
 
-      // MEJORA: Actualizamos la UI instantáneamente para el usuario que envía
       if (mounted) {
         setState(() {
           if (!_mensajes.any((m) => m.id == nuevoMensaje.id)) {
@@ -202,7 +199,6 @@ class _CanalChatSheetState extends ConsumerState<CanalChatSheet> {
         });
         _irAlFinal();
       }
-
       _mensajeController.clear();
     } catch (e) {
       if (mounted) {
