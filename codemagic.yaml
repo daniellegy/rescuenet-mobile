@@ -8,8 +8,16 @@ workflows:
     scripts:
       - name: Instalar dependencias de Flutter
         script: flutter packages pub get
-      - name: Compilar iOS sin firma (Genera el Podfile automáticamente)
-        script: flutter build ios --no-codesign --release
+      - name: Compilar iOS forzando omisión de firma
+        script: |
+          flutter build ios --release --no-codesign \
+            --dart-define=FLUTTER_WEB_USE_SKIA=true \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="-" \
+            EXPANDED_CODE_SIGN_IDENTITY="-" \
+            PROVISIONING_PROFILE="" \
+            PROVISIONING_PROFILE_SPECIFIER=""
       - name: Empaquetar el artefacto (.app a .ipa sin firmar)
         script: |
           mkdir -p build/ios/iphoneos/Payload
