@@ -8,16 +8,14 @@ workflows:
     scripts:
       - name: Instalar dependencias de Flutter
         script: flutter packages pub get
-      - name: Compilar iOS forzando omisión de firma
+      - name: Inyectar variables para omitir firma en Xcode
         script: |
-          flutter build ios --release --no-codesign \
-            --dart-define=FLUTTER_WEB_USE_SKIA=true \
-            CODE_SIGNING_ALLOWED=NO \
-            CODE_SIGNING_REQUIRED=NO \
-            CODE_SIGN_IDENTITY="-" \
-            EXPANDED_CODE_SIGN_IDENTITY="-" \
-            PROVISIONING_PROFILE="" \
-            PROVISIONING_PROFILE_SPECIFIER=""
+          echo "CODE_SIGNING_ALLOWED = NO" >> ios/Flutter/Release.xcconfig
+          echo "CODE_SIGNING_REQUIRED = NO" >> ios/Flutter/Release.xcconfig
+          echo "CODE_SIGN_IDENTITY = -" >> ios/Flutter/Release.xcconfig
+          echo "EXPANDED_CODE_SIGN_IDENTITY = -" >> ios/Flutter/Release.xcconfig
+      - name: Compilar iOS sin firma
+        script: flutter build ios --release --no-codesign
       - name: Empaquetar el artefacto (.app a .ipa sin firmar)
         script: |
           mkdir -p build/ios/iphoneos/Payload
