@@ -6,21 +6,30 @@ workflows:
       flutter: stable
       xcode: latest
     scripts:
-      - name: Instalar dependencias de Flutter
+      - name: Instalar dependencias
         script: flutter packages pub get
-      - name: Inyectar variables para omitir firma en Xcode
+      - name: Preparar motor de Flutter y CocoaPods
         script: |
-          echo "CODE_SIGNING_ALLOWED = NO" >> ios/Flutter/Release.xcconfig
-          echo "CODE_SIGNING_REQUIRED = NO" >> ios/Flutter/Release.xcconfig
-          echo "CODE_SIGN_IDENTITY = -" >> ios/Flutter/Release.xcconfig
-          echo "EXPANDED_CODE_SIGN_IDENTITY = -" >> ios/Flutter/Release.xcconfig
-      - name: Compilar iOS sin firma
-        script: flutter build ios --release --no-codesign
+          # Flutter compilará el código y enlazará los Pods. 
+          # "|| true" evita que la máquina virtual se detenga cuando Flutter arroje el error del Team ID.
+          flutter build ios --release --no-codesign || true
+      - name: Forzar compilación nativa en crudo (Bypass total)
+        script: |
+          cd ios
+          # Usamos el compilador nativo pasándole las anulaciones como comandos absolutos
+          xcodebuild build \
+            -workspace Runner.xcworkspace \
+            -scheme Runner \
+            -configuration Release \
+            -destination 'generic/platform=iOS' \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY=""
       - name: Empaquetar el artefacto (.app a .ipa sin firmar)
         script: |
-          mkdir -p build/ios/iphoneos/Payload
-          cp -r build/ios/iphoneos/Runner.app build/ios/iphoneos/Payload/
-          cd build/ios/iphoneos
+          mkdir -p Payload
+          # Buscamos y copiamos la aplicación compilada a la carpeta de empaquetado
+          cp -r build/ios/iphoneos/Runner.app Payload/
           zip -r unsigned_app.ipa Payload
     artifacts:
-      - build/ios/iphoneos/unsigned_app.ipa
+      - unsigned_app.ipa
