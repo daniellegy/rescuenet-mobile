@@ -6,30 +6,34 @@ workflows:
       flutter: stable
       xcode: latest
     scripts:
-      - name: Instalar dependencias
+      - name: Instalar dependencias de Flutter
         script: flutter packages pub get
-      - name: Preparar motor de Flutter y CocoaPods
+      - name: Configurar proyecto y dependencias (Sin compilar)
         script: |
-          # Flutter compilará el código y enlazará los Pods. 
-          # "|| true" evita que la máquina virtual se detenga cuando Flutter arroje el error del Team ID.
-          flutter build ios --release --no-codesign || true
-      - name: Forzar compilación nativa en crudo (Bypass total)
+          # Genera el Podfile y los archivos base limpiamente
+          flutter build ios --release --config-only
+          cd ios
+          pod install
+      - name: Compilación nativa forzada (Bypass total y Sandbox apagado)
         script: |
           cd ios
-          # Usamos el compilador nativo pasándole las anulaciones como comandos absolutos
+          # Apagamos los certificados Y la restricción de Sandboxing de Xcode 15
           xcodebuild build \
             -workspace Runner.xcworkspace \
             -scheme Runner \
             -configuration Release \
             -destination 'generic/platform=iOS' \
+            SYMROOT="$(pwd)/../build/ios" \
+            BUILD_DIR="$(pwd)/../build/ios" \
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
-            CODE_SIGN_IDENTITY=""
+            CODE_SIGN_IDENTITY="" \
+            ENABLE_USER_SCRIPT_SANDBOXING=NO
       - name: Empaquetar el artefacto (.app a .ipa sin firmar)
         script: |
           mkdir -p Payload
-          # Buscamos y copiamos la aplicación compilada a la carpeta de empaquetado
-          cp -r build/ios/iphoneos/Runner.app Payload/
+          # Extraemos la app de la carpeta Release-iphoneos generada por xcodebuild
+          cp -r build/ios/Release-iphoneos/Runner.app Payload/
           zip -r unsigned_app.ipa Payload
     artifacts:
       - unsigned_app.ipa
