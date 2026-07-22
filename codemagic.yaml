@@ -3,7 +3,7 @@ workflows:
     name: iOS Unsigned Build
     instance_type: mac_mini_m2
     environment:
-      flutter: default
+      flutter: stable
       xcode: latest
     scripts:
       - name: Instalar dependencias de Flutter
