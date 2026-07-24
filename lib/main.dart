@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+
 import 'core/routing/app_router.dart';
 import 'features/auth/presentation/providers/auth_provider.dart';
 import 'features/history/domain/models/report_model.dart';
@@ -20,8 +21,6 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await dotenv.load(fileName: ".env");
   await Firebase.initializeApp();
-
-  // SE REMOVIÓ EL LLAMADO AUTOMÁTICO A REQUESTPERMISSION DE AQUÍ PARA PREGUNTAR SÓLO BAJO DEMANDA
 
   final container = ProviderContainer();
   await container.read(authProvider.notifier).restoreSession();
@@ -50,7 +49,9 @@ class _RescueNetAppState extends ConsumerState<RescueNetApp> {
 
   void _configurarToquesDeNotificacion() async {
     FirebaseMessaging.instance.getInitialMessage().then((message) {
-      if (message != null) _abrirDetallesReporte(message);
+      if (message != null) {
+        _abrirDetallesReporte(message);
+      }
     });
 
     FirebaseMessaging.onMessageOpenedApp.listen((message) {
@@ -70,7 +71,7 @@ class _RescueNetAppState extends ConsumerState<RescueNetApp> {
               SizedBox(width: 12),
               Expanded(
                 child: Text(
-                  '🚨 ¡Nueva emergencia reportada! Actualizando mapa...',
+                  '¡Nueva emergencia reportada! Actualizando mapa...',
                 ),
               ),
             ],

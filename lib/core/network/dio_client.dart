@@ -56,9 +56,9 @@ class DioClient {
           if (e.response?.statusCode == 401) {
             _inMemoryToken = null;
             await _storage.delete(key: 'jwt_token');
-            if (onUnauthorized != null) {
-              onUnauthorized!();
-            }
+
+            // Refactorización: Uso de invocación segura para null-aware
+            onUnauthorized?.call();
           }
           // Propagamos el error para que AppException.fromDioException lo procese en los repositorios
           return handler.next(e);
