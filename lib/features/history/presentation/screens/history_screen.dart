@@ -65,12 +65,13 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
       case FiltroOrden.urgenciaMedia:
         lista.sort((a, b) {
           if (a.urgencia.toLowerCase() == 'media' &&
-              b.urgencia.toLowerCase() != 'media')
+              b.urgencia.toLowerCase() != 'media') {
             return -1;
+          }
           if (b.urgencia.toLowerCase() == 'media' &&
-              a.urgencia.toLowerCase() != 'media')
+              a.urgencia.toLowerCase() != 'media') {
             return 1;
-
+          }
           int cmp = b.pesoUrgencia.compareTo(a.pesoUrgencia);
           if (cmp == 0) {
             return (b.fechaCreacion ?? DateTime.now()).compareTo(

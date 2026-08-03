@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:go_router/go_router.dart';
-
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../providers/settings_provider.dart';
+import '../../../../core/theme/theme_provider.dart';
 import '../../../map/presentation/providers/map_markers_provider.dart';
 import '../../../reports/presentation/providers/active_reports_provider.dart';
 import '../../../../core/services/camera_service.dart';
@@ -32,7 +32,7 @@ class SettingsScreen extends ConsumerWidget {
               ),
               ListTile(
                 leading: const Icon(Icons.camera_alt, color: Colors.blue),
-                title: const Text('Tomar fotografía'),
+                title: const Text('Tomar fotograf a'),
                 onTap: () async {
                   Navigator.pop(modalContext);
                   await _procesarSubidaFoto(
@@ -44,7 +44,7 @@ class SettingsScreen extends ConsumerWidget {
               ),
               ListTile(
                 leading: const Icon(Icons.photo_library, color: Colors.green),
-                title: const Text('Elegir de la galería'),
+                title: const Text('Elegir de la galer a'),
                 onTap: () async {
                   Navigator.pop(modalContext);
                   await _procesarSubidaFoto(
@@ -71,7 +71,6 @@ class SettingsScreen extends ConsumerWidget {
       final pickedFile = await cameraService.takePicture(
         fromGallery: fromGallery,
       );
-
       if (pickedFile != null && context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -79,11 +78,9 @@ class SettingsScreen extends ConsumerWidget {
             duration: Duration(seconds: 2),
           ),
         );
-
         await ref
             .read(userProfileProvider.notifier)
             .actualizarFotoPerfil(pickedFile.path);
-
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
@@ -196,12 +193,10 @@ class SettingsScreen extends ConsumerWidget {
       onTap: () async {
         Navigator.pop(modalContext);
         if (rolTarget == rolActual) return;
-
         String? tokenFCM;
         if (rolTarget == 2) {
           final acepto = await _mostrarManifiestoVoluntario(parentContext);
           if (!acepto) return;
-
           try {
             final messaging = FirebaseMessaging.instance;
             NotificationSettings settings = await messaging
@@ -222,9 +217,7 @@ class SettingsScreen extends ConsumerWidget {
             debugPrint('Error solicitando permisos FCM en cambio de rol: $e');
           }
         }
-
         if (!parentContext.mounted) return;
-
         if (rolTarget == 2 &&
             (curpActual == null || curpActual.trim().isEmpty)) {
           _mostrarDialogoRegistroCurp(parentContext, ref, tokenFCM);
@@ -249,7 +242,6 @@ class SettingsScreen extends ConsumerWidget {
   ) {
     final TextEditingController curpController = TextEditingController();
     final curpRegex = RegExp(r'^[A-Z]{4}\d{6}[HM][A-Z]{5}[A-Z\d]\d$');
-
     showDialog(
       context: parentContext,
       barrierDismissible: false,
@@ -291,7 +283,7 @@ class SettingsScreen extends ConsumerWidget {
                 if (!curpRegex.hasMatch(curpIngresada)) {
                   ScaffoldMessenger.of(dialogContext).showSnackBar(
                     const SnackBar(
-                      content: Text('El formato del CURP es inválido.'),
+                      content: Text('El formato del CURP es inv lido.'),
                       backgroundColor: Colors.red,
                     ),
                   );
@@ -332,9 +324,7 @@ class SettingsScreen extends ConsumerWidget {
             curp: nuevaCurp,
             fcmToken: tokenFCM,
           );
-
       ref.read(authProvider.notifier).updateLocalRole(rolTarget);
-
       if (parentContext.mounted) {
         ScaffoldMessenger.of(parentContext).showSnackBar(
           SnackBar(
@@ -395,7 +385,7 @@ class SettingsScreen extends ConsumerWidget {
                   if (!emailRegex.hasMatch(nuevoValor)) {
                     ScaffoldMessenger.of(dialogContext).showSnackBar(
                       const SnackBar(
-                        content: Text('Formato de correo inválido'),
+                        content: Text('Formato de correo inv lido'),
                         backgroundColor: Colors.red,
                       ),
                     );
@@ -406,14 +396,13 @@ class SettingsScreen extends ConsumerWidget {
                   if (!phoneRegex.hasMatch(nuevoValor)) {
                     ScaffoldMessenger.of(dialogContext).showSnackBar(
                       const SnackBar(
-                        content: Text('El teléfono debe tener 10 dígitos'),
+                        content: Text('El tel fono debe tener 10 d gitos'),
                         backgroundColor: Colors.red,
                       ),
                     );
                     return;
                   }
                 }
-
                 if (nuevoValor.isNotEmpty && nuevoValor != valorActual) {
                   Navigator.pop(dialogContext);
                   try {
@@ -472,7 +461,7 @@ class SettingsScreen extends ConsumerWidget {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    'Verás reportes y recibirás alertas de rescates a un máximo de $radioSeleccionado km a la redonda.',
+                    'Ver s reportes y recibir s alertas de rescates a un m ximo de $radioSeleccionado km a la redonda.',
                     style: const TextStyle(fontSize: 14),
                   ),
                   const SizedBox(height: 16),
@@ -505,7 +494,6 @@ class SettingsScreen extends ConsumerWidget {
                             );
                         ref.invalidate(reportesActivosMapaProvider);
                         ref.invalidate(activeReportsProvider);
-
                         if (parentContext.mounted) {
                           ScaffoldMessenger.of(parentContext).showSnackBar(
                             const SnackBar(
@@ -567,12 +555,11 @@ class SettingsScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final perfilAsync = ref.watch(userProfileProvider);
     final authState = ref.watch(authProvider);
+    final themeMode = ref.watch(themeProvider);
+    final isDark = themeMode == ThemeMode.dark;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Configuración'),
-        backgroundColor: Colors.white,
-      ),
+      appBar: AppBar(title: const Text('Configuraci n')),
       body: perfilAsync.when(
         data: (datos) {
           final nombre = datos['nombre_completo'] ?? 'Usuario';
@@ -585,7 +572,6 @@ class SettingsScreen extends ConsumerWidget {
           final String? tokenFCMActual = datos['fcm_token'];
           final bool notificacionesActivas =
               tokenFCMActual != null && tokenFCMActual.trim().isNotEmpty;
-
           return ListView(
             padding: const EdgeInsets.only(
               left: 16.0,
@@ -653,6 +639,29 @@ class SettingsScreen extends ConsumerWidget {
                 ),
               ),
               const SizedBox(height: 32),
+
+              const Text(
+                'Apariencia',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.red,
+                ),
+              ),
+              const SizedBox(height: 8),
+              SwitchListTile(
+                secondary: const Icon(Icons.dark_mode, color: Colors.indigo),
+                title: const Text('Modo Oscuro'),
+                subtitle: const Text('Cambiar la apariencia de la aplicaci n'),
+                value: isDark,
+                activeColor: Colors.redAccent,
+                onChanged: (bool value) {
+                  ref.read(themeProvider.notifier).toggleTheme(value);
+                },
+              ),
+              const Divider(height: 1),
+              const SizedBox(height: 24),
+
               const Text(
                 'Mi Cuenta',
                 style: TextStyle(
@@ -679,7 +688,7 @@ class SettingsScreen extends ConsumerWidget {
                   Icons.email_outlined,
                   color: Colors.blueAccent,
                 ),
-                title: const Text('Correo Electrónico'),
+                title: const Text('Correo Electr nico'),
                 subtitle: Text(email),
                 trailing: const Icon(
                   Icons.edit,
@@ -692,7 +701,7 @@ class SettingsScreen extends ConsumerWidget {
               const Divider(height: 1),
               ListTile(
                 leading: const Icon(Icons.phone_android, color: Colors.green),
-                title: const Text('Teléfono Móvil'),
+                title: const Text('Tel fono M vil'),
                 subtitle: Text(telefono),
                 trailing: const Icon(
                   Icons.edit,
@@ -702,7 +711,7 @@ class SettingsScreen extends ConsumerWidget {
                 onTap: () => _mostrarDialogoDato(
                   context,
                   ref,
-                  'Teléfono',
+                  'Tel fono',
                   telefono,
                   'telefono',
                 ),
@@ -775,7 +784,7 @@ class SettingsScreen extends ConsumerWidget {
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(
                               content: Text(
-                                'Permiso denegado. Actívalo manualmente en la configuración de tu dispositivo (Ajustes > Aplicaciones).',
+                                'Permiso denegado. Act valo manualmente en la configuraci n de tu dispositivo (Ajustes > Aplicaciones).',
                               ),
                               backgroundColor: Colors.orange,
                               duration: Duration(seconds: 4),
@@ -804,8 +813,8 @@ class SettingsScreen extends ConsumerWidget {
               const Divider(height: 1),
               ListTile(
                 leading: const Icon(Icons.radar, color: Colors.purple),
-                title: const Text('Radio de Búsqueda'),
-                subtitle: Text('$radioNotificaciones km de área para alertas'),
+                title: const Text('Radio de B squeda'),
+                subtitle: Text('$radioNotificaciones km de  rea para alertas'),
                 trailing: const Icon(
                   Icons.edit,
                   size: 18,
@@ -818,7 +827,7 @@ class SettingsScreen extends ConsumerWidget {
               ListTile(
                 leading: const Icon(Icons.logout_rounded, color: Colors.red),
                 title: const Text(
-                  'Cerrar Sesión',
+                  'Cerrar Sesi n',
                   style: TextStyle(
                     color: Colors.red,
                     fontWeight: FontWeight.bold,
@@ -838,13 +847,13 @@ class SettingsScreen extends ConsumerWidget {
                           children: [
                             Icon(Icons.logout_rounded, color: Colors.red),
                             SizedBox(width: 8),
-                            Text('¿Cerrar Sesión?'),
+                            Text(' Cerrar Sesi n?'),
                           ],
                         ),
                         content: const Text(
-                          'Estás a punto de salir de tu cuenta en RescueNet. '
+                          'Est s a punto de salir de tu cuenta en RescueNet. '
                           'Para volver a reportar emergencias o rastrear rescates en tiempo real '
-                          'necesitarás ingresar tus credenciales nuevamente.',
+                          'necesitar s ingresar tus credenciales nuevamente.',
                         ),
                         actions: [
                           TextButton(
@@ -867,7 +876,7 @@ class SettingsScreen extends ConsumerWidget {
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     const SnackBar(
                                       content: Text(
-                                        'Has cerrado sesión correctamente.',
+                                        'Has cerrado sesi n correctamente.',
                                       ),
                                       backgroundColor: Colors.black87,
                                     ),
@@ -878,7 +887,7 @@ class SettingsScreen extends ConsumerWidget {
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     SnackBar(
                                       content: Text(
-                                        'Error al cerrar sesión: $e',
+                                        'Error al cerrar sesi n: $e',
                                       ),
                                       backgroundColor: Colors.red,
                                     ),
@@ -886,7 +895,7 @@ class SettingsScreen extends ConsumerWidget {
                                 }
                               }
                             },
-                            child: const Text('Cerrar Sesión'),
+                            child: const Text('Cerrar Sesi n'),
                           ),
                         ],
                       );
@@ -923,11 +932,11 @@ class SettingsScreen extends ConsumerWidget {
                               color: Colors.red,
                             ),
                             SizedBox(width: 8),
-                            Text('¿Eliminar cuenta?'),
+                            Text(' Eliminar cuenta?'),
                           ],
                         ),
                         content: const Text(
-                          'Esta acción es irreversible. Se borrarán tus datos personales, el historial '
+                          'Esta acci n es irreversible. Se borrar n tus datos personales, el historial '
                           'de alertas que has emitido y tus registros de rescates '
                           'de los servidores de RescueNet',
                         ),

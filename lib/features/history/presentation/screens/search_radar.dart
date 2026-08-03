@@ -133,7 +133,7 @@ class _SearchRadarScreenState extends State<SearchRadarScreen> {
                     point: targetReport,
                     radius: (widget.reporte.radio ?? 500).toDouble(),
                     useRadiusInMeter: true,
-                    color: Colors.blue.withOpacity(0.15),
+                    color: Colors.blue.withValues(alpha: 0.15),
                     borderColor: Colors.blue.shade700,
                     borderStrokeWidth: 2.0,
                   ),
@@ -148,7 +148,9 @@ class _SearchRadarScreenState extends State<SearchRadarScreen> {
                     height: 50,
                     child: Container(
                       decoration: BoxDecoration(
-                        color: widget.reporte.colorUrgencia.withOpacity(0.2),
+                        color: widget.reporte.colorUrgencia.withValues(
+                          alpha: 0.2,
+                        ),
                         shape: BoxShape.circle,
                         border: Border.all(
                           color: widget.reporte.colorUrgencia,

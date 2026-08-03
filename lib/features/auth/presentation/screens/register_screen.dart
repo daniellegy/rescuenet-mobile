@@ -6,21 +6,18 @@ import '../providers/auth_provider.dart';
 
 class RegisterScreen extends ConsumerStatefulWidget {
   const RegisterScreen({super.key});
-
   @override
   ConsumerState<RegisterScreen> createState() => _RegisterScreenState();
 }
 
 class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   final _formKey = GlobalKey<FormState>();
-
   final _nameController = TextEditingController();
   final _phoneController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
   final _curpController = TextEditingController();
-
   String _selectedRole = 'Cliente';
   bool _isPasswordVisible = false;
   bool _isConfirmPasswordVisible = false;
@@ -33,7 +30,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
   final _curpRegex = RegExp(r'^[A-Z]{4}\d{6}[HM][A-Z]{5}[A-Z\d]\d$');
   final _emailRegex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
-  final _nameRegex = RegExp(r'^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$');
+  final _nameRegex = RegExp(r'^[a-zA-Z \s]+$');
 
   @override
   void dispose() {
@@ -46,7 +43,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     super.dispose();
   }
 
-  // GETTERS BOOLEANOS DE VALIDACIÓN
   bool get _isNameValid =>
       _nameRegex.hasMatch(_nameController.text.trim()) &&
       _nameController.text.trim().isNotEmpty;
@@ -59,7 +55,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   bool get _isCurpValid =>
       _curpRegex.hasMatch(_curpController.text.trim().toUpperCase());
 
-  // MÉTODO CONSTRUCTOR DE BORDES DINÁMICOS UX (Gris -> Rojo -> Verde)
   InputDecoration _buildInputDecoration({
     required String labelText,
     required IconData prefixIcon,
@@ -74,7 +69,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     Color iconColor = isEmpty
         ? Colors.grey.shade600
         : (isValid ? Colors.green.shade600 : Colors.red);
-
     return InputDecoration(
       labelText: labelText,
       hintText: hintText,
@@ -119,7 +113,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
               ],
             ),
             content: const Text(
-              'Declaro que los gastos derivados corren por mi cuenta u originados por financiamiento colectivo ajeno a la app. Al aceptar, asumo la responsabilidad ética y operativa de los rescates que acepte.',
+              'Declaro que los gastos derivados corren por mi cuenta u originados por financiamiento colectivo ajeno a la app. Al aceptar, asumo la responsabilidad  tica y operativa de los rescates que acepte.',
               style: TextStyle(fontSize: 15, height: 1.4),
             ),
             actions: [
@@ -179,7 +173,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
         }
       }
     } else {
-      // Activa la autovalidación de todo el formulario para poner rojos los que falten
       setState(() {});
     }
   }
@@ -193,13 +186,12 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
           padding: const EdgeInsets.all(24.0),
           child: Form(
             key: _formKey,
-            autovalidateMode:
-                AutovalidateMode.onUserInteraction, // Valida al interactuar
+            autovalidateMode: AutovalidateMode.onUserInteraction,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 const Text(
-                  'Únete a RescueNet',
+                  ' nete a RescueNet',
                   style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 8),
@@ -208,7 +200,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                   style: TextStyle(fontSize: 16, color: Colors.grey),
                 ),
                 const SizedBox(height: 32),
-
                 TextFormField(
                   controller: _nameController,
                   textCapitalization: TextCapitalization.words,
@@ -221,15 +212,16 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                     isEmpty: _nameController.text.isEmpty,
                   ),
                   validator: (value) {
-                    if (value == null || value.trim().isEmpty)
+                    if (value == null || value.trim().isEmpty) {
                       return 'El nombre es obligatorio';
-                    if (!_nameRegex.hasMatch(value))
-                      return 'Ingresa un nombre válido (sin números)';
+                    }
+                    if (!_nameRegex.hasMatch(value)) {
+                      return 'Ingresa un nombre v lido (sin n meros)';
+                    }
                     return null;
                   },
                 ),
                 const SizedBox(height: 16),
-
                 TextFormField(
                   controller: _phoneController,
                   keyboardType: TextInputType.phone,
@@ -237,50 +229,52 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                   inputFormatters: [_phoneMaskFormatter],
                   onChanged: (_) => setState(() {}),
                   decoration: _buildInputDecoration(
-                    labelText: 'Teléfono',
+                    labelText: 'Tel fono',
                     hintText: '(LADA) 123-4567',
                     prefixIcon: Icons.phone,
                     isValid: _isPhoneValid,
                     isEmpty: _phoneController.text.isEmpty,
                   ),
                   validator: (value) {
-                    if (value == null || value.isEmpty)
-                      return 'El teléfono es obligatorio';
-                    if (_phoneMaskFormatter.getUnmaskedText().length < 10)
-                      return 'Faltan números (deben ser 10 dígitos)';
+                    if (value == null || value.isEmpty) {
+                      return 'El tel fono es obligatorio';
+                    }
+                    if (_phoneMaskFormatter.getUnmaskedText().length < 10) {
+                      return 'Faltan n meros (deben ser 10 d gitos)';
+                    }
                     return null;
                   },
                 ),
                 const SizedBox(height: 16),
-
                 TextFormField(
                   controller: _emailController,
                   keyboardType: TextInputType.emailAddress,
                   textInputAction: TextInputAction.next,
                   onChanged: (_) => setState(() {}),
                   decoration: _buildInputDecoration(
-                    labelText: 'Correo Electrónico',
+                    labelText: 'Correo Electr nico',
                     prefixIcon: Icons.email,
                     isValid: _isEmailValid,
                     isEmpty: _emailController.text.isEmpty,
                   ),
                   validator: (value) {
-                    if (value == null || value.isEmpty)
+                    if (value == null || value.isEmpty) {
                       return 'El correo es obligatorio';
-                    if (!_emailRegex.hasMatch(value))
-                      return 'Ingresa un formato de correo válido';
+                    }
+                    if (!_emailRegex.hasMatch(value)) {
+                      return 'Ingresa un formato de correo v lido';
+                    }
                     return null;
                   },
                 ),
                 const SizedBox(height: 16),
-
                 TextFormField(
                   controller: _passwordController,
                   obscureText: !_isPasswordVisible,
                   textInputAction: TextInputAction.next,
                   onChanged: (_) => setState(() {}),
                   decoration: _buildInputDecoration(
-                    labelText: 'Contraseña',
+                    labelText: 'Contrase a',
                     prefixIcon: Icons.lock,
                     isValid: _isPasswordValid,
                     isEmpty: _passwordController.text.isEmpty,
@@ -301,22 +295,23 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                     ),
                   ),
                   validator: (value) {
-                    if (value == null || value.isEmpty)
-                      return 'La contraseña es obligatoria';
-                    if (value.length < 6)
+                    if (value == null || value.isEmpty) {
+                      return 'La contrase a es obligatoria';
+                    }
+                    if (value.length < 6) {
                       return 'Debe tener al menos 6 caracteres';
+                    }
                     return null;
                   },
                 ),
                 const SizedBox(height: 16),
-
                 TextFormField(
                   controller: _confirmPasswordController,
                   obscureText: !_isConfirmPasswordVisible,
                   textInputAction: TextInputAction.next,
                   onChanged: (_) => setState(() {}),
                   decoration: _buildInputDecoration(
-                    labelText: 'Confirmar Contraseña',
+                    labelText: 'Confirmar Contrase a',
                     prefixIcon: Icons.lock_outline,
                     isValid: _isConfirmPasswordValid,
                     isEmpty: _confirmPasswordController.text.isEmpty,
@@ -338,19 +333,20 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                     ),
                   ),
                   validator: (value) {
-                    if (value == null || value.isEmpty)
-                      return 'Confirma tu contraseña';
-                    if (value != _passwordController.text)
-                      return 'Las contraseñas no coinciden';
+                    if (value == null || value.isEmpty) {
+                      return 'Confirma tu contrase a';
+                    }
+                    if (value != _passwordController.text) {
+                      return 'Las contrase as no coinciden';
+                    }
                     return null;
                   },
                 ),
                 const SizedBox(height: 16),
-
                 DropdownButtonFormField<String>(
                   value: _selectedRole,
                   decoration: InputDecoration(
-                    labelText: '¿Cómo deseas participar?',
+                    labelText: ' mo deseas participar?',
                     prefixIcon: const Icon(
                       Icons.volunteer_activism,
                       color: Colors.blueGrey,
@@ -397,17 +393,18 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                     ).copyWith(counterText: ""),
                     validator: (value) {
                       if (_selectedRole == 'Voluntario') {
-                        if (value == null || value.trim().isEmpty)
+                        if (value == null || value.trim().isEmpty) {
                           return 'El CURP es obligatorio para voluntarios';
-                        if (!_curpRegex.hasMatch(value.trim().toUpperCase()))
-                          return 'El formato del CURP es inválido';
+                        }
+                        if (!_curpRegex.hasMatch(value.trim().toUpperCase())) {
+                          return 'El formato del CURP es inv lido';
+                        }
                       }
                       return null;
                     },
                   ),
                 ],
                 const SizedBox(height: 32),
-
                 FilledButton(
                   onPressed: _ejecutarRegistro,
                   style: FilledButton.styleFrom(

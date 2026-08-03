@@ -420,8 +420,9 @@ class _RescueStepperScreenState extends ConsumerState<RescueStepperScreen> {
                     : <String>{},
                 emptySelectionAllowed: true,
                 onSelectionChanged: (newSelection) {
-                  if (newSelection.isNotEmpty)
+                  if (newSelection.isNotEmpty) {
                     notifier.updateField(animal: newSelection.first);
+                  }
                 },
               ),
             ),

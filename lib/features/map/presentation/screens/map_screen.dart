@@ -6,22 +6,19 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:geolocator/geolocator.dart';
+
 import '../../../../core/services/location_service.dart';
 import '../../../../core/services/camera_service.dart';
 import '../providers/map_markers_provider.dart';
 import '../../../reports/presentation/providers/my_active_rescue_provider.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
-
 import '../widgets/urgency_filter_menu.dart';
 import '../widgets/active_rescue_card.dart';
 import '../widgets/map_bottom_nav_bar.dart';
 import '../widgets/off_screen_markers.dart';
 
-const _kAppBarBg = Color(0xE6FFFFFF);
-
 class MapScreen extends ConsumerStatefulWidget {
   const MapScreen({super.key});
-
   @override
   ConsumerState<MapScreen> createState() => _MapScreenState();
 }
@@ -35,7 +32,6 @@ class _MapScreenState extends ConsumerState<MapScreen>
   bool _showUrgencyMenu = false;
   bool _seguirUsuario = true;
 
-  // Variables para la animación y temporizador de intención
   late AnimationController _holdController;
   Offset? _holdPosition;
   Timer? _intentTimer;
@@ -44,16 +40,13 @@ class _MapScreenState extends ConsumerState<MapScreen>
   void initState() {
     super.initState();
     _mapController = MapController();
-
-    // La animación ahora dura 400ms (100ms de retraso + 400ms de animación = 500ms del LongPress nativo)
     _holdController =
         AnimationController(
           vsync: this,
           duration: const Duration(milliseconds: 400),
         )..addListener(() {
-          setState(() {}); // Repinta el loader circular en tiempo real
+          setState(() {});
         });
-
     _iniciarLiveTracking();
   }
 
@@ -66,10 +59,8 @@ class _MapScreenState extends ConsumerState<MapScreen>
     super.dispose();
   }
 
-  // Se inicia un pequeño retraso para asegurar que no es un swipe
   void _onPointerDown(PointerDownEvent event) {
     _holdPosition = event.localPosition;
-
     _intentTimer?.cancel();
     _intentTimer = Timer(const Duration(milliseconds: 100), () {
       if (_holdPosition != null && mounted) {
@@ -78,12 +69,10 @@ class _MapScreenState extends ConsumerState<MapScreen>
     });
   }
 
-  // Si el dedo se mueve fuera del rango de tolerancia, cancelamos todo
   void _onPointerMove(PointerMoveEvent event) {
     if (_holdPosition != null) {
       final distance = (event.localPosition - _holdPosition!).distance;
       if (distance > 15) {
-        // Tolerancia en píxeles
         _cancelPointer();
       }
     }
@@ -93,7 +82,6 @@ class _MapScreenState extends ConsumerState<MapScreen>
     _cancelPointer();
   }
 
-  // Centraliza la limpieza de variables y temporizadores
   void _cancelPointer() {
     _intentTimer?.cancel();
     if (_holdController.isAnimating || _holdController.value > 0) {
@@ -115,7 +103,6 @@ class _MapScreenState extends ConsumerState<MapScreen>
           myPosition = LatLng(initialPos.latitude, initialPos.longitude);
         });
       }
-
       _positionStream = locationService.getLiveLocationStream().listen((
         Position position,
       ) {
@@ -142,15 +129,13 @@ class _MapScreenState extends ConsumerState<MapScreen>
     final targetPosition = customPoint ?? myPosition;
     if (targetPosition == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Esperando ubicación GPS...')),
+        const SnackBar(content: Text('Esperando ubicaci n GPS...')),
       );
       return;
     }
-
     try {
       final cameraService = ref.read(cameraServiceProvider);
       final pickedFile = await cameraService.takePicture();
-
       if (pickedFile != null && mounted) {
         context.push(
           '/create-report',
@@ -224,11 +209,16 @@ class _MapScreenState extends ConsumerState<MapScreen>
       orElse: () => false,
     );
 
+    // Integración de Mapa Adaptativo:
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final mapStyle = isDark ? 'mapbox/dark-v11' : 'mapbox/streets-v12';
+    final appBarBg = isDark ? const Color(0xE6121212) : const Color(0xE6FFFFFF);
+
     return Scaffold(
       extendBody: true,
       appBar: AppBar(
         title: const Text('Mapa de rescate'),
-        backgroundColor: _kAppBarBg,
+        backgroundColor: appBarBg,
         actions: [
           reportesAsync.maybeWhen(
             loading: () => const Padding(
@@ -248,7 +238,7 @@ class _MapScreenState extends ConsumerState<MapScreen>
           ),
           IconButton(
             icon: const Icon(Icons.settings, color: Colors.grey),
-            tooltip: 'Configuración',
+            tooltip: 'Configuraci n',
             onPressed: () => context.push('/settings'),
           ),
         ],
@@ -257,7 +247,6 @@ class _MapScreenState extends ConsumerState<MapScreen>
           ? const Center(child: CircularProgressIndicator())
           : Stack(
               children: [
-                // 1. CAPA DEL MAPA CON ESCUCHA DE PUNTERO
                 Listener(
                   onPointerDown: _onPointerDown,
                   onPointerMove: _onPointerMove,
@@ -289,14 +278,13 @@ class _MapScreenState extends ConsumerState<MapScreen>
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(
                               content: Text(
-                                'Mantén presionado en cualquier parte para reportar una emergencia ahí.',
+                                'Mant n presionado en cualquier parte para reportar una emergencia ah ',
                               ),
                               duration: Duration(seconds: 2),
                               behavior: SnackBarBehavior.floating,
                             ),
                           );
                         },
-                        // Se respeta la capa superior apoyándonos en el gestor nativo de longPress
                         onLongPress: (tapPosition, point) {
                           _cancelPointer();
                           _takePhotoAndNavigate(customPoint: point);
@@ -309,10 +297,10 @@ class _MapScreenState extends ConsumerState<MapScreen>
                       children: [
                         TileLayer(
                           urlTemplate:
-                              'https://api.mapbox.com/styles/v1/mapbox/streets-v12/tiles/{z}/{x}/{y}?access_token=$mapboxToken',
+                              'https://api.mapbox.com/styles/v1/$mapStyle/tiles/{z}/{x}/{y}?access_token=$mapboxToken',
                           additionalOptions: {
                             'accessToken': mapboxToken,
-                            'id': 'mapbox/streets-v12',
+                            'id': mapStyle,
                           },
                           evictErrorTileStrategy:
                               EvictErrorTileStrategy.dispose,
@@ -395,7 +383,6 @@ class _MapScreenState extends ConsumerState<MapScreen>
                   ),
                 ),
 
-                // 2. CAPA DE FEEDBACK VISUAL
                 if (_holdPosition != null && _holdController.isAnimating)
                   Positioned(
                     left: _holdPosition!.dx - 30,
@@ -420,7 +407,6 @@ class _MapScreenState extends ConsumerState<MapScreen>
                     ),
                   ),
 
-                // 3. CAPA DE INDICADORES FUERA DE PANTALLA
                 reportesAsync.maybeWhen(
                   data: (reportes) {
                     final reportesFiltrados = reportes.where((r) {
@@ -437,8 +423,6 @@ class _MapScreenState extends ConsumerState<MapScreen>
                   },
                   orElse: () => const SizedBox.shrink(),
                 ),
-
-                // 4. CAPA DE BOTONES FLOTANTES
                 Positioned(
                   bottom: 200,
                   right: 16,
@@ -448,8 +432,12 @@ class _MapScreenState extends ConsumerState<MapScreen>
                       FloatingActionButton(
                         heroTag: 'toggle_filter_btn',
                         mini: true,
-                        backgroundColor: Colors.white,
-                        foregroundColor: Colors.blueGrey,
+                        backgroundColor: isDark
+                            ? Colors.grey.shade800
+                            : Colors.white,
+                        foregroundColor: isDark
+                            ? Colors.white
+                            : Colors.blueGrey,
                         elevation: 4,
                         onPressed: () {
                           setState(() {
@@ -483,10 +471,12 @@ class _MapScreenState extends ConsumerState<MapScreen>
                     heroTag: 'my_location_btn',
                     mini: true,
                     backgroundColor: _seguirUsuario
-                        ? Colors.blue.shade50
-                        : Colors.white,
+                        ? (isDark ? Colors.blue.shade900 : Colors.blue.shade50)
+                        : (isDark ? Colors.grey.shade800 : Colors.white),
                     foregroundColor: _seguirUsuario
-                        ? Colors.blueAccent
+                        ? (isDark
+                              ? Colors.blueAccent.shade100
+                              : Colors.blueAccent)
                         : Colors.grey,
                     elevation: 4,
                     child: const Icon(Icons.my_location),
@@ -500,8 +490,6 @@ class _MapScreenState extends ConsumerState<MapScreen>
                     },
                   ),
                 ),
-
-                // 5. CAPA DE AVISO DE RESCATE ACTIVO (BANNER)
                 miRescateAsync.maybeWhen(
                   data: (rescate) {
                     if (rescate == null) {

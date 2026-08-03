@@ -193,11 +193,19 @@ class ReportModel {
   }
 
   String get tiempoTranscurrido {
-    if (fechaCreacion == null) return 'hace un momento';
+    if (fechaCreacion == null) {
+      return 'hace un momento';
+    }
     final diferencia = DateTime.now().difference(fechaCreacion!);
-    if (diferencia.inDays > 0) return 'hace ${diferencia.inDays} d';
-    if (diferencia.inHours > 0) return 'hace ${diferencia.inHours} h';
-    if (diferencia.inMinutes > 0) return 'hace ${diferencia.inMinutes} min';
+    if (diferencia.inDays > 0) {
+      return 'hace ${diferencia.inDays} d';
+    }
+    if (diferencia.inHours > 0) {
+      return 'hace ${diferencia.inHours} h';
+    }
+    if (diferencia.inMinutes > 0) {
+      return 'hace ${diferencia.inMinutes} min';
+    }
     return 'hace un momento';
   }
 }
