@@ -26,7 +26,8 @@ class MapScreen extends ConsumerStatefulWidget {
   ConsumerState<MapScreen> createState() => _MapScreenState();
 }
 
-class _MapScreenState extends ConsumerState<MapScreen> {
+class _MapScreenState extends ConsumerState<MapScreen>
+    with TickerProviderStateMixin {
   LatLng? myPosition;
   late final MapController _mapController;
   StreamSubscription<Position>? _positionStream;
@@ -34,10 +35,25 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   bool _showUrgencyMenu = false;
   bool _seguirUsuario = true;
 
+  // Variables para la animación y temporizador de intención
+  late AnimationController _holdController;
+  Offset? _holdPosition;
+  Timer? _intentTimer;
+
   @override
   void initState() {
     super.initState();
     _mapController = MapController();
+
+    // La animación ahora dura 400ms (100ms de retraso + 400ms de animación = 500ms del LongPress nativo)
+    _holdController =
+        AnimationController(
+          vsync: this,
+          duration: const Duration(milliseconds: 400),
+        )..addListener(() {
+          setState(() {}); // Repinta el loader circular en tiempo real
+        });
+
     _iniciarLiveTracking();
   }
 
@@ -45,7 +61,49 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   void dispose() {
     _positionStream?.cancel();
     _mapController.dispose();
+    _holdController.dispose();
+    _intentTimer?.cancel();
     super.dispose();
+  }
+
+  // Se inicia un pequeño retraso para asegurar que no es un swipe
+  void _onPointerDown(PointerDownEvent event) {
+    _holdPosition = event.localPosition;
+
+    _intentTimer?.cancel();
+    _intentTimer = Timer(const Duration(milliseconds: 100), () {
+      if (_holdPosition != null && mounted) {
+        _holdController.forward(from: 0.0);
+      }
+    });
+  }
+
+  // Si el dedo se mueve fuera del rango de tolerancia, cancelamos todo
+  void _onPointerMove(PointerMoveEvent event) {
+    if (_holdPosition != null) {
+      final distance = (event.localPosition - _holdPosition!).distance;
+      if (distance > 15) {
+        // Tolerancia en píxeles
+        _cancelPointer();
+      }
+    }
+  }
+
+  void _onPointerUp(PointerEvent event) {
+    _cancelPointer();
+  }
+
+  // Centraliza la limpieza de variables y temporizadores
+  void _cancelPointer() {
+    _intentTimer?.cancel();
+    if (_holdController.isAnimating || _holdController.value > 0) {
+      _holdController.reset();
+    }
+    if (_holdPosition != null && mounted) {
+      setState(() {
+        _holdPosition = null;
+      });
+    }
   }
 
   Future<void> _iniciarLiveTracking() async {
@@ -161,6 +219,11 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     final reportesAsync = ref.watch(reportesActivosMapaProvider);
     final miRescateAsync = ref.watch(miRescateActivoProvider);
 
+    final bool hasActiveRescue = miRescateAsync.maybeWhen(
+      data: (rescate) => rescate != null,
+      orElse: () => false,
+    );
+
     return Scaffold(
       extendBody: true,
       appBar: AppBar(
@@ -194,145 +257,188 @@ class _MapScreenState extends ConsumerState<MapScreen> {
           ? const Center(child: CircularProgressIndicator())
           : Stack(
               children: [
-                RepaintBoundary(
-                  child: FlutterMap(
-                    mapController: _mapController,
-                    options: MapOptions(
-                      initialCenter: myPosition!,
-                      initialZoom: 18,
-                      minZoom: 5,
-                      maxZoom: 19,
-                      cameraConstraint: CameraConstraint.contain(
-                        bounds: LatLngBounds(
-                          const LatLng(-90.0, -180.0),
-                          const LatLng(90.0, 180.0),
+                // 1. CAPA DEL MAPA CON ESCUCHA DE PUNTERO
+                Listener(
+                  onPointerDown: _onPointerDown,
+                  onPointerMove: _onPointerMove,
+                  onPointerUp: _onPointerUp,
+                  onPointerCancel: _onPointerUp,
+                  child: RepaintBoundary(
+                    child: FlutterMap(
+                      mapController: _mapController,
+                      options: MapOptions(
+                        initialCenter: myPosition!,
+                        initialZoom: 18,
+                        minZoom: 5,
+                        maxZoom: 19,
+                        cameraConstraint: CameraConstraint.contain(
+                          bounds: LatLngBounds(
+                            const LatLng(-90.0, -180.0),
+                            const LatLng(90.0, 180.0),
+                          ),
+                        ),
+                        onPositionChanged:
+                            (MapCamera position, bool hasGesture) {
+                              if (hasGesture && _seguirUsuario) {
+                                setState(() {
+                                  _seguirUsuario = false;
+                                });
+                              }
+                            },
+                        onTap: (tapPosition, point) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text(
+                                'Mantén presionado en cualquier parte para reportar una emergencia ahí.',
+                              ),
+                              duration: Duration(seconds: 2),
+                              behavior: SnackBarBehavior.floating,
+                            ),
+                          );
+                        },
+                        // Se respeta la capa superior apoyándonos en el gestor nativo de longPress
+                        onLongPress: (tapPosition, point) {
+                          _cancelPointer();
+                          _takePhotoAndNavigate(customPoint: point);
+                        },
+                        interactionOptions: const InteractionOptions(
+                          flags: InteractiveFlag.all & ~InteractiveFlag.rotate,
+                          enableMultiFingerGestureRace: false,
                         ),
                       ),
-                      onPositionChanged: (MapCamera position, bool hasGesture) {
-                        if (hasGesture && _seguirUsuario) {
-                          setState(() {
-                            _seguirUsuario = false;
-                          });
-                        }
-                      },
-                      onTap: (tapPosition, point) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text(
-                              'Mantén presionado para reportar una emergencia exactamente aquí.',
-                            ),
-                            duration: Duration(seconds: 2),
-                            behavior: SnackBarBehavior.floating,
-                          ),
-                        );
-                      },
-                      onLongPress: (tapPosition, point) {
-                        _takePhotoAndNavigate(customPoint: point);
-                      },
-                      interactionOptions: const InteractionOptions(
-                        flags: InteractiveFlag.all & ~InteractiveFlag.rotate,
-                        enableMultiFingerGestureRace: false,
-                      ),
-                    ),
-                    children: [
-                      TileLayer(
-                        urlTemplate:
-                            'https://api.mapbox.com/styles/v1/mapbox/streets-v12/tiles/{z}/{x}/{y}?access_token=$mapboxToken',
-                        additionalOptions: {
-                          'accessToken': mapboxToken,
-                          'id': 'mapbox/streets-v12',
-                        },
-                        evictErrorTileStrategy: EvictErrorTileStrategy.dispose,
-                      ),
-                      MarkerLayer(
-                        rotate: true,
-                        markers: [
-                          if (myPosition != null)
-                            Marker(
-                              point: myPosition!,
-                              width: 50,
-                              height: 50,
-                              rotate: true,
-                              child: GestureDetector(
-                                onTap: _mostrarPerfilDirecto,
-                                child: const RepaintBoundary(
-                                  child: Icon(
-                                    Icons.person_pin,
-                                    color: Colors.blue,
-                                    size: 40,
+                      children: [
+                        TileLayer(
+                          urlTemplate:
+                              'https://api.mapbox.com/styles/v1/mapbox/streets-v12/tiles/{z}/{x}/{y}?access_token=$mapboxToken',
+                          additionalOptions: {
+                            'accessToken': mapboxToken,
+                            'id': 'mapbox/streets-v12',
+                          },
+                          evictErrorTileStrategy:
+                              EvictErrorTileStrategy.dispose,
+                        ),
+                        MarkerLayer(
+                          rotate: true,
+                          markers: [
+                            if (myPosition != null)
+                              Marker(
+                                point: myPosition!,
+                                width: 50,
+                                height: 50,
+                                rotate: true,
+                                child: GestureDetector(
+                                  onTap: _mostrarPerfilDirecto,
+                                  child: const RepaintBoundary(
+                                    child: Icon(
+                                      Icons.person_pin,
+                                      color: Colors.blue,
+                                      size: 40,
+                                    ),
                                   ),
                                 ),
                               ),
-                            ),
-                          ...reportesAsync.maybeWhen(
-                            data: (reportes) {
-                              return reportes
-                                  .where(
-                                    (r) =>
-                                        _filtroUrgencia == 'todos' ||
-                                        r.urgencia.toLowerCase() ==
-                                            _filtroUrgencia,
-                                  )
-                                  .map((reporte) {
-                                    final bool estaEnProceso =
-                                        reporte.estado
-                                            .toString()
-                                            .trim()
-                                            .toUpperCase() ==
-                                        'EN_PROCESO';
-                                    return Marker(
-                                      point: LatLng(
-                                        reporte.latitud,
-                                        reporte.longitud,
-                                      ),
-                                      width: 50,
-                                      height: 50,
-                                      rotate: true,
-                                      child: GestureDetector(
-                                        onTap: () {
-                                          context
-                                              .push(
-                                                '/report-detail',
-                                                extra: reporte,
-                                              )
-                                              .then((_) {
-                                                ref.invalidate(
-                                                  reportesActivosMapaProvider,
-                                                );
-                                                ref.invalidate(
-                                                  miRescateActivoProvider,
-                                                );
-                                              });
-                                        },
-                                        child: _buildReportMarker(
-                                          reporte.colorUrgencia,
-                                          isInProgress: estaEnProceso,
+                            ...reportesAsync.maybeWhen(
+                              data: (reportes) {
+                                return reportes
+                                    .where(
+                                      (r) =>
+                                          _filtroUrgencia == 'todos' ||
+                                          r.urgencia.toLowerCase() ==
+                                              _filtroUrgencia,
+                                    )
+                                    .map((reporte) {
+                                      final bool estaEnProceso =
+                                          reporte.estado
+                                              .toString()
+                                              .trim()
+                                              .toUpperCase() ==
+                                          'EN_PROCESO';
+                                      return Marker(
+                                        point: LatLng(
+                                          reporte.latitud,
+                                          reporte.longitud,
                                         ),
-                                      ),
-                                    );
-                                  })
-                                  .toList();
-                            },
-                            orElse: () => [],
-                          ),
-                        ],
-                      ),
-                    ],
+                                        width: 50,
+                                        height: 50,
+                                        rotate: true,
+                                        child: GestureDetector(
+                                          onTap: () {
+                                            context
+                                                .push(
+                                                  '/report-detail',
+                                                  extra: reporte,
+                                                )
+                                                .then((_) {
+                                                  ref.invalidate(
+                                                    reportesActivosMapaProvider,
+                                                  );
+                                                  ref.invalidate(
+                                                    miRescateActivoProvider,
+                                                  );
+                                                });
+                                          },
+                                          child: _buildReportMarker(
+                                            reporte.colorUrgencia,
+                                            isInProgress: estaEnProceso,
+                                          ),
+                                        ),
+                                      );
+                                    })
+                                    .toList();
+                              },
+                              orElse: () => [],
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
                   ),
                 ),
+
+                // 2. CAPA DE FEEDBACK VISUAL
+                if (_holdPosition != null && _holdController.isAnimating)
+                  Positioned(
+                    left: _holdPosition!.dx - 30,
+                    top: _holdPosition!.dy - 30,
+                    child: IgnorePointer(
+                      child: Container(
+                        width: 60,
+                        height: 60,
+                        decoration: BoxDecoration(
+                          color: Colors.redAccent.withValues(alpha: 0.1),
+                          shape: BoxShape.circle,
+                        ),
+                        child: CircularProgressIndicator(
+                          value: _holdController.value,
+                          color: Colors.redAccent,
+                          strokeWidth: 5,
+                          backgroundColor: Colors.redAccent.withValues(
+                            alpha: 0.2,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+
+                // 3. CAPA DE INDICADORES FUERA DE PANTALLA
                 reportesAsync.maybeWhen(
                   data: (reportes) {
                     final reportesFiltrados = reportes.where((r) {
-                      if (_filtroUrgencia == 'todos') return true;
+                      if (_filtroUrgencia == 'todos') {
+                        return true;
+                      }
                       return r.urgencia.toLowerCase() == _filtroUrgencia;
                     }).toList();
                     return OffScreenMarkers(
                       mapController: _mapController,
                       reportes: reportesFiltrados,
+                      topMargin: hasActiveRescue ? 110.0 : 24.0,
                     );
                   },
                   orElse: () => const SizedBox.shrink(),
                 ),
+
+                // 4. CAPA DE BOTONES FLOTANTES
                 Positioned(
                   bottom: 200,
                   right: 16,
@@ -394,9 +500,13 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                     },
                   ),
                 ),
+
+                // 5. CAPA DE AVISO DE RESCATE ACTIVO (BANNER)
                 miRescateAsync.maybeWhen(
                   data: (rescate) {
-                    if (rescate == null) return const SizedBox.shrink();
+                    if (rescate == null) {
+                      return const SizedBox.shrink();
+                    }
                     return Positioned(
                       top: 16,
                       left: 16,
