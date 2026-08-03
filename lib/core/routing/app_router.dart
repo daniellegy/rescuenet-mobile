@@ -15,7 +15,8 @@ import '../../features/reports/presentation/screens/active_reports_screen.dart';
 import '../../features/settings/presentation/screens/settings_screen.dart';
 import '../../features/history/presentation/screens/search_radar.dart';
 import '../../features/reports/presentation/screens/rescue_stepper_screen.dart';
-import '../../features/history/presentation/screens/user_info_screen.dart'; // NUEVO
+import '../../features/history/presentation/screens/user_info_screen.dart';
+import '../../features/messages/presentation/screens/inbox_screen.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
   final authStateNotifier = ValueNotifier<AuthState>(ref.read(authProvider));
@@ -105,6 +106,7 @@ final routerProvider = Provider<GoRouter>((ref) {
           return UserInfoScreen(userId: userId);
         },
       ),
+      GoRoute(path: '/inbox', builder: (context, state) => const InboxScreen()),
     ],
   );
 });

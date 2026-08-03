@@ -2,7 +2,6 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-
 import '../../../../core/errors/app_exception.dart';
 import '../../../map/presentation/providers/map_markers_provider.dart';
 import '../providers/active_reports_provider.dart';
@@ -21,7 +20,6 @@ final List<String> _razasPerros = [
   'Schnauzer',
   'Otro',
 ];
-
 final List<String> _razasGatos = [
   'Mestizo Pelo Corto',
   'Mestizo Pelo Largo',
@@ -30,7 +28,6 @@ final List<String> _razasGatos = [
   'Persa / Angora',
   'Otro',
 ];
-
 final List<String> _silvestresPuebla = [
   'Tlacuache',
   'Cacomixtle',
@@ -43,7 +40,6 @@ final List<String> _silvestresPuebla = [
   'Conejo silvestre',
   'Otro',
 ];
-
 final List<String> _coloresGenerales = [
   'Negro',
   'Blanco',
@@ -60,7 +56,6 @@ class CreateReportScreen extends ConsumerStatefulWidget {
   final double lat;
   final double lng;
   final String imagePath;
-
   const CreateReportScreen({
     super.key,
     required this.lat,
@@ -96,7 +91,6 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
     super.dispose();
   }
 
-  // MÉTODO CONSTRUCTOR DE BORDES DINÁMICOS UX (Gris -> Rojo -> Verde)
   InputDecoration _buildInputDecoration({
     required String labelText,
     IconData? prefixIcon,
@@ -138,12 +132,10 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
 
   Future<void> _enviarFormulario() async {
     if (!_formKey.currentState!.validate()) {
-      setState(() {}); // Fuerza el repintado para mostrar los bordes rojos
+      setState(() {});
       return;
     }
-
     final notifier = ref.read(createReportProvider.notifier);
-
     try {
       await notifier.submitReport(
         imagePath: widget.imagePath,
@@ -151,15 +143,12 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
         referencias: _referenciasController.text,
         razaPersonalizada: _razaPersonalizadaController.text,
       );
-
       if (mounted) {
         _caracController.clear();
         _referenciasController.clear();
         _razaPersonalizadaController.clear();
-
         ref.invalidate(reportesActivosMapaProvider);
         ref.invalidate(activeReportsProvider);
-
         context.pop();
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Reporte creado con éxito')),
@@ -228,6 +217,8 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
 
   String _obtenerMensajeAgresividad(int nivel) {
     switch (nivel) {
+      case 0:
+        return 'Desconocido. Evite asumir docilidad y mantenga precaución estándar.';
       case 1:
         return 'Completamente dócil. No muestra ninguna señal de hostilidad.';
       case 2:
@@ -249,7 +240,7 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
       case 10:
         return 'Peligro extremo. Agresión inminente; imposible de manipular sin equipo.';
       default:
-        return 'Selecciona un nivel del 1 al 10.';
+        return 'Selecciona un nivel del 0 al 10.';
     }
   }
 
@@ -257,7 +248,6 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
   Widget build(BuildContext context) {
     final state = ref.watch(createReportProvider);
     final notifier = ref.read(createReportProvider.notifier);
-
     return Scaffold(
       appBar: AppBar(title: const Text('Completar Reporte')),
       body: state.isLoading
@@ -429,8 +419,9 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
                         ),
                         foregroundColor: WidgetStateProperty.resolveWith<Color>(
                           (Set<WidgetState> states) {
-                            if (states.contains(WidgetState.selected))
+                            if (states.contains(WidgetState.selected)) {
                               return Colors.white;
+                            }
                             return Colors.black87;
                           },
                         ),
@@ -552,15 +543,17 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
                       style: ButtonStyle(
                         backgroundColor: WidgetStateProperty.resolveWith<Color>(
                           (Set<WidgetState> states) {
-                            if (states.contains(WidgetState.selected))
+                            if (states.contains(WidgetState.selected)) {
                               return Colors.blue.shade700;
+                            }
                             return Colors.white;
                           },
                         ),
                         foregroundColor: WidgetStateProperty.resolveWith<Color>(
                           (Set<WidgetState> states) {
-                            if (states.contains(WidgetState.selected))
+                            if (states.contains(WidgetState.selected)) {
                               return Colors.white;
+                            }
                             return Colors.black87;
                           },
                         ),
@@ -652,9 +645,9 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
                     ),
                     Slider(
                       value: state.agresividad,
-                      min: 1,
+                      min: 0,
                       max: 10,
-                      divisions: 9,
+                      divisions: 10,
                       label: state.agresividad.round().toString(),
                       activeColor: Colors.red,
                       onChanged: (val) =>

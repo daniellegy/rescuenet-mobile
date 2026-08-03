@@ -51,6 +51,16 @@ class LocationService {
       throw Exception('No se pudo obtener la ubicación actual a tiempo.');
     }
   }
+
+  Stream<Position> getLiveLocationStream() {
+    return Geolocator.getPositionStream(
+      locationSettings: const LocationSettings(
+        accuracy: LocationAccuracy.high,
+        distanceFilter:
+            10, // Actualiza solo cuando el usuario se mueva 10 metros
+      ),
+    );
+  }
 }
 
 final locationServiceProvider = Provider<LocationService>((ref) {

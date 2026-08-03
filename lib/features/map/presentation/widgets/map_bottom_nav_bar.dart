@@ -32,9 +32,9 @@ class MapBottomNavBar extends StatelessWidget {
             onPressed: () => context.push('/active-reports'),
           ),
           IconButton(
-            icon: const Icon(Icons.pets_rounded, color: Colors.grey),
-            tooltip: 'Perros Perdidos',
-            onPressed: () => context.push('/lost-dogs'),
+            icon: const Icon(Icons.chat_bubble_outline, color: Colors.grey),
+            tooltip: 'Mensajes',
+            onPressed: () => context.push('/inbox'),
           ),
         ],
       ),

@@ -1,16 +1,17 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-
+import 'package:geolocator/geolocator.dart';
 import '../../../../core/services/location_service.dart';
 import '../../../../core/services/camera_service.dart';
 import '../providers/map_markers_provider.dart';
 import '../../../reports/presentation/providers/my_active_rescue_provider.dart';
+import '../../../auth/presentation/providers/auth_provider.dart';
 
-// Componentes modulares
 import '../widgets/urgency_filter_menu.dart';
 import '../widgets/active_rescue_card.dart';
 import '../widgets/map_bottom_nav_bar.dart';
@@ -28,37 +29,47 @@ class MapScreen extends ConsumerStatefulWidget {
 class _MapScreenState extends ConsumerState<MapScreen> {
   LatLng? myPosition;
   late final MapController _mapController;
+  StreamSubscription<Position>? _positionStream;
   String _filtroUrgencia = 'todos';
   bool _showUrgencyMenu = false;
+  bool _seguirUsuario = true;
 
   @override
   void initState() {
     super.initState();
     _mapController = MapController();
-    _fetchCurrentLocation();
+    _iniciarLiveTracking();
   }
 
   @override
   void dispose() {
+    _positionStream?.cancel();
     _mapController.dispose();
     super.dispose();
   }
 
-  Future<void> _fetchCurrentLocation() async {
+  Future<void> _iniciarLiveTracking() async {
+    final locationService = ref.read(locationServiceProvider);
     try {
-      final locationService = ref.read(locationServiceProvider);
-      final position = await locationService.getCurrentPosition();
-
-      if (position.latitude.isNaN || position.longitude.isNaN) {
-        throw Exception(
-          'El hardware del GPS retornó coordenadas no numéricas.',
-        );
+      final initialPos = await locationService.getCurrentPosition();
+      if (mounted) {
+        setState(() {
+          myPosition = LatLng(initialPos.latitude, initialPos.longitude);
+        });
       }
 
-      setState(() {
-        myPosition = LatLng(position.latitude, position.longitude);
+      _positionStream = locationService.getLiveLocationStream().listen((
+        Position position,
+      ) {
+        if (mounted) {
+          setState(() {
+            myPosition = LatLng(position.latitude, position.longitude);
+            if (_seguirUsuario) {
+              _mapController.move(myPosition!, _mapController.camera.zoom);
+            }
+          });
+        }
       });
-
       ref.invalidate(reportesActivosMapaProvider);
     } catch (e) {
       if (mounted) {
@@ -69,8 +80,9 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     }
   }
 
-  Future<void> _takePhotoAndNavigate() async {
-    if (myPosition == null) {
+  Future<void> _takePhotoAndNavigate({LatLng? customPoint}) async {
+    final targetPosition = customPoint ?? myPosition;
+    if (targetPosition == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Esperando ubicación GPS...')),
       );
@@ -85,8 +97,8 @@ class _MapScreenState extends ConsumerState<MapScreen> {
         context.push(
           '/create-report',
           extra: {
-            'lat': myPosition!.latitude,
-            'lng': myPosition!.longitude,
+            'lat': targetPosition.latitude,
+            'lng': targetPosition.longitude,
             'imagePath': pickedFile.path,
           },
         );
@@ -124,6 +136,25 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     );
   }
 
+  void _mostrarPerfilDirecto() {
+    final userId = ref.read(authProvider).userId;
+    if (userId != null) {
+      context.push('/user-info', extra: userId);
+    }
+  }
+
+  void _refrescarMapaManual() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Actualizando emergencias en tu zona...'),
+        duration: Duration(seconds: 1),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+    ref.invalidate(reportesActivosMapaProvider);
+    ref.invalidate(miRescateActivoProvider);
+  }
+
   @override
   Widget build(BuildContext context) {
     final mapboxToken = dotenv.env['MAPBOX_TOKEN'] ?? '';
@@ -149,10 +180,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
             ),
             orElse: () => IconButton(
               icon: const Icon(Icons.refresh, color: Colors.blue),
-              onPressed: () {
-                ref.invalidate(reportesActivosMapaProvider);
-                ref.invalidate(miRescateActivoProvider);
-              },
+              onPressed: _refrescarMapaManual,
             ),
           ),
           IconButton(
@@ -166,7 +194,6 @@ class _MapScreenState extends ConsumerState<MapScreen> {
           ? const Center(child: CircularProgressIndicator())
           : Stack(
               children: [
-                // CAPA PRINCIPAL DEL MAPA
                 RepaintBoundary(
                   child: FlutterMap(
                     mapController: _mapController,
@@ -181,6 +208,27 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                           const LatLng(90.0, 180.0),
                         ),
                       ),
+                      onPositionChanged: (MapCamera position, bool hasGesture) {
+                        if (hasGesture && _seguirUsuario) {
+                          setState(() {
+                            _seguirUsuario = false;
+                          });
+                        }
+                      },
+                      onTap: (tapPosition, point) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text(
+                              'Mantén presionado para reportar una emergencia exactamente aquí.',
+                            ),
+                            duration: Duration(seconds: 2),
+                            behavior: SnackBarBehavior.floating,
+                          ),
+                        );
+                      },
+                      onLongPress: (tapPosition, point) {
+                        _takePhotoAndNavigate(customPoint: point);
+                      },
                       interactionOptions: const InteractionOptions(
                         flags: InteractiveFlag.all & ~InteractiveFlag.rotate,
                         enableMultiFingerGestureRace: false,
@@ -199,6 +247,23 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                       MarkerLayer(
                         rotate: true,
                         markers: [
+                          if (myPosition != null)
+                            Marker(
+                              point: myPosition!,
+                              width: 50,
+                              height: 50,
+                              rotate: true,
+                              child: GestureDetector(
+                                onTap: _mostrarPerfilDirecto,
+                                child: const RepaintBoundary(
+                                  child: Icon(
+                                    Icons.person_pin,
+                                    color: Colors.blue,
+                                    size: 40,
+                                  ),
+                                ),
+                              ),
+                            ),
                           ...reportesAsync.maybeWhen(
                             data: (reportes) {
                               return reportes
@@ -250,34 +315,17 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                             },
                             orElse: () => [],
                           ),
-                          if (myPosition != null)
-                            Marker(
-                              point: myPosition!,
-                              width: 50,
-                              height: 50,
-                              rotate: true,
-                              child: const RepaintBoundary(
-                                child: Icon(
-                                  Icons.person_pin,
-                                  color: Colors.red,
-                                  size: 40,
-                                ),
-                              ),
-                            ),
                         ],
                       ),
                     ],
                   ),
                 ),
-
-                // CAPA DE INDICADORES FUERA DE PANTALLA
                 reportesAsync.maybeWhen(
                   data: (reportes) {
                     final reportesFiltrados = reportes.where((r) {
                       if (_filtroUrgencia == 'todos') return true;
                       return r.urgencia.toLowerCase() == _filtroUrgencia;
                     }).toList();
-
                     return OffScreenMarkers(
                       mapController: _mapController,
                       reportes: reportesFiltrados,
@@ -285,8 +333,6 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                   },
                   orElse: () => const SizedBox.shrink(),
                 ),
-
-                // CAPA DE BOTONES FLOTANTES (Filtro y Ubicación)
                 Positioned(
                   bottom: 200,
                   right: 16,
@@ -324,28 +370,30 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                     ],
                   ),
                 ),
-
                 Positioned(
                   bottom: 140,
                   right: 16,
                   child: FloatingActionButton(
                     heroTag: 'my_location_btn',
                     mini: true,
-                    backgroundColor: Colors.white,
-                    foregroundColor: Colors.blueAccent,
+                    backgroundColor: _seguirUsuario
+                        ? Colors.blue.shade50
+                        : Colors.white,
+                    foregroundColor: _seguirUsuario
+                        ? Colors.blueAccent
+                        : Colors.grey,
                     elevation: 4,
                     child: const Icon(Icons.my_location),
                     onPressed: () {
+                      setState(() {
+                        _seguirUsuario = true;
+                      });
                       if (myPosition != null) {
                         _mapController.move(myPosition!, 18);
-                      } else {
-                        _fetchCurrentLocation();
                       }
                     },
                   ),
                 ),
-
-                // CAPA DE AVISO DE RESCATE ACTIVO
                 miRescateAsync.maybeWhen(
                   data: (rescate) {
                     if (rescate == null) return const SizedBox.shrink();
@@ -353,7 +401,9 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                       top: 16,
                       left: 16,
                       right: 16,
-                      child: ActiveRescueCard(rescate: rescate),
+                      child: SafeArea(
+                        child: ActiveRescueCard(rescate: rescate),
+                      ),
                     );
                   },
                   orElse: () => const SizedBox.shrink(),
@@ -362,7 +412,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
             ),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
       floatingActionButton: FloatingActionButton(
-        onPressed: _takePhotoAndNavigate,
+        onPressed: () => _takePhotoAndNavigate(),
         backgroundColor: Colors.redAccent,
         foregroundColor: Colors.white,
         elevation: 4,

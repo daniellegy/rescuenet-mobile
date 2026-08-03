@@ -25,7 +25,7 @@ class CreateReportState {
     this.sexo = 'Desconocido',
     this.edad = 'Cachorro',
     this.tamano = 'Pequeño',
-    this.agresividad = 1.0,
+    this.agresividad = 0.0,
     this.isLoading = false,
     this.activarCanal = false,
     required this.lat,
