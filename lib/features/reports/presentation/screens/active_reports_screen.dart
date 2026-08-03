@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+
 import '../../../history/domain/models/report_model.dart';
 import '../providers/active_reports_provider.dart';
 
@@ -14,7 +15,6 @@ enum FiltroOrden {
 
 class ActiveReportsScreen extends ConsumerStatefulWidget {
   const ActiveReportsScreen({super.key});
-
   @override
   ConsumerState<ActiveReportsScreen> createState() =>
       _ActiveReportsScreenState();
@@ -43,7 +43,6 @@ class _ActiveReportsScreenState extends ConsumerState<ActiveReportsScreen> {
       case FiltroOrden.urgenciaAlta:
         lista.sort((a, b) {
           int cmp = b.pesoUrgencia.compareTo(a.pesoUrgencia);
-          // Fallback: Si tienen la misma urgencia, el más reciente va primero
           if (cmp == 0) {
             return (b.fechaCreacion ?? DateTime.now()).compareTo(
               a.fechaCreacion ?? DateTime.now(),
@@ -73,7 +72,6 @@ class _ActiveReportsScreenState extends ConsumerState<ActiveReportsScreen> {
               a.urgencia.toLowerCase() != 'media') {
             return 1;
           }
-
           int cmp = b.pesoUrgencia.compareTo(a.pesoUrgencia);
           if (cmp == 0) {
             return (b.fechaCreacion ?? DateTime.now()).compareTo(
@@ -90,10 +88,12 @@ class _ActiveReportsScreenState extends ConsumerState<ActiveReportsScreen> {
   @override
   Widget build(BuildContext context) {
     final activeReportsAsync = ref.watch(activeReportsProvider);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('Emergencias Activas'),
+        backgroundColor: isDark ? const Color(0xFF121212) : Colors.white,
         actions: [
           PopupMenuButton<FiltroOrden>(
             icon: const Icon(Icons.sort_rounded),
@@ -139,7 +139,6 @@ class _ActiveReportsScreenState extends ConsumerState<ActiveReportsScreen> {
               ),
             );
           }
-
           final reportesOrdenados = _ordenarReportes(reportesBrutos);
 
           return ListView.builder(
@@ -149,6 +148,7 @@ class _ActiveReportsScreenState extends ConsumerState<ActiveReportsScreen> {
               return Card(
                 margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 elevation: 2,
+                color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
                 clipBehavior: Clip.antiAlias,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),

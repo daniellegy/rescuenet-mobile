@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+
 import '../../../history/presentation/providers/history_provider.dart';
 import '../../../reports/presentation/widgets/canal_chat_sheet.dart';
 
@@ -9,11 +10,12 @@ class InboxScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final historialAsync = ref.watch(misReportesProvider);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('Bandeja de Mensajes'),
-        backgroundColor: Colors.white,
+        backgroundColor: isDark ? const Color(0xFF121212) : Colors.white,
       ),
       body: historialAsync.when(
         data: (reportes) {
@@ -46,6 +48,7 @@ class InboxScreen extends ConsumerWidget {
                 ),
                 child: Card(
                   elevation: 2,
+                  color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
                   child: ListTile(
                     leading: CircleAvatar(
                       backgroundColor: r.colorUrgencia.withValues(alpha: 0.15),

@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:socket_io_client/socket_io_client.dart' as IO;
+
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../data/report_repository.dart';
 import '../../domain/models/canal_mensaje_model.dart';
@@ -69,7 +70,6 @@ class _CanalChatSheetState extends ConsumerState<CanalChatSheet> {
       _socket?.emit('join_canal', widget.reporteId);
     });
 
-    // CORRECCIÓN SENIOR: Re-unión automática a la sala si ocurre una reconexión por pérdida de red
     _socket?.on('reconnect', (_) {
       debugPrint(
         'Reconectado al WebSocket. Reuniéndose a la sala del canal...',
@@ -184,13 +184,11 @@ class _CanalChatSheetState extends ConsumerState<CanalChatSheet> {
     if (texto.isEmpty || _isSending) return;
 
     setState(() => _isSending = true);
-
     try {
       final response = await ref
           .read(reportRepositoryProvider)
           .enviarMensajeCanal(widget.reporteId, texto);
       final nuevoMensaje = CanalMensajeModel.fromJson(response);
-
       if (mounted) {
         setState(() {
           if (!_mensajes.any((m) => m.id == nuevoMensaje.id)) {
@@ -216,6 +214,7 @@ class _CanalChatSheetState extends ConsumerState<CanalChatSheet> {
     final authState = ref.watch(authProvider);
     final miUsuarioId = authState.userId;
     final mediaQuery = MediaQuery.of(context);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Padding(
       padding: EdgeInsets.only(bottom: mediaQuery.viewInsets.bottom),
@@ -226,9 +225,11 @@ class _CanalChatSheetState extends ConsumerState<CanalChatSheet> {
         expand: false,
         builder: (context, scrollSheetController) {
           return Container(
-            decoration: const BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(20),
+              ),
             ),
             child: Column(
               children: [
@@ -238,7 +239,9 @@ class _CanalChatSheetState extends ConsumerState<CanalChatSheet> {
                     width: 40,
                     height: 4,
                     decoration: BoxDecoration(
-                      color: Colors.grey.shade300,
+                      color: isDark
+                          ? Colors.grey.shade600
+                          : Colors.grey.shade300,
                       borderRadius: BorderRadius.circular(10),
                     ),
                   ),
@@ -280,16 +283,24 @@ class _CanalChatSheetState extends ConsumerState<CanalChatSheet> {
                   margin: const EdgeInsets.symmetric(horizontal: 16),
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: Colors.amber.shade50,
+                    color: isDark
+                        ? Colors.amber.shade900.withValues(alpha: 0.2)
+                        : Colors.amber.shade50,
                     borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.amber.shade200),
+                    border: Border.all(
+                      color: isDark
+                          ? Colors.amber.shade700
+                          : Colors.amber.shade200,
+                    ),
                   ),
                   child: Row(
                     children: [
                       Icon(
                         Icons.info_outline,
                         size: 18,
-                        color: Colors.amber.shade800,
+                        color: isDark
+                            ? Colors.amber.shade400
+                            : Colors.amber.shade800,
                       ),
                       const SizedBox(width: 8),
                       Expanded(
@@ -297,7 +308,9 @@ class _CanalChatSheetState extends ConsumerState<CanalChatSheet> {
                           'Recuerda que la comunicación se cortará cuando el caso sea resuelto.',
                           style: TextStyle(
                             fontSize: 12,
-                            color: Colors.amber.shade900,
+                            color: isDark
+                                ? Colors.amber.shade200
+                                : Colors.amber.shade900,
                           ),
                         ),
                       ),
@@ -357,7 +370,9 @@ class _CanalChatSheetState extends ConsumerState<CanalChatSheet> {
                             decoration: InputDecoration(
                               hintText: 'Escribe un mensaje...',
                               filled: true,
-                              fillColor: Colors.grey.shade100,
+                              fillColor: isDark
+                                  ? Colors.grey.shade800
+                                  : Colors.grey.shade100,
                               contentPadding: const EdgeInsets.symmetric(
                                 horizontal: 16,
                                 vertical: 10,
@@ -413,6 +428,8 @@ class _BurbujaMensaje extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Align(
       alignment: esMio ? Alignment.centerRight : Alignment.centerLeft,
       child: Container(
@@ -422,7 +439,9 @@ class _BurbujaMensaje extends StatelessWidget {
         margin: const EdgeInsets.symmetric(vertical: 4),
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         decoration: BoxDecoration(
-          color: esMio ? Colors.blue.shade700 : Colors.grey.shade200,
+          color: esMio
+              ? Colors.blue.shade700
+              : (isDark ? Colors.grey.shade800 : Colors.grey.shade200),
           borderRadius: BorderRadius.only(
             topLeft: const Radius.circular(14),
             topRight: const Radius.circular(14),
@@ -441,7 +460,9 @@ class _BurbujaMensaje extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.bold,
-                    color: Colors.blueGrey.shade700,
+                    color: isDark
+                        ? Colors.blueGrey.shade300
+                        : Colors.blueGrey.shade700,
                   ),
                 ),
               ),
@@ -449,7 +470,9 @@ class _BurbujaMensaje extends StatelessWidget {
               mensaje.contenido,
               style: TextStyle(
                 fontSize: 14,
-                color: esMio ? Colors.white : Colors.black87,
+                color: esMio
+                    ? Colors.white
+                    : (isDark ? Colors.white : Colors.black87),
               ),
             ),
             const SizedBox(height: 2),
@@ -457,7 +480,9 @@ class _BurbujaMensaje extends StatelessWidget {
               mensaje.horaFormateada,
               style: TextStyle(
                 fontSize: 10,
-                color: esMio ? Colors.white70 : Colors.black45,
+                color: esMio
+                    ? Colors.white70
+                    : (isDark ? Colors.white54 : Colors.black45),
               ),
             ),
           ],

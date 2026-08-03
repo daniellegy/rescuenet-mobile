@@ -34,6 +34,7 @@ void main() async {
 
 class RescueNetApp extends ConsumerStatefulWidget {
   const RescueNetApp({super.key});
+
   @override
   ConsumerState<RescueNetApp> createState() => _RescueNetAppState();
 }
@@ -51,9 +52,11 @@ class _RescueNetAppState extends ConsumerState<RescueNetApp> {
         _abrirDetallesReporte(message);
       }
     });
+
     FirebaseMessaging.onMessageOpenedApp.listen((message) {
       _abrirDetallesReporte(message);
     });
+
     FirebaseMessaging.onMessage.listen((RemoteMessage message) {
       ref.invalidate(reportesActivosMapaProvider);
       ref.invalidate(miRescateActivoProvider);
@@ -66,7 +69,7 @@ class _RescueNetAppState extends ConsumerState<RescueNetApp> {
               SizedBox(width: 12),
               Expanded(
                 child: Text(
-                  ' Nueva emergencia reportada! Actualizando mapa...',
+                  '¡Nueva emergencia reportada! Actualizando mapa...',
                 ),
               ),
             ],
@@ -90,9 +93,38 @@ class _RescueNetAppState extends ConsumerState<RescueNetApp> {
           ref.read(routerProvider).push('/report-detail', extra: reporteModel);
         });
       } catch (e) {
-        debugPrint("Error decodificando reporte de notificaci n: $e");
+        debugPrint("Error decodificando reporte de notificación: $e");
       }
     }
+  }
+
+  TextTheme _buildTextTheme(TextTheme baseTheme) {
+    final dmSansTheme = GoogleFonts.dmSansTextTheme(baseTheme);
+    return dmSansTheme.copyWith(
+      displayLarge: GoogleFonts.dmSerifDisplay(
+        textStyle: dmSansTheme.displayLarge,
+      ),
+      displayMedium: GoogleFonts.dmSerifDisplay(
+        textStyle: dmSansTheme.displayMedium,
+      ),
+      displaySmall: GoogleFonts.dmSerifDisplay(
+        textStyle: dmSansTheme.displaySmall,
+      ),
+      headlineLarge: GoogleFonts.dmSerifDisplay(
+        textStyle: dmSansTheme.headlineLarge,
+      ),
+      headlineMedium: GoogleFonts.dmSerifDisplay(
+        textStyle: dmSansTheme.headlineMedium,
+      ),
+      headlineSmall: GoogleFonts.dmSerifDisplay(
+        textStyle: dmSansTheme.headlineSmall,
+      ),
+      titleLarge: GoogleFonts.dmSerifDisplay(textStyle: dmSansTheme.titleLarge),
+      titleMedium: GoogleFonts.dmSerifDisplay(
+        textStyle: dmSansTheme.titleMedium,
+      ),
+      titleSmall: GoogleFonts.dmSerifDisplay(textStyle: dmSansTheme.titleSmall),
+    );
   }
 
   @override
@@ -112,7 +144,16 @@ class _RescueNetAppState extends ConsumerState<RescueNetApp> {
           secondary: Colors.redAccent,
           brightness: Brightness.light,
         ),
-        textTheme: GoogleFonts.dmSansTextTheme(ThemeData.light().textTheme),
+        textTheme: _buildTextTheme(ThemeData.light().textTheme),
+        appBarTheme: AppBarTheme(
+          titleTextStyle: GoogleFonts.dmSerifDisplay(
+            textStyle: const TextStyle(
+              fontSize: 22,
+              color: Colors.black,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
         useMaterial3: true,
       ),
       darkTheme: ThemeData(
@@ -122,7 +163,16 @@ class _RescueNetAppState extends ConsumerState<RescueNetApp> {
           secondary: Colors.redAccent,
           brightness: Brightness.dark,
         ),
-        textTheme: GoogleFonts.dmSansTextTheme(ThemeData.dark().textTheme),
+        textTheme: _buildTextTheme(ThemeData.dark().textTheme),
+        appBarTheme: AppBarTheme(
+          titleTextStyle: GoogleFonts.dmSerifDisplay(
+            textStyle: const TextStyle(
+              fontSize: 22,
+              color: Colors.white,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
         useMaterial3: true,
       ),
       routerConfig: router,

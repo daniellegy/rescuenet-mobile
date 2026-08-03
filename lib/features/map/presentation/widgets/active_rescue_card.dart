@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+
 import '../../../history/domain/models/report_model.dart';
 import '../providers/map_markers_provider.dart';
 import '../../../reports/presentation/providers/my_active_rescue_provider.dart';
@@ -12,6 +13,8 @@ class ActiveRescueCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return GestureDetector(
       onTap: () {
         context.push('/report-detail', extra: rescate).then((_) {
@@ -21,6 +24,7 @@ class ActiveRescueCard extends ConsumerWidget {
       },
       child: Card(
         elevation: 8,
+        color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
         shape: RoundedRectangleBorder(
           side: BorderSide(color: rescate.colorUrgencia, width: 2),
           borderRadius: BorderRadius.circular(16),

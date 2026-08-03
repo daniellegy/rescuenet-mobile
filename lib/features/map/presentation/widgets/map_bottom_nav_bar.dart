@@ -6,10 +6,12 @@ class MapBottomNavBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return BottomAppBar(
       shape: const CircularNotchedRectangle(),
       notchMargin: 8.0,
-      color: Colors.white,
+      color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
@@ -19,20 +21,29 @@ class MapBottomNavBar extends StatelessWidget {
             onPressed: () {}, // Ya estamos en el mapa
           ),
           IconButton(
-            icon: const Icon(Icons.history, color: Colors.grey),
+            icon: Icon(
+              Icons.history,
+              color: isDark ? Colors.grey.shade400 : Colors.grey,
+            ),
             tooltip: 'Mi Historial',
             onPressed: () => context.push('/history'),
           ),
           const SizedBox(
             width: 48,
-          ), // Espaciador central para el botón FAB (Cámara)
+          ), // Espaciador central para el bot n FAB (Cámara)
           IconButton(
-            icon: const Icon(Icons.warning_amber_rounded, color: Colors.grey),
+            icon: Icon(
+              Icons.warning_amber_rounded,
+              color: isDark ? Colors.grey.shade400 : Colors.grey,
+            ),
             tooltip: 'Emergencias Activas',
             onPressed: () => context.push('/active-reports'),
           ),
           IconButton(
-            icon: const Icon(Icons.chat_bubble_outline, color: Colors.grey),
+            icon: Icon(
+              Icons.chat_bubble_outline,
+              color: isDark ? Colors.grey.shade400 : Colors.grey,
+            ),
             tooltip: 'Mensajes',
             onPressed: () => context.push('/inbox'),
           ),
