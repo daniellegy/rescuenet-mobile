@@ -23,7 +23,7 @@ void main() async {
   await Firebase.initializeApp();
   final container = ProviderContainer();
   await container.read(authProvider.notifier).restoreSession();
-
+  
   runApp(
     UncontrolledProviderScope(
       container: container,
@@ -101,28 +101,14 @@ class _RescueNetAppState extends ConsumerState<RescueNetApp> {
   TextTheme _buildTextTheme(TextTheme baseTheme) {
     final dmSansTheme = GoogleFonts.dmSansTextTheme(baseTheme);
     return dmSansTheme.copyWith(
-      displayLarge: GoogleFonts.dmSerifDisplay(
-        textStyle: dmSansTheme.displayLarge,
-      ),
-      displayMedium: GoogleFonts.dmSerifDisplay(
-        textStyle: dmSansTheme.displayMedium,
-      ),
-      displaySmall: GoogleFonts.dmSerifDisplay(
-        textStyle: dmSansTheme.displaySmall,
-      ),
-      headlineLarge: GoogleFonts.dmSerifDisplay(
-        textStyle: dmSansTheme.headlineLarge,
-      ),
-      headlineMedium: GoogleFonts.dmSerifDisplay(
-        textStyle: dmSansTheme.headlineMedium,
-      ),
-      headlineSmall: GoogleFonts.dmSerifDisplay(
-        textStyle: dmSansTheme.headlineSmall,
-      ),
+      displayLarge: GoogleFonts.dmSerifDisplay(textStyle: dmSansTheme.displayLarge),
+      displayMedium: GoogleFonts.dmSerifDisplay(textStyle: dmSansTheme.displayMedium),
+      displaySmall: GoogleFonts.dmSerifDisplay(textStyle: dmSansTheme.displaySmall),
+      headlineLarge: GoogleFonts.dmSerifDisplay(textStyle: dmSansTheme.headlineLarge),
+      headlineMedium: GoogleFonts.dmSerifDisplay(textStyle: dmSansTheme.headlineMedium),
+      headlineSmall: GoogleFonts.dmSerifDisplay(textStyle: dmSansTheme.headlineSmall),
       titleLarge: GoogleFonts.dmSerifDisplay(textStyle: dmSansTheme.titleLarge),
-      titleMedium: GoogleFonts.dmSerifDisplay(
-        textStyle: dmSansTheme.titleMedium,
-      ),
+      titleMedium: GoogleFonts.dmSerifDisplay(textStyle: dmSansTheme.titleMedium),
       titleSmall: GoogleFonts.dmSerifDisplay(textStyle: dmSansTheme.titleSmall),
     );
   }
@@ -147,11 +133,7 @@ class _RescueNetAppState extends ConsumerState<RescueNetApp> {
         textTheme: _buildTextTheme(ThemeData.light().textTheme),
         appBarTheme: AppBarTheme(
           titleTextStyle: GoogleFonts.dmSerifDisplay(
-            textStyle: const TextStyle(
-              fontSize: 22,
-              color: Colors.black,
-              fontWeight: FontWeight.w600,
-            ),
+            textStyle: const TextStyle(fontSize: 22, color: Colors.black, fontWeight: FontWeight.w600),
           ),
         ),
         useMaterial3: true,
@@ -166,11 +148,7 @@ class _RescueNetAppState extends ConsumerState<RescueNetApp> {
         textTheme: _buildTextTheme(ThemeData.dark().textTheme),
         appBarTheme: AppBarTheme(
           titleTextStyle: GoogleFonts.dmSerifDisplay(
-            textStyle: const TextStyle(
-              fontSize: 22,
-              color: Colors.white,
-              fontWeight: FontWeight.w600,
-            ),
+            textStyle: const TextStyle(fontSize: 22, color: Colors.white, fontWeight: FontWeight.w600),
           ),
         ),
         useMaterial3: true,
