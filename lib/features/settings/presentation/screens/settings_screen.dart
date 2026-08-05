@@ -32,7 +32,7 @@ class SettingsScreen extends ConsumerWidget {
               ),
               ListTile(
                 leading: const Icon(Icons.camera_alt, color: Colors.blue),
-                title: const Text('Tomar fotograf a'),
+                title: const Text('Tomar fotografía'),
                 onTap: () async {
                   Navigator.pop(modalContext);
                   await _procesarSubidaFoto(
@@ -44,7 +44,7 @@ class SettingsScreen extends ConsumerWidget {
               ),
               ListTile(
                 leading: const Icon(Icons.photo_library, color: Colors.green),
-                title: const Text('Elegir de la galer a'),
+                title: const Text('Elegir de la galería'),
                 onTap: () async {
                   Navigator.pop(modalContext);
                   await _procesarSubidaFoto(
@@ -385,7 +385,7 @@ class SettingsScreen extends ConsumerWidget {
                   if (!emailRegex.hasMatch(nuevoValor)) {
                     ScaffoldMessenger.of(dialogContext).showSnackBar(
                       const SnackBar(
-                        content: Text('Formato de correo inv lido'),
+                        content: Text('Formato de correo inválido'),
                         backgroundColor: Colors.red,
                       ),
                     );
@@ -396,7 +396,7 @@ class SettingsScreen extends ConsumerWidget {
                   if (!phoneRegex.hasMatch(nuevoValor)) {
                     ScaffoldMessenger.of(dialogContext).showSnackBar(
                       const SnackBar(
-                        content: Text('El tel fono debe tener 10 d gitos'),
+                        content: Text('El teléfono debe tener 10 dígitos'),
                         backgroundColor: Colors.red,
                       ),
                     );
@@ -461,7 +461,7 @@ class SettingsScreen extends ConsumerWidget {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    'Ver s reportes y recibir s alertas de rescates a un m ximo de $radioSeleccionado km a la redonda.',
+                    'Ver reportes y recibir alertas de rescates a un máximo de $radioSeleccionado km a la redonda.',
                     style: const TextStyle(fontSize: 14),
                   ),
                   const SizedBox(height: 16),
@@ -559,7 +559,7 @@ class SettingsScreen extends ConsumerWidget {
     final isDark = themeMode == ThemeMode.dark;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Configuraci n')),
+      appBar: AppBar(title: const Text('Configuración')),
       body: perfilAsync.when(
         data: (datos) {
           final nombre = datos['nombre_completo'] ?? 'Usuario';
@@ -652,7 +652,7 @@ class SettingsScreen extends ConsumerWidget {
               SwitchListTile(
                 secondary: const Icon(Icons.dark_mode, color: Colors.indigo),
                 title: const Text('Modo Oscuro'),
-                subtitle: const Text('Cambiar la apariencia de la aplicaci n'),
+                subtitle: const Text('Cambiar la apariencia de la aplicación'),
                 value: isDark,
                 activeColor: Colors.redAccent,
                 onChanged: (bool value) {
@@ -688,7 +688,7 @@ class SettingsScreen extends ConsumerWidget {
                   Icons.email_outlined,
                   color: Colors.blueAccent,
                 ),
-                title: const Text('Correo Electr nico'),
+                title: const Text('Correo Electrónico'),
                 subtitle: Text(email),
                 trailing: const Icon(
                   Icons.edit,
@@ -701,7 +701,7 @@ class SettingsScreen extends ConsumerWidget {
               const Divider(height: 1),
               ListTile(
                 leading: const Icon(Icons.phone_android, color: Colors.green),
-                title: const Text('Tel fono M vil'),
+                title: const Text('Teléfono Móvil'),
                 subtitle: Text(telefono),
                 trailing: const Icon(
                   Icons.edit,
@@ -711,7 +711,7 @@ class SettingsScreen extends ConsumerWidget {
                 onTap: () => _mostrarDialogoDato(
                   context,
                   ref,
-                  'Tel fono',
+                  'Teléfono',
                   telefono,
                   'telefono',
                 ),
@@ -784,7 +784,7 @@ class SettingsScreen extends ConsumerWidget {
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(
                               content: Text(
-                                'Permiso denegado. Act valo manualmente en la configuraci n de tu dispositivo (Ajustes > Aplicaciones).',
+                                'Permiso denegado. Actívalo manualmente en la configuración de tu dispositivo (Ajustes > Aplicaciones).',
                               ),
                               backgroundColor: Colors.orange,
                               duration: Duration(seconds: 4),
@@ -813,8 +813,8 @@ class SettingsScreen extends ConsumerWidget {
               const Divider(height: 1),
               ListTile(
                 leading: const Icon(Icons.radar, color: Colors.purple),
-                title: const Text('Radio de B squeda'),
-                subtitle: Text('$radioNotificaciones km de  rea para alertas'),
+                title: const Text('Radio de Búsqueda'),
+                subtitle: Text('$radioNotificaciones km de área para alertas'),
                 trailing: const Icon(
                   Icons.edit,
                   size: 18,
@@ -827,7 +827,7 @@ class SettingsScreen extends ConsumerWidget {
               ListTile(
                 leading: const Icon(Icons.logout_rounded, color: Colors.red),
                 title: const Text(
-                  'Cerrar Sesi n',
+                  'Cerrar Sesión',
                   style: TextStyle(
                     color: Colors.red,
                     fontWeight: FontWeight.bold,
@@ -847,13 +847,13 @@ class SettingsScreen extends ConsumerWidget {
                           children: [
                             Icon(Icons.logout_rounded, color: Colors.red),
                             SizedBox(width: 8),
-                            Text(' Cerrar Sesi n?'),
+                            Text(' Cerrar Sesión?'),
                           ],
                         ),
                         content: const Text(
-                          'Est s a punto de salir de tu cuenta en RescueNet. '
+                          'Estás a punto de salir de tu cuenta en RescueNet. '
                           'Para volver a reportar emergencias o rastrear rescates en tiempo real '
-                          'necesitar s ingresar tus credenciales nuevamente.',
+                          'necesitarás ingresar tus credenciales nuevamente.',
                         ),
                         actions: [
                           TextButton(
@@ -876,7 +876,7 @@ class SettingsScreen extends ConsumerWidget {
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     const SnackBar(
                                       content: Text(
-                                        'Has cerrado sesi n correctamente.',
+                                        'Has cerrado sesión correctamente.',
                                       ),
                                       backgroundColor: Colors.black87,
                                     ),
@@ -887,7 +887,7 @@ class SettingsScreen extends ConsumerWidget {
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     SnackBar(
                                       content: Text(
-                                        'Error al cerrar sesi n: $e',
+                                        'Error al cerrar sesión: $e',
                                       ),
                                       backgroundColor: Colors.red,
                                     ),
@@ -895,7 +895,7 @@ class SettingsScreen extends ConsumerWidget {
                                 }
                               }
                             },
-                            child: const Text('Cerrar Sesi n'),
+                            child: const Text('Cerrar Sesión'),
                           ),
                         ],
                       );
@@ -936,7 +936,7 @@ class SettingsScreen extends ConsumerWidget {
                           ],
                         ),
                         content: const Text(
-                          'Esta acci n es irreversible. Se borrar n tus datos personales, el historial '
+                          'Esta acción es irreversible. Se borrarán tus datos personales, el historial '
                           'de alertas que has emitido y tus registros de rescates '
                           'de los servidores de RescueNet',
                         ),

@@ -113,7 +113,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
               ],
             ),
             content: const Text(
-              'Declaro que los gastos derivados corren por mi cuenta u originados por financiamiento colectivo ajeno a la app. Al aceptar, asumo la responsabilidad  tica y operativa de los rescates que acepte.',
+              'Declaro que los gastos derivados corren por mi cuenta u originados por financiamiento colectivo ajeno a la app. Al aceptar, asumo la responsabilidad operativa de los rescates que acepte.',
               style: TextStyle(fontSize: 15, height: 1.4),
             ),
             actions: [
@@ -191,7 +191,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 const Text(
-                  ' nete a RescueNet',
+                  'Únete a RescueNet',
                   style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 8),
@@ -216,7 +216,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                       return 'El nombre es obligatorio';
                     }
                     if (!_nameRegex.hasMatch(value)) {
-                      return 'Ingresa un nombre v lido (sin n meros)';
+                      return 'Ingresa un nombre válido (sin números)';
                     }
                     return null;
                   },
@@ -237,10 +237,10 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                   ),
                   validator: (value) {
                     if (value == null || value.isEmpty) {
-                      return 'El tel fono es obligatorio';
+                      return 'El teléfono es obligatorio';
                     }
                     if (_phoneMaskFormatter.getUnmaskedText().length < 10) {
-                      return 'Faltan n meros (deben ser 10 d gitos)';
+                      return 'Faltan números (deben ser 10 dígitos)';
                     }
                     return null;
                   },
@@ -252,7 +252,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                   textInputAction: TextInputAction.next,
                   onChanged: (_) => setState(() {}),
                   decoration: _buildInputDecoration(
-                    labelText: 'Correo Electr nico',
+                    labelText: 'Correo Electrónico',
                     prefixIcon: Icons.email,
                     isValid: _isEmailValid,
                     isEmpty: _emailController.text.isEmpty,
@@ -262,7 +262,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                       return 'El correo es obligatorio';
                     }
                     if (!_emailRegex.hasMatch(value)) {
-                      return 'Ingresa un formato de correo v lido';
+                      return 'Ingresa un formato de correo válido';
                     }
                     return null;
                   },
@@ -274,7 +274,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                   textInputAction: TextInputAction.next,
                   onChanged: (_) => setState(() {}),
                   decoration: _buildInputDecoration(
-                    labelText: 'Contrase a',
+                    labelText: 'Contraseña',
                     prefixIcon: Icons.lock,
                     isValid: _isPasswordValid,
                     isEmpty: _passwordController.text.isEmpty,
@@ -296,7 +296,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                   ),
                   validator: (value) {
                     if (value == null || value.isEmpty) {
-                      return 'La contrase a es obligatoria';
+                      return 'La contraseña es obligatoria';
                     }
                     if (value.length < 6) {
                       return 'Debe tener al menos 6 caracteres';
@@ -311,7 +311,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                   textInputAction: TextInputAction.next,
                   onChanged: (_) => setState(() {}),
                   decoration: _buildInputDecoration(
-                    labelText: 'Confirmar Contrase a',
+                    labelText: 'Confirmar Contraseña',
                     prefixIcon: Icons.lock_outline,
                     isValid: _isConfirmPasswordValid,
                     isEmpty: _confirmPasswordController.text.isEmpty,
@@ -334,10 +334,10 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                   ),
                   validator: (value) {
                     if (value == null || value.isEmpty) {
-                      return 'Confirma tu contrase a';
+                      return 'Confirma tu contraseña';
                     }
                     if (value != _passwordController.text) {
-                      return 'Las contrase as no coinciden';
+                      return 'Las contraseñas no coinciden';
                     }
                     return null;
                   },
@@ -346,7 +346,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                 DropdownButtonFormField<String>(
                   value: _selectedRole,
                   decoration: InputDecoration(
-                    labelText: ' mo deseas participar?',
+                    labelText: '¿Cómo deseas participar?',
                     prefixIcon: const Icon(
                       Icons.volunteer_activism,
                       color: Colors.blueGrey,
@@ -397,7 +397,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                           return 'El CURP es obligatorio para voluntarios';
                         }
                         if (!_curpRegex.hasMatch(value.trim().toUpperCase())) {
-                          return 'El formato del CURP es inv lido';
+                          return 'El formato del CURP es inválido';
                         }
                       }
                       return null;

@@ -129,7 +129,7 @@ class _MapScreenState extends ConsumerState<MapScreen>
     final targetPosition = customPoint ?? myPosition;
     if (targetPosition == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Esperando ubicaci n GPS...')),
+        const SnackBar(content: Text('Esperando ubicación GPS...')),
       );
       return;
     }
@@ -238,7 +238,7 @@ class _MapScreenState extends ConsumerState<MapScreen>
           ),
           IconButton(
             icon: const Icon(Icons.settings, color: Colors.grey),
-            tooltip: 'Configuraci n',
+            tooltip: 'Configuración',
             onPressed: () => context.push('/settings'),
           ),
         ],
@@ -278,7 +278,7 @@ class _MapScreenState extends ConsumerState<MapScreen>
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(
                               content: Text(
-                                'Mant n presionado en cualquier parte para reportar una emergencia ah ',
+                                'Mantén presionado en cualquier parte para reportar una emergencia ahí',
                               ),
                               duration: Duration(seconds: 2),
                               behavior: SnackBarBehavior.floating,
