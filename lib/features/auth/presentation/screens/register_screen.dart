@@ -6,6 +6,7 @@ import '../providers/auth_provider.dart';
 
 class RegisterScreen extends ConsumerStatefulWidget {
   const RegisterScreen({super.key});
+
   @override
   ConsumerState<RegisterScreen> createState() => _RegisterScreenState();
 }
@@ -18,6 +19,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
   final _curpController = TextEditingController();
+
   String _selectedRole = 'Cliente';
   bool _isPasswordVisible = false;
   bool _isConfirmPasswordVisible = false;
@@ -30,7 +32,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
   final _curpRegex = RegExp(r'^[A-Z]{4}\d{6}[HM][A-Z]{5}[A-Z\d]\d$');
   final _emailRegex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
-  final _nameRegex = RegExp(r'^[a-zA-Z \s]+$');
+  // 1. SOLUCIÓN: Regex ampliada para soportar tildes, diéresis y la letra 'ñ'
+  final _nameRegex = RegExp(r'^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]+$');
 
   @override
   void dispose() {
@@ -69,9 +72,13 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     Color iconColor = isEmpty
         ? Colors.grey.shade600
         : (isValid ? Colors.green.shade600 : Colors.red);
+
     return InputDecoration(
       labelText: labelText,
       hintText: hintText,
+      // 2. SOLUCIÓN: Sincronización del color del label (tanto flotante como estático) con el contorno
+      labelStyle: TextStyle(color: borderColor),
+      floatingLabelStyle: TextStyle(color: borderColor),
       prefixIcon: Icon(prefixIcon, color: iconColor),
       suffixIcon:
           suffixIcon ??
@@ -138,10 +145,14 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   }
 
   Future<void> _ejecutarRegistro() async {
-    if (_formKey.currentState!.validate()) {
+    // 3. SOLUCIÓN LINTER: Reemplazo de if con Null-Aware operator '?'
+    if (_formKey.currentState?.validate() == true) {
       if (_selectedRole == 'Voluntario') {
         final acepto = await _mostrarManifiestoVoluntario();
-        if (!acepto) return;
+        if (!acepto) {
+          return;
+        }
+
         try {
           await FirebaseMessaging.instance.requestPermission(
             alert: true,
@@ -152,6 +163,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
           debugPrint('Error al solicitar permisos FCM en registro: $e');
         }
       }
+
       try {
         await ref
             .read(authProvider.notifier)
@@ -229,7 +241,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                   inputFormatters: [_phoneMaskFormatter],
                   onChanged: (_) => setState(() {}),
                   decoration: _buildInputDecoration(
-                    labelText: 'Tel fono',
+                    labelText: 'Teléfono',
                     hintText: '(LADA) 123-4567',
                     prefixIcon: Icons.phone,
                     isValid: _isPhoneValid,
@@ -344,7 +356,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                 ),
                 const SizedBox(height: 16),
                 DropdownButtonFormField<String>(
-                  value: _selectedRole,
+                  // 3. SOLUCIÓN LINTER: initialValue en lugar de value
+                  initialValue: _selectedRole,
                   decoration: InputDecoration(
                     labelText: '¿Cómo deseas participar?',
                     prefixIcon: const Icon(
@@ -369,12 +382,14 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                     ),
                   ],
                   onChanged: (String? newValue) {
-                    setState(() {
-                      _selectedRole = newValue!;
-                      if (_selectedRole != 'Voluntario') {
-                        _curpController.clear();
-                      }
-                    });
+                    if (newValue != null) {
+                      setState(() {
+                        _selectedRole = newValue;
+                        if (_selectedRole != 'Voluntario') {
+                          _curpController.clear();
+                        }
+                      });
+                    }
                   },
                 ),
                 if (_selectedRole == 'Voluntario') ...[
