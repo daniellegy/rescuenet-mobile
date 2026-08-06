@@ -5,7 +5,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-
 import '../../../history/domain/models/report_model.dart';
 import '../../data/report_repository.dart';
 import '../providers/active_reports_provider.dart';
@@ -91,7 +90,11 @@ class _RescueStepperScreenState extends ConsumerState<RescueStepperScreen> {
       final mensajes = await ref
           .read(reportRepositoryProvider)
           .obtenerMensajesCanal(widget.reporte.id);
-      if (mensajes.isEmpty) return false;
+
+      if (mensajes.isEmpty) {
+        return false;
+      }
+
       final ultimoId = mensajes.last['id'] as int;
       final prefs = await SharedPreferences.getInstance();
       final leidoId = prefs.getInt('canal_leido_${widget.reporte.id}') ?? 0;
@@ -103,8 +106,12 @@ class _RescueStepperScreenState extends ConsumerState<RescueStepperScreen> {
 
   Future<void> _lanzarUrl(String url) async {
     final Uri uri = Uri.parse(url);
-    if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
-      if (mounted) _mostrarError('No se pudo abrir el enlace');
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } else {
+      if (mounted) {
+        _mostrarError('No se pudo abrir el enlace');
+      }
     }
   }
 
@@ -138,21 +145,23 @@ class _RescueStepperScreenState extends ConsumerState<RescueStepperScreen> {
             lugarTraslado: estado.lugarTraslado,
           );
       _invalidarProveedores();
-
       final url = _directorios[estado.tipoTraslado]![estado.lugarTraslado]!;
       await _lanzarUrl(url);
       ref
           .read(rescueStepperProvider.notifier)
           .updateField(step: estado.currentStep + 1);
     } catch (e) {
-      if (mounted) _mostrarError(e.toString());
+      if (mounted) {
+        _mostrarError(e.toString());
+      }
     }
   }
 
   Future<void> _finalizarRescate() async {
     final estado = ref.read(rescueStepperProvider);
-
-    setState(() => _isLoading = true);
+    setState(() {
+      _isLoading = true;
+    });
 
     try {
       final costoLimpio = _costoController.text.replaceAll(
@@ -169,6 +178,7 @@ class _RescueStepperScreenState extends ConsumerState<RescueStepperScreen> {
       await ref
           .read(reportRepositoryProvider)
           .finalizeReport(widget.reporte.id, detalles, estado.evidenciaPath);
+
       ref.read(rescueStepperProvider.notifier).reset();
 
       if (mounted) {
@@ -182,9 +192,15 @@ class _RescueStepperScreenState extends ConsumerState<RescueStepperScreen> {
         context.go('/map');
       }
     } catch (e) {
-      if (mounted) _mostrarError(e.toString());
+      if (mounted) {
+        _mostrarError(e.toString());
+      }
     } finally {
-      if (mounted) setState(() => _isLoading = false);
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 
@@ -272,7 +288,9 @@ class _RescueStepperScreenState extends ConsumerState<RescueStepperScreen> {
     final state = ref.read(rescueStepperProvider);
     final isStepValid = await _validarPasoActual(state.currentStep, state);
 
-    if (!isStepValid) return;
+    if (!isStepValid) {
+      return;
+    }
 
     if (state.currentStep < 7) {
       ref
@@ -331,11 +349,16 @@ class _RescueStepperScreenState extends ConsumerState<RescueStepperScreen> {
                           isScrollControlled: true,
                           builder: (ctx) => CanalChatSheet(
                             reporteId: widget.reporte.id,
-                            onCanalCerrado: () =>
-                                setState(() => _canalCerradoLocalmente = true),
+                            onCanalCerrado: () {
+                              setState(() {
+                                _canalCerradoLocalmente = true;
+                              });
+                            },
                           ),
                         );
-                        if (mounted) setState(() {});
+                        if (mounted) {
+                          setState(() {});
+                        }
                       },
                     ),
                     if (hayNuevos)
@@ -376,13 +399,19 @@ class _RescueStepperScreenState extends ConsumerState<RescueStepperScreen> {
                     children: [
                       FilledButton(
                         onPressed: details.onStepContinue,
-                        child: Text(isLast ? 'Finalizar' : 'Siguiente'),
+                        child: Text(
+                          isLast ? 'Finalizar' : 'Siguiente',
+                          style: TextStyle(fontSize: 16, color: Colors.white),
+                        ),
                       ),
                       if (stepperState.currentStep > 0) ...[
                         const SizedBox(width: 12),
                         TextButton(
                           onPressed: details.onStepCancel,
-                          child: const Text('Volver'),
+                          child: const Text(
+                            'Volver',
+                            style: TextStyle(fontSize: 16),
+                          ),
                         ),
                       ],
                     ],
@@ -449,7 +478,7 @@ class _RescueStepperScreenState extends ConsumerState<RescueStepperScreen> {
         content: DropdownButtonFormField<String>(
           isExpanded: true,
           key: ValueKey(state.condicion),
-          value: state.condicion,
+          initialValue: state.condicion,
           hint: const Text('Selecciona una condición'),
           items: const [
             DropdownMenuItem(
@@ -531,10 +560,11 @@ class _RescueStepperScreenState extends ConsumerState<RescueStepperScreen> {
                       opcionesValidas.contains(state.lugarTraslado)
                       ? state.lugarTraslado
                       : null;
+
                   return DropdownButtonFormField<String>(
                     isExpanded: true,
                     key: ValueKey(valorSeguro),
-                    value: valorSeguro,
+                    initialValue: valorSeguro,
                     hint: const Text('Selecciona el lugar exacto'),
                     items: opcionesValidas
                         .map((e) => DropdownMenuItem(value: e, child: Text(e)))
@@ -600,7 +630,7 @@ class _RescueStepperScreenState extends ConsumerState<RescueStepperScreen> {
         content: DropdownButtonFormField<String>(
           isExpanded: true,
           key: ValueKey(state.destino),
-          value: state.destino,
+          initialValue: state.destino,
           hint: const Text('¿Dónde quedó resguardado el animal?'),
           items: const [
             DropdownMenuItem(

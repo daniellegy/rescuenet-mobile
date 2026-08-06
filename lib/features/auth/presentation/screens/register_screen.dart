@@ -24,6 +24,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   bool _isPasswordVisible = false;
   bool _isConfirmPasswordVisible = false;
 
+  // RASTREADOR DE INTERACCIÓN: Mantiene el campo de rol neutral hasta que se toque
+  bool _roleInteracted = false;
+
   final _phoneMaskFormatter = MaskTextInputFormatter(
     mask: '(###) ###-####',
     filter: {"#": RegExp(r'[0-9]')},
@@ -32,7 +35,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
   final _curpRegex = RegExp(r'^[A-Z]{4}\d{6}[HM][A-Z]{5}[A-Z\d]\d$');
   final _emailRegex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
-  // 1. SOLUCIÓN: Regex ampliada para soportar tildes, diéresis y la letra 'ñ'
   final _nameRegex = RegExp(r'^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]+$');
 
   @override
@@ -58,31 +60,32 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   bool get _isCurpValid =>
       _curpRegex.hasMatch(_curpController.text.trim().toUpperCase());
 
+  // MÉTODO ACTUALIZADO: Maneja la neutralidad y sincroniza el color del texto
   InputDecoration _buildInputDecoration({
     required String labelText,
     required IconData prefixIcon,
     required bool isValid,
     required bool isEmpty,
+    bool isNeutral = false, // <- NUEVO PARÁMETRO
     String? hintText,
     Widget? suffixIcon,
   }) {
-    Color borderColor = isEmpty
+    Color borderColor = (isEmpty || isNeutral)
         ? Colors.grey
         : (isValid ? Colors.green.shade600 : Colors.red);
-    Color iconColor = isEmpty
+    Color iconColor = (isEmpty || isNeutral)
         ? Colors.grey.shade600
         : (isValid ? Colors.green.shade600 : Colors.red);
 
     return InputDecoration(
       labelText: labelText,
       hintText: hintText,
-      // 2. SOLUCIÓN: Sincronización del color del label (tanto flotante como estático) con el contorno
       labelStyle: TextStyle(color: borderColor),
       floatingLabelStyle: TextStyle(color: borderColor),
       prefixIcon: Icon(prefixIcon, color: iconColor),
       suffixIcon:
           suffixIcon ??
-          (isEmpty
+          ((isEmpty || isNeutral)
               ? null
               : Icon(
                   isValid ? Icons.check_circle : Icons.error,
@@ -145,7 +148,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   }
 
   Future<void> _ejecutarRegistro() async {
-    // 3. SOLUCIÓN LINTER: Reemplazo de if con Null-Aware operator '?'
     if (_formKey.currentState?.validate() == true) {
       if (_selectedRole == 'Voluntario') {
         final acepto = await _mostrarManifiestoVoluntario();
@@ -356,20 +358,13 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                 ),
                 const SizedBox(height: 16),
                 DropdownButtonFormField<String>(
-                  // 3. SOLUCIÓN LINTER: initialValue en lugar de value
                   initialValue: _selectedRole,
-                  decoration: InputDecoration(
+                  decoration: _buildInputDecoration(
                     labelText: '¿Cómo deseas participar?',
-                    prefixIcon: const Icon(
-                      Icons.volunteer_activism,
-                      color: Colors.blueGrey,
-                    ),
-                    border: OutlineInputBorder(
-                      borderSide: BorderSide(color: Colors.green.shade600),
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderSide: BorderSide(color: Colors.green.shade600),
-                    ),
+                    prefixIcon: Icons.volunteer_activism,
+                    isValid: true,
+                    isEmpty: false,
+                    isNeutral: !_roleInteracted, // SE APLICA LA NEUTRALIDAD
                   ),
                   items: const [
                     DropdownMenuItem(
@@ -384,6 +379,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                   onChanged: (String? newValue) {
                     if (newValue != null) {
                       setState(() {
+                        _roleInteracted = true; // REGISTRA LA INTERACCIÓN
                         _selectedRole = newValue;
                         if (_selectedRole != 'Voluntario') {
                           _curpController.clear();

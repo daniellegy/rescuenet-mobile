@@ -11,6 +11,7 @@ class MapBottomNavBar extends StatelessWidget {
     return BottomAppBar(
       shape: const CircularNotchedRectangle(),
       notchMargin: 8.0,
+      padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 2.0),
       color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,

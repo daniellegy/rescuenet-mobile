@@ -20,6 +20,7 @@ final List<String> _razasPerros = [
   'Schnauzer',
   'Otro',
 ];
+
 final List<String> _razasGatos = [
   'Mestizo Pelo Corto',
   'Mestizo Pelo Largo',
@@ -28,6 +29,7 @@ final List<String> _razasGatos = [
   'Persa / Angora',
   'Otro',
 ];
+
 final List<String> _silvestresPuebla = [
   'Tlacuache',
   'Cacomixtle',
@@ -40,6 +42,7 @@ final List<String> _silvestresPuebla = [
   'Conejo silvestre',
   'Otro',
 ];
+
 final List<String> _coloresGenerales = [
   'Negro',
   'Blanco',
@@ -56,6 +59,7 @@ class CreateReportScreen extends ConsumerStatefulWidget {
   final double lat;
   final double lng;
   final String imagePath;
+
   const CreateReportScreen({
     super.key,
     required this.lat,
@@ -72,6 +76,9 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
   final _caracController = TextEditingController();
   final _referenciasController = TextEditingController();
   final _razaPersonalizadaController = TextEditingController();
+
+  // RASTREADOR DE INTERACCIÓN: Para campos con valores por defecto
+  final Set<String> _interactedDropdowns = {};
 
   @override
   void initState() {
@@ -91,27 +98,38 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
     super.dispose();
   }
 
+  void _marcarInteraccion(String campo) {
+    if (!_interactedDropdowns.contains(campo)) {
+      setState(() {
+        _interactedDropdowns.add(campo);
+      });
+    }
+  }
+
   InputDecoration _buildInputDecoration({
     required String labelText,
     IconData? prefixIcon,
     required bool isValid,
     required bool isEmpty,
+    bool isNeutral = false, // <- NUEVO PARÁMETRO
     String? hintText,
   }) {
-    Color borderColor = isEmpty
+    Color borderColor = (isEmpty || isNeutral)
         ? Colors.grey
         : (isValid ? Colors.green.shade600 : Colors.red);
-    Color iconColor = isEmpty
+    Color iconColor = (isEmpty || isNeutral)
         ? Colors.grey.shade600
         : (isValid ? Colors.green.shade600 : Colors.red);
 
     return InputDecoration(
       labelText: labelText,
       hintText: hintText,
+      labelStyle: TextStyle(color: borderColor),
+      floatingLabelStyle: TextStyle(color: borderColor),
       prefixIcon: prefixIcon != null
           ? Icon(prefixIcon, color: iconColor)
           : null,
-      suffixIcon: isEmpty
+      suffixIcon: (isEmpty || isNeutral)
           ? null
           : Icon(isValid ? Icons.check_circle : Icons.error, color: iconColor),
       border: OutlineInputBorder(borderSide: BorderSide(color: borderColor)),
@@ -131,10 +149,11 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
   }
 
   Future<void> _enviarFormulario() async {
-    if (!_formKey.currentState!.validate()) {
+    if (_formKey.currentState?.validate() != true) {
       setState(() {});
       return;
     }
+
     final notifier = ref.read(createReportProvider.notifier);
     try {
       await notifier.submitReport(
@@ -143,6 +162,7 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
         referencias: _referenciasController.text,
         razaPersonalizada: _razaPersonalizadaController.text,
       );
+
       if (mounted) {
         _caracController.clear();
         _referenciasController.clear();
@@ -150,6 +170,7 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
         ref.invalidate(reportesActivosMapaProvider);
         ref.invalidate(activeReportsProvider);
         context.pop();
+
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Reporte creado con éxito')),
         );
@@ -248,6 +269,7 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
   Widget build(BuildContext context) {
     final state = ref.watch(createReportProvider);
     final notifier = ref.read(createReportProvider.notifier);
+
     return Scaffold(
       appBar: AppBar(title: const Text('Completar Reporte')),
       body: state.isLoading
@@ -302,6 +324,7 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
                               ),
                             ),
                           );
+
                           if (result != null && result is Map<String, double>) {
                             notifier.updateLocation(
                               result['lat']!,
@@ -313,7 +336,7 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
                     ),
                     const SizedBox(height: 16),
                     DropdownButtonFormField<String>(
-                      value: state.especie,
+                      initialValue: state.especie,
                       hint: const Text('Selecciona especie'),
                       icon: const Icon(Icons.arrow_drop_down),
                       decoration: _buildInputDecoration(
@@ -339,7 +362,7 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
                     const SizedBox(height: 16),
                     if (state.especie != null) ...[
                       DropdownButtonFormField<String>(
-                        value: state.razaSeleccionada,
+                        initialValue: state.razaSeleccionada,
                         icon: const Icon(Icons.arrow_drop_down),
                         decoration: _buildInputDecoration(
                           labelText: state.especie == 'Silvestre'
@@ -382,10 +405,12 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
                                 .isNotEmpty,
                             isEmpty: _razaPersonalizadaController.text.isEmpty,
                           ),
-                          validator: (value) =>
-                              value == null || value.trim().isEmpty
-                              ? 'Por favor escribe la raza o especie'
-                              : null,
+                          validator: (value) {
+                            if (value == null || value.trim().isEmpty) {
+                              return 'Por favor escribe la raza o especie';
+                            }
+                            return null;
+                          },
                         ),
                         const SizedBox(height: 16),
                       ],
@@ -562,7 +587,7 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
                     const SizedBox(height: 16),
                     DropdownButtonFormField<String>(
                       isExpanded: true,
-                      value: state.colorSeleccionado,
+                      initialValue: state.colorSeleccionado,
                       hint: const Text('Selecciona Color Dominante'),
                       icon: const Icon(Icons.arrow_drop_down),
                       decoration: _buildInputDecoration(
@@ -583,44 +608,59 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
                     ),
                     const SizedBox(height: 16),
                     DropdownButtonFormField<String>(
-                      value: state.sexo,
+                      initialValue: state.sexo,
                       icon: const Icon(Icons.arrow_drop_down),
                       decoration: _buildInputDecoration(
                         labelText: 'Sexo',
                         isValid: true,
                         isEmpty: false,
+                        isNeutral: !_interactedDropdowns.contains(
+                          'sexo',
+                        ), // SE APLICA LA NEUTRALIDAD
                       ),
                       items: ['Desconocido', 'Macho', 'Hembra']
                           .map(
                             (e) => DropdownMenuItem(value: e, child: Text(e)),
                           )
                           .toList(),
-                      onChanged: (val) => notifier.updateField(sexo: val),
+                      onChanged: (val) {
+                        _marcarInteraccion('sexo');
+                        notifier.updateField(sexo: val);
+                      },
                     ),
                     const SizedBox(height: 16),
                     DropdownButtonFormField<String>(
-                      value: state.edad,
+                      initialValue: state.edad,
                       icon: const Icon(Icons.arrow_drop_down),
                       decoration: _buildInputDecoration(
                         labelText: 'Edad',
                         isValid: true,
                         isEmpty: false,
+                        isNeutral: !_interactedDropdowns.contains(
+                          'edad',
+                        ), // SE APLICA LA NEUTRALIDAD
                       ),
                       items: ['Cachorro', 'Adulto', 'Senior']
                           .map(
                             (e) => DropdownMenuItem(value: e, child: Text(e)),
                           )
                           .toList(),
-                      onChanged: (val) => notifier.updateField(edad: val),
+                      onChanged: (val) {
+                        _marcarInteraccion('edad');
+                        notifier.updateField(edad: val);
+                      },
                     ),
                     const SizedBox(height: 16),
                     DropdownButtonFormField<String>(
-                      value: state.tamano,
+                      initialValue: state.tamano,
                       icon: const Icon(Icons.arrow_drop_down),
                       decoration: _buildInputDecoration(
                         labelText: 'Tamaño',
                         isValid: true,
                         isEmpty: false,
+                        isNeutral: !_interactedDropdowns.contains(
+                          'tamano',
+                        ), // SE APLICA LA NEUTRALIDAD
                       ),
                       items: const [
                         DropdownMenuItem(
@@ -636,7 +676,10 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
                           child: Text('Grande: Requiere ayuda para cargar'),
                         ),
                       ],
-                      onChanged: (val) => notifier.updateField(tamano: val),
+                      onChanged: (val) {
+                        _marcarInteraccion('tamano');
+                        notifier.updateField(tamano: val);
+                      },
                     ),
                     const SizedBox(height: 24),
                     const Text(
@@ -698,8 +741,12 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
                         isValid: _caracController.text.trim().isNotEmpty,
                         isEmpty: _caracController.text.isEmpty,
                       ),
-                      validator: (value) =>
-                          value!.isEmpty ? 'Ingresa las características' : null,
+                      validator: (value) {
+                        if (value?.isEmpty == true) {
+                          return 'Ingresa las características';
+                        }
+                        return null;
+                      },
                     ),
                     const SizedBox(height: 16),
                     TextFormField(
@@ -712,9 +759,12 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
                         isValid: _referenciasController.text.trim().isNotEmpty,
                         isEmpty: _referenciasController.text.isEmpty,
                       ),
-                      validator: (value) => value!.isEmpty
-                          ? 'Por favor ingresa las referencias de la zona'
-                          : null,
+                      validator: (value) {
+                        if (value?.isEmpty == true) {
+                          return 'Por favor ingresa las referencias de la zona';
+                        }
+                        return null;
+                      },
                     ),
                     const SizedBox(height: 32),
                     Card(
@@ -735,7 +785,7 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
                           'Podrás chatear con el voluntario que tome tu caso. El canal se cerrará automáticamente cuando el caso se resuelva.',
                           style: TextStyle(fontSize: 12),
                         ),
-                        activeColor: Colors.blue.shade700,
+                        activeThumbColor: Colors.blue.shade700,
                       ),
                     ),
                     const SizedBox(height: 16),

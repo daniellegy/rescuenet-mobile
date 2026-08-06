@@ -4,7 +4,6 @@ import 'package:geocoding/geocoding.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-
 import '../../domain/models/report_model.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../reports/data/report_repository.dart';
@@ -80,7 +79,11 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
       final mensajes = await ref
           .read(reportRepositoryProvider)
           .obtenerMensajesCanal(widget.reporte.id);
-      if (mensajes.isEmpty) return false;
+
+      if (mensajes.isEmpty) {
+        return false;
+      }
+
       final ultimoId = mensajes.last['id'] as int;
       final prefs = await SharedPreferences.getInstance();
       final leidoId = prefs.getInt('canal_leido_${widget.reporte.id}') ?? 0;
@@ -209,6 +212,9 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
     final esVoluntario = authState.role == AppRole.voluntario;
     final esMiRescate = widget.reporte.usuarioRescatistaId == authState.userId;
 
+    // Obtenemos si está en modo oscuro para adaptar los widgets
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     _reporteLocal ??= widget.reporte;
 
     if (esMiRescate) {
@@ -234,7 +240,7 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Detalles de Emergencia'),
-        backgroundColor: Colors.white,
+        // Eliminado "backgroundColor: Colors.white" para que use el tema general dinámico
       ),
       body: SingleChildScrollView(
         child: Column(
@@ -331,26 +337,36 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
                   if (!estaNuevo) ...[
                     Card(
                       elevation: 0,
-                      color: Colors.blueGrey.shade50,
+                      // Color de fondo adaptativo
+                      color: isDark
+                          ? Colors.blueGrey.shade900.withValues(alpha: 0.5)
+                          : Colors.blueGrey.shade50,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
-                        side: BorderSide(color: Colors.blueGrey.shade200),
+                        side: BorderSide(
+                          color: isDark
+                              ? Colors.blueGrey.shade700
+                              : Colors.blueGrey.shade200,
+                        ),
                       ),
                       child: Padding(
                         padding: const EdgeInsets.all(16.0),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Text(
+                            Text(
                               'Seguimiento en Tiempo Real',
                               style: TextStyle(
                                 fontWeight: FontWeight.bold,
                                 fontSize: 16,
-                                color: Colors.blueGrey,
+                                color: isDark
+                                    ? Colors.blueGrey.shade300
+                                    : Colors.blueGrey,
                               ),
                             ),
                             const Divider(),
                             _buildPhaseRow(
+                              context,
                               Icons.visibility,
                               'Avistamiento',
                               reporteActual.animalAvistado == true
@@ -360,16 +376,19 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
                                         : 'En camino / Pendiente'),
                             ),
                             _buildPhaseRow(
+                              context,
                               Icons.directions_car,
                               'Traslado a',
                               reporteActual.lugarTraslado ?? 'Pendiente',
                             ),
                             _buildPhaseRow(
+                              context,
                               Icons.house,
                               'Destino Final',
                               reporteActual.destinoFinal ?? 'Pendiente',
                             ),
                             _buildPhaseRow(
+                              context,
                               Icons.attach_money,
                               'Costo',
                               reporteActual.costoRescate != null
@@ -383,7 +402,10 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
                     const SizedBox(height: 16),
                   ],
                   Material(
-                    color: Colors.blue.shade50,
+                    // Color del botón de mapa adaptativo
+                    color: isDark
+                        ? Colors.blue.shade900.withValues(alpha: 0.2)
+                        : Colors.blue.shade50,
                     borderRadius: BorderRadius.circular(12),
                     child: InkWell(
                       onTap: _abrirEnMapaNativo,
@@ -394,14 +416,20 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
                           horizontal: 16.0,
                         ),
                         decoration: BoxDecoration(
-                          border: Border.all(color: Colors.blue.shade200),
+                          border: Border.all(
+                            color: isDark
+                                ? Colors.blue.shade800
+                                : Colors.blue.shade200,
+                          ),
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Row(
                           children: [
                             Icon(
                               Icons.location_on,
-                              color: Colors.blue.shade700,
+                              color: isDark
+                                  ? Colors.blue.shade300
+                                  : Colors.blue.shade700,
                               size: 28,
                             ),
                             const SizedBox(width: 12),
@@ -413,7 +441,9 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
                                     'Presione aquí para ir al lugar',
                                     style: TextStyle(
                                       fontSize: 12,
-                                      color: Colors.blue.shade700,
+                                      color: isDark
+                                          ? Colors.blue.shade300
+                                          : Colors.blue.shade700,
                                       fontWeight: FontWeight.bold,
                                     ),
                                   ),
@@ -422,7 +452,9 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
                                     _direccion,
                                     style: TextStyle(
                                       fontSize: 15,
-                                      color: Colors.blue.shade900,
+                                      color: isDark
+                                          ? Colors.blue.shade100
+                                          : Colors.blue.shade900,
                                       fontWeight: FontWeight.w600,
                                     ),
                                   ),
@@ -431,7 +463,9 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
                             ),
                             Icon(
                               Icons.navigation_rounded,
-                              color: Colors.blue.shade700,
+                              color: isDark
+                                  ? Colors.blue.shade300
+                                  : Colors.blue.shade700,
                               size: 24,
                             ),
                           ],
@@ -440,8 +474,6 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
                     ),
                   ),
                   const Divider(height: 32),
-
-                  // NUEVA INTEGRACIÓN DE FOTO DE PERFIL EN DETALLES
                   _buildPersonRow(
                     context: context,
                     role: 'Reportado por',
@@ -449,7 +481,6 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
                     fotoUrl: reporteActual.fotoReportador,
                     userId: reporteActual.usuarioReportadorId,
                   ),
-
                   if (reporteActual.nombreRescatista != null)
                     _buildPersonRow(
                       context: context,
@@ -461,7 +492,6 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
                       userId: reporteActual.usuarioRescatistaId,
                       isRescatista: true,
                     ),
-
                   const Divider(height: 32),
                   _buildDetailRow(
                     Icons.warning_amber_rounded,
@@ -606,7 +636,9 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
                             ],
                           ),
                         );
-                        if (confirmar != true) return;
+                        if (confirmar != true) {
+                          return;
+                        }
                         try {
                           await ref
                               .read(reportRepositoryProvider)
@@ -696,7 +728,9 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
     bool estaEnProceso,
     bool esMiRescate,
   ) {
-    if (!esVoluntario) return const SizedBox.shrink();
+    if (!esVoluntario) {
+      return const SizedBox.shrink();
+    }
 
     if (estaNuevo) {
       return SafeArea(
@@ -728,7 +762,10 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
                     backgroundColor: Colors.red,
                     padding: const EdgeInsets.symmetric(vertical: 16),
                   ),
-                  child: const Text('Abortar'),
+                  child: const Text(
+                    'Abortar',
+                    style: TextStyle(fontSize: 16, color: Colors.white),
+                  ),
                 ),
               ),
               const SizedBox(width: 12),
@@ -746,7 +783,10 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
                     padding: const EdgeInsets.symmetric(vertical: 16),
                   ),
                   icon: const Icon(Icons.linear_scale_rounded),
-                  label: const Text('Fases del Rescate'),
+                  label: const Text(
+                    'Fases del Rescate',
+                    style: TextStyle(fontSize: 16, color: Colors.white),
+                  ),
                 ),
               ),
             ],
@@ -774,7 +814,6 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
     );
   }
 
-  // MÉTODO ACTUALIZADO PARA MOSTRAR FOTO Y NAVEGAR
   Widget _buildPersonRow({
     required BuildContext context,
     required String role,
@@ -783,6 +822,8 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
     required int? userId,
     bool isRescatista = false,
   }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Padding(
       padding: const EdgeInsets.only(bottom: 8.0),
       child: InkWell(
@@ -797,8 +838,10 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
               CircleAvatar(
                 radius: 16,
                 backgroundColor: isRescatista
-                    ? Colors.green.shade100
-                    : Colors.blueGrey.shade100,
+                    ? (isDark ? Colors.green.shade900 : Colors.green.shade100)
+                    : (isDark
+                          ? Colors.blueGrey.shade800
+                          : Colors.blueGrey.shade100),
                 backgroundImage: fotoUrl != null ? NetworkImage(fotoUrl) : null,
                 child: fotoUrl == null
                     ? Icon(
@@ -807,8 +850,12 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
                             : Icons.person,
                         size: 16,
                         color: isRescatista
-                            ? Colors.green.shade800
-                            : Colors.blueGrey.shade800,
+                            ? (isDark
+                                  ? Colors.green.shade300
+                                  : Colors.green.shade800)
+                            : (isDark
+                                  ? Colors.blueGrey.shade300
+                                  : Colors.blueGrey.shade800),
                       )
                     : null,
               ),
@@ -823,11 +870,10 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
               Expanded(
                 child: Text(
                   name,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 15,
-                    color: Colors.black87,
-                    decoration:
-                        TextDecoration.underline, // Indica que es "clickeable"
+                    color: isDark ? Colors.white70 : Colors.black87,
+                    decoration: TextDecoration.underline,
                   ),
                 ),
               ),
@@ -838,13 +884,24 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
     );
   }
 
-  Widget _buildPhaseRow(IconData icon, String label, String value) {
+  Widget _buildPhaseRow(
+    BuildContext context,
+    IconData icon,
+    String label,
+    String value,
+  ) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Padding(
       padding: const EdgeInsets.only(bottom: 8.0),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, size: 18, color: Colors.blueGrey.shade400),
+          Icon(
+            icon,
+            size: 18,
+            color: isDark ? Colors.blueGrey.shade500 : Colors.blueGrey.shade400,
+          ),
           const SizedBox(width: 8),
           Text(
             '$label: ',

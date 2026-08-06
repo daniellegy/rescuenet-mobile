@@ -4,6 +4,7 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:go_router/go_router.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../providers/settings_provider.dart';
+import '../providers/map_limit_provider.dart';
 import '../../../../core/theme/theme_provider.dart';
 import '../../../map/presentation/providers/map_markers_provider.dart';
 import '../../../reports/presentation/providers/active_reports_provider.dart';
@@ -192,11 +193,16 @@ class SettingsScreen extends ConsumerWidget {
           : const Icon(Icons.circle_outlined),
       onTap: () async {
         Navigator.pop(modalContext);
-        if (rolTarget == rolActual) return;
+        if (rolTarget == rolActual) {
+          return;
+        }
+
         String? tokenFCM;
         if (rolTarget == 2) {
           final acepto = await _mostrarManifiestoVoluntario(parentContext);
-          if (!acepto) return;
+          if (!acepto) {
+            return;
+          }
           try {
             final messaging = FirebaseMessaging.instance;
             NotificationSettings settings = await messaging
@@ -217,7 +223,11 @@ class SettingsScreen extends ConsumerWidget {
             debugPrint('Error solicitando permisos FCM en cambio de rol: $e');
           }
         }
-        if (!parentContext.mounted) return;
+
+        if (!parentContext.mounted) {
+          return;
+        }
+
         if (rolTarget == 2 &&
             (curpActual == null || curpActual.trim().isEmpty)) {
           _mostrarDialogoRegistroCurp(parentContext, ref, tokenFCM);
@@ -242,6 +252,7 @@ class SettingsScreen extends ConsumerWidget {
   ) {
     final TextEditingController curpController = TextEditingController();
     final curpRegex = RegExp(r'^[A-Z]{4}\d{6}[HM][A-Z]{5}[A-Z\d]\d$');
+
     showDialog(
       context: parentContext,
       barrierDismissible: false,
@@ -283,7 +294,7 @@ class SettingsScreen extends ConsumerWidget {
                 if (!curpRegex.hasMatch(curpIngresada)) {
                   ScaffoldMessenger.of(dialogContext).showSnackBar(
                     const SnackBar(
-                      content: Text('El formato del CURP es inv lido.'),
+                      content: Text('El formato del CURP es inválido.'),
                       backgroundColor: Colors.red,
                     ),
                   );
@@ -403,6 +414,7 @@ class SettingsScreen extends ConsumerWidget {
                     return;
                   }
                 }
+
                 if (nuevoValor.isNotEmpty && nuevoValor != valorActual) {
                   Navigator.pop(dialogContext);
                   try {
@@ -494,6 +506,7 @@ class SettingsScreen extends ConsumerWidget {
                             );
                         ref.invalidate(reportesActivosMapaProvider);
                         ref.invalidate(activeReportsProvider);
+
                         if (parentContext.mounted) {
                           ScaffoldMessenger.of(parentContext).showSnackBar(
                             const SnackBar(
@@ -511,6 +524,78 @@ class SettingsScreen extends ConsumerWidget {
                             ),
                           );
                         }
+                      }
+                    }
+                  },
+                  child: const Text('Guardar'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  void _mostrarDialogoLimiteMapa(
+    BuildContext parentContext,
+    WidgetRef ref,
+    int limiteActual,
+  ) {
+    int limiteSeleccionado = limiteActual;
+    showDialog(
+      context: parentContext,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              title: const Text('Límite de Emergencias'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    'Mostrar un máximo de $limiteSeleccionado emergencias activas en el mapa y en listas para no saturar la pantalla.',
+                    style: const TextStyle(fontSize: 14),
+                  ),
+                  const SizedBox(height: 16),
+                  Slider(
+                    value: limiteSeleccionado.toDouble(),
+                    min: 5,
+                    max: 50,
+                    divisions: 9, // Incrementos de 5
+                    label: '$limiteSeleccionado',
+                    activeColor: Colors.redAccent,
+                    onChanged: (val) {
+                      setState(() {
+                        limiteSeleccionado = val.toInt();
+                      });
+                    },
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(dialogContext),
+                  child: const Text('Cancelar'),
+                ),
+                FilledButton(
+                  onPressed: () async {
+                    Navigator.pop(dialogContext);
+                    if (limiteSeleccionado != limiteActual) {
+                      await ref
+                          .read(mapLimitProvider.notifier)
+                          .updateLimit(limiteSeleccionado);
+
+                      ref.invalidate(reportesActivosMapaProvider);
+                      ref.invalidate(activeReportsProvider);
+
+                      if (parentContext.mounted) {
+                        ScaffoldMessenger.of(parentContext).showSnackBar(
+                          const SnackBar(
+                            content: Text('Límite actualizado exitosamente'),
+                            backgroundColor: Colors.green,
+                          ),
+                        );
                       }
                     }
                   },
@@ -558,6 +643,9 @@ class SettingsScreen extends ConsumerWidget {
     final themeMode = ref.watch(themeProvider);
     final isDark = themeMode == ThemeMode.dark;
 
+    // Obtenemos el límite actual configurado
+    final mapLimit = ref.watch(mapLimitProvider);
+
     return Scaffold(
       appBar: AppBar(title: const Text('Configuración')),
       body: perfilAsync.when(
@@ -572,6 +660,7 @@ class SettingsScreen extends ConsumerWidget {
           final String? tokenFCMActual = datos['fcm_token'];
           final bool notificacionesActivas =
               tokenFCMActual != null && tokenFCMActual.trim().isNotEmpty;
+
           return ListView(
             padding: const EdgeInsets.only(
               left: 16.0,
@@ -639,7 +728,6 @@ class SettingsScreen extends ConsumerWidget {
                 ),
               ),
               const SizedBox(height: 32),
-
               const Text(
                 'Apariencia',
                 style: TextStyle(
@@ -661,7 +749,6 @@ class SettingsScreen extends ConsumerWidget {
               ),
               const Divider(height: 1),
               const SizedBox(height: 24),
-
               const Text(
                 'Mi Cuenta',
                 style: TextStyle(
@@ -823,6 +910,18 @@ class SettingsScreen extends ConsumerWidget {
                 onTap: () =>
                     _mostrarDialogoRadio(context, ref, radioNotificaciones),
               ),
+              const Divider(height: 1),
+              ListTile(
+                leading: const Icon(Icons.pin_drop, color: Colors.redAccent),
+                title: const Text('Límite en Mapa'),
+                subtitle: Text('Mostrar hasta $mapLimit reportes simultáneos'),
+                trailing: const Icon(
+                  Icons.edit,
+                  size: 18,
+                  color: Colors.redAccent,
+                ),
+                onTap: () => _mostrarDialogoLimiteMapa(context, ref, mapLimit),
+              ),
               const Divider(height: 40),
               ListTile(
                 leading: const Icon(Icons.logout_rounded, color: Colors.red),
@@ -847,7 +946,7 @@ class SettingsScreen extends ConsumerWidget {
                           children: [
                             Icon(Icons.logout_rounded, color: Colors.red),
                             SizedBox(width: 8),
-                            Text(' Cerrar Sesión?'),
+                            Text('¿Cerrar Sesión?'),
                           ],
                         ),
                         content: const Text(
@@ -932,7 +1031,7 @@ class SettingsScreen extends ConsumerWidget {
                               color: Colors.red,
                             ),
                             SizedBox(width: 8),
-                            Text(' Eliminar cuenta?'),
+                            Text('¿Eliminar cuenta?'),
                           ],
                         ),
                         content: const Text(

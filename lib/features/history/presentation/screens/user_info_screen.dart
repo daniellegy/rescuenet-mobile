@@ -20,10 +20,7 @@ class UserInfoScreen extends ConsumerWidget {
     final statsAsync = ref.watch(userStatsProvider(userId));
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Perfil del Usuario'),
-        backgroundColor: Colors.white,
-      ),
+      appBar: AppBar(title: const Text('Perfil del Usuario')),
       body: statsAsync.when(
         data: (datos) {
           final nombre = datos['nombre_completo'] ?? 'Usuario';
