@@ -7,6 +7,8 @@ import '../providers/settings_provider.dart';
 import '../providers/map_limit_provider.dart';
 import '../../../../core/theme/theme_provider.dart';
 import '../../../map/presentation/providers/map_markers_provider.dart';
+import '../../../history/presentation/providers/history_provider.dart';
+import '../../../reports/presentation/providers/my_active_rescue_provider.dart';
 import '../../../reports/presentation/providers/active_reports_provider.dart';
 import '../../../../core/services/camera_service.dart';
 
@@ -197,6 +199,38 @@ class SettingsScreen extends ConsumerWidget {
           return;
         }
 
+        // VALIDACIÓN: Limitar el cambio de rol si existe reporte activo
+        if (rolActual == 1) {
+          final historial = ref.read(misReportesProvider).value ?? [];
+          final tieneActivos = historial.any(
+            (r) => r.estado != 'Rescatado' && r.estado != 'Falsa_Alarma',
+          );
+          if (tieneActivos) {
+            ScaffoldMessenger.of(parentContext).showSnackBar(
+              const SnackBar(
+                content: Text(
+                  'No puedes cambiar a Voluntario porque tienes reportes de emergencia activos. Ciérralos primero.',
+                ),
+                backgroundColor: Colors.redAccent,
+              ),
+            );
+            return;
+          }
+        } else if (rolActual == 2) {
+          final miRescate = ref.read(miRescateActivoProvider).value;
+          if (miRescate != null) {
+            ScaffoldMessenger.of(parentContext).showSnackBar(
+              const SnackBar(
+                content: Text(
+                  'No puedes cambiar a Reportante porque tienes un rescate en proceso. Finalízalo o abórtalo primero.',
+                ),
+                backgroundColor: Colors.redAccent,
+              ),
+            );
+            return;
+          }
+        }
+
         String? tokenFCM;
         if (rolTarget == 2) {
           final acepto = await _mostrarManifiestoVoluntario(parentContext);
@@ -223,11 +257,9 @@ class SettingsScreen extends ConsumerWidget {
             debugPrint('Error solicitando permisos FCM en cambio de rol: $e');
           }
         }
-
         if (!parentContext.mounted) {
           return;
         }
-
         if (rolTarget == 2 &&
             (curpActual == null || curpActual.trim().isEmpty)) {
           _mostrarDialogoRegistroCurp(parentContext, ref, tokenFCM);
@@ -252,7 +284,6 @@ class SettingsScreen extends ConsumerWidget {
   ) {
     final TextEditingController curpController = TextEditingController();
     final curpRegex = RegExp(r'^[A-Z]{4}\d{6}[HM][A-Z]{5}[A-Z\d]\d$');
-
     showDialog(
       context: parentContext,
       barrierDismissible: false,
@@ -414,7 +445,6 @@ class SettingsScreen extends ConsumerWidget {
                     return;
                   }
                 }
-
                 if (nuevoValor.isNotEmpty && nuevoValor != valorActual) {
                   Navigator.pop(dialogContext);
                   try {
@@ -506,7 +536,6 @@ class SettingsScreen extends ConsumerWidget {
                             );
                         ref.invalidate(reportesActivosMapaProvider);
                         ref.invalidate(activeReportsProvider);
-
                         if (parentContext.mounted) {
                           ScaffoldMessenger.of(parentContext).showSnackBar(
                             const SnackBar(
@@ -562,7 +591,7 @@ class SettingsScreen extends ConsumerWidget {
                     value: limiteSeleccionado.toDouble(),
                     min: 5,
                     max: 50,
-                    divisions: 9, // Incrementos de 5
+                    divisions: 9,
                     label: '$limiteSeleccionado',
                     activeColor: Colors.redAccent,
                     onChanged: (val) {
@@ -585,10 +614,8 @@ class SettingsScreen extends ConsumerWidget {
                       await ref
                           .read(mapLimitProvider.notifier)
                           .updateLimit(limiteSeleccionado);
-
                       ref.invalidate(reportesActivosMapaProvider);
                       ref.invalidate(activeReportsProvider);
-
                       if (parentContext.mounted) {
                         ScaffoldMessenger.of(parentContext).showSnackBar(
                           const SnackBar(
@@ -642,8 +669,6 @@ class SettingsScreen extends ConsumerWidget {
     final authState = ref.watch(authProvider);
     final themeMode = ref.watch(themeProvider);
     final isDark = themeMode == ThemeMode.dark;
-
-    // Obtenemos el límite actual configurado
     final mapLimit = ref.watch(mapLimitProvider);
 
     return Scaffold(
@@ -660,7 +685,6 @@ class SettingsScreen extends ConsumerWidget {
           final String? tokenFCMActual = datos['fcm_token'];
           final bool notificacionesActivas =
               tokenFCMActual != null && tokenFCMActual.trim().isNotEmpty;
-
           return ListView(
             padding: const EdgeInsets.only(
               left: 16.0,
@@ -742,7 +766,7 @@ class SettingsScreen extends ConsumerWidget {
                 title: const Text('Modo Oscuro'),
                 subtitle: const Text('Cambiar la apariencia de la aplicación'),
                 value: isDark,
-                activeColor: Colors.redAccent,
+                activeThumbColor: Colors.redAccent,
                 onChanged: (bool value) {
                   ref.read(themeProvider.notifier).toggleTheme(value);
                 },
@@ -847,7 +871,7 @@ class SettingsScreen extends ConsumerWidget {
                   notificacionesActivas ? 'Activadas' : 'Desactivadas',
                 ),
                 value: notificacionesActivas,
-                activeColor: Colors.redAccent,
+                activeThumbColor: Colors.redAccent,
                 onChanged: (bool value) async {
                   if (value) {
                     try {

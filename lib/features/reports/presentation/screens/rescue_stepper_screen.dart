@@ -90,11 +90,9 @@ class _RescueStepperScreenState extends ConsumerState<RescueStepperScreen> {
       final mensajes = await ref
           .read(reportRepositoryProvider)
           .obtenerMensajesCanal(widget.reporte.id);
-
       if (mensajes.isEmpty) {
         return false;
       }
-
       final ultimoId = mensajes.last['id'] as int;
       final prefs = await SharedPreferences.getInstance();
       final leidoId = prefs.getInt('canal_leido_${widget.reporte.id}') ?? 0;
@@ -136,7 +134,6 @@ class _RescueStepperScreenState extends ConsumerState<RescueStepperScreen> {
       _mostrarError('Selecciona el lugar al que te diriges.');
       return;
     }
-
     try {
       await ref
           .read(reportRepositoryProvider)
@@ -162,7 +159,6 @@ class _RescueStepperScreenState extends ConsumerState<RescueStepperScreen> {
     setState(() {
       _isLoading = true;
     });
-
     try {
       final costoLimpio = _costoController.text.replaceAll(
         RegExp(r'[^\d.]'),
@@ -174,13 +170,10 @@ class _RescueStepperScreenState extends ConsumerState<RescueStepperScreen> {
         'costo': double.tryParse(costoLimpio) ?? 0.0,
         'conclusion': _conclusionController.text,
       };
-
       await ref
           .read(reportRepositoryProvider)
           .finalizeReport(widget.reporte.id, detalles, estado.evidenciaPath);
-
       ref.read(rescueStepperProvider.notifier).reset();
-
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -287,11 +280,9 @@ class _RescueStepperScreenState extends ConsumerState<RescueStepperScreen> {
   Future<void> _procesarAvancePaso() async {
     final state = ref.read(rescueStepperProvider);
     final isStepValid = await _validarPasoActual(state.currentStep, state);
-
     if (!isStepValid) {
       return;
     }
-
     if (state.currentStep < 7) {
       ref
           .read(rescueStepperProvider.notifier)
@@ -325,101 +316,132 @@ class _RescueStepperScreenState extends ConsumerState<RescueStepperScreen> {
     final stepperState = ref.watch(rescueStepperProvider);
     final notifier = ref.read(rescueStepperProvider.notifier);
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Asistente de Rescate'),
-        actions: [
-          if (widget.reporte.canalComunicacionHabilitado &&
-              widget.reporte.canalComunicacionEstado == 'activo' &&
-              !_canalCerradoLocalmente)
-            FutureBuilder<bool>(
-              future: _hayMensajesSinLeer(),
-              builder: (context, snapshot) {
-                final hayNuevos = snapshot.data ?? false;
-                return Stack(
-                  clipBehavior: Clip.none,
-                  alignment: Alignment.center,
-                  children: [
-                    IconButton(
-                      icon: const Icon(Icons.chat_bubble_outline),
-                      tooltip: 'Canal de comunicación',
-                      onPressed: () async {
-                        await showModalBottomSheet(
-                          context: context,
-                          isScrollControlled: true,
-                          builder: (ctx) => CanalChatSheet(
-                            reporteId: widget.reporte.id,
-                            onCanalCerrado: () {
-                              setState(() {
-                                _canalCerradoLocalmente = true;
-                              });
-                            },
-                          ),
-                        );
-                        if (mounted) {
-                          setState(() {});
-                        }
-                      },
-                    ),
-                    if (hayNuevos)
-                      Positioned(
-                        top: 6,
-                        right: 6,
-                        child: Container(
-                          width: 12,
-                          height: 12,
-                          decoration: const BoxDecoration(
-                            color: Colors.red,
-                            shape: BoxShape.circle,
-                          ),
-                        ),
-                      ),
-                  ],
-                );
-              },
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) async {
+        if (didPop) return;
+        final confirm = await showDialog<bool>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: const Text('¿Suspender el proceso?'),
+            content: const Text(
+              'Se guardará tu progreso automáticamente. Puedes regresar a este menú más tarde en tu rescate activo.',
             ),
-        ],
-      ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : Stepper(
-              physics: const ClampingScrollPhysics(),
-              currentStep: stepperState.currentStep,
-              onStepContinue: _procesarAvancePaso,
-              onStepCancel: _procesarRetrocesoPaso,
-              controlsBuilder: (context, details) {
-                final isLast = stepperState.currentStep == 7;
-                if (stepperState.currentStep == 3 &&
-                    stepperState.lugarTraslado == null) {
-                  return const SizedBox.shrink();
-                }
-                return Padding(
-                  padding: const EdgeInsets.only(top: 16.0),
-                  child: Row(
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: const Text('Cancelar'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.pop(ctx, true),
+                child: const Text('Salir'),
+              ),
+            ],
+          ),
+        );
+        if (confirm == true && context.mounted) {
+          Navigator.of(context).pop();
+        }
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('Asistente de Rescate'),
+          actions: [
+            if (widget.reporte.canalComunicacionHabilitado &&
+                widget.reporte.canalComunicacionEstado == 'activo' &&
+                !_canalCerradoLocalmente)
+              FutureBuilder<bool>(
+                future: _hayMensajesSinLeer(),
+                builder: (context, snapshot) {
+                  final hayNuevos = snapshot.data ?? false;
+                  return Stack(
+                    clipBehavior: Clip.none,
+                    alignment: Alignment.center,
                     children: [
-                      FilledButton(
-                        onPressed: details.onStepContinue,
-                        child: Text(
-                          isLast ? 'Finalizar' : 'Siguiente',
-                          style: TextStyle(fontSize: 16, color: Colors.white),
-                        ),
+                      IconButton(
+                        icon: const Icon(Icons.chat_bubble_outline),
+                        tooltip: 'Canal de comunicación',
+                        onPressed: () async {
+                          await showModalBottomSheet(
+                            context: context,
+                            isScrollControlled: true,
+                            builder: (ctx) => CanalChatSheet(
+                              reporteId: widget.reporte.id,
+                              onCanalCerrado: () {
+                                setState(() {
+                                  _canalCerradoLocalmente = true;
+                                });
+                              },
+                            ),
+                          );
+                          if (mounted) {
+                            setState(() {});
+                          }
+                        },
                       ),
-                      if (stepperState.currentStep > 0) ...[
-                        const SizedBox(width: 12),
-                        TextButton(
-                          onPressed: details.onStepCancel,
-                          child: const Text(
-                            'Volver',
-                            style: TextStyle(fontSize: 16),
+                      if (hayNuevos)
+                        Positioned(
+                          top: 6,
+                          right: 6,
+                          child: Container(
+                            width: 12,
+                            height: 12,
+                            decoration: const BoxDecoration(
+                              color: Colors.red,
+                              shape: BoxShape.circle,
+                            ),
                           ),
                         ),
-                      ],
                     ],
-                  ),
-                );
-              },
-              steps: _buildSteps(stepperState, notifier),
-            ),
+                  );
+                },
+              ),
+          ],
+        ),
+        body: _isLoading
+            ? const Center(child: CircularProgressIndicator())
+            : Stepper(
+                physics: const ClampingScrollPhysics(),
+                currentStep: stepperState.currentStep,
+                onStepContinue: _procesarAvancePaso,
+                onStepCancel: _procesarRetrocesoPaso,
+                controlsBuilder: (context, details) {
+                  final isLast = stepperState.currentStep == 7;
+                  if (stepperState.currentStep == 3 &&
+                      stepperState.lugarTraslado == null) {
+                    return const SizedBox.shrink();
+                  }
+                  return Padding(
+                    padding: const EdgeInsets.only(top: 16.0),
+                    child: Row(
+                      children: [
+                        FilledButton(
+                          onPressed: details.onStepContinue,
+                          child: Text(
+                            isLast ? 'Finalizar' : 'Siguiente',
+                            style: const TextStyle(
+                              fontSize: 16,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                        if (stepperState.currentStep > 0) ...[
+                          const SizedBox(width: 12),
+                          TextButton(
+                            onPressed: details.onStepCancel,
+                            child: const Text(
+                              'Volver',
+                              style: TextStyle(fontSize: 16),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  );
+                },
+                steps: _buildSteps(stepperState, notifier),
+              ),
+      ),
     );
   }
 
@@ -560,7 +582,6 @@ class _RescueStepperScreenState extends ConsumerState<RescueStepperScreen> {
                       opcionesValidas.contains(state.lugarTraslado)
                       ? state.lugarTraslado
                       : null;
-
                   return DropdownButtonFormField<String>(
                     isExpanded: true,
                     key: ValueKey(valorSeguro),
