@@ -236,7 +236,10 @@ class _MapScreenState extends ConsumerState<MapScreen>
           ),
         ),
         IconButton(
-          icon: const Icon(Icons.chat_bubble_outline, color: Colors.grey),
+          icon: const Icon(
+            Icons.chat_bubble_outline,
+            color: Color.fromARGB(255, 17, 202, 0),
+          ),
           tooltip: 'Mensajes',
           onPressed: () => context.push('/inbox'),
         ),
