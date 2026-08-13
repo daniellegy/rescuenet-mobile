@@ -6,11 +6,13 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 class LocationSelectorScreen extends StatefulWidget {
   final double initialLat;
   final double initialLng;
+
   const LocationSelectorScreen({
     super.key,
     required this.initialLat,
     required this.initialLng,
   });
+
   @override
   State<LocationSelectorScreen> createState() => _LocationSelectorScreenState();
 }
@@ -31,6 +33,7 @@ class _LocationSelectorScreenState extends State<LocationSelectorScreen> {
   @override
   Widget build(BuildContext context) {
     final mapboxToken = dotenv.env['MAPBOX_TOKEN'] ?? '';
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Ajustar Ubicación'),
@@ -44,17 +47,20 @@ class _LocationSelectorScreenState extends State<LocationSelectorScreen> {
             options: MapOptions(
               initialCenter: LatLng(_currentLat, _currentLng),
               initialZoom: 18.0,
-              minZoom: 5.0,
+              minZoom: 5.5,
               maxZoom: 22.0,
-              cameraConstraint: CameraConstraint.contain(
+              cameraConstraint: CameraConstraint.containCenter(
                 bounds: LatLngBounds(
-                  const LatLng(14.53, -118.36),
-                  const LatLng(32.71, -86.71),
+                  const LatLng(10.0, -120.0),
+                  const LatLng(35.0, -84.0),
                 ),
               ),
               interactionOptions: const InteractionOptions(
-                flags: InteractiveFlag.all & ~InteractiveFlag.rotate,
-                enableMultiFingerGestureRace: false,
+                // FIX: Apagamos flingAnimation al igual que en la pantalla principal
+                flags:
+                    InteractiveFlag.all &
+                    ~InteractiveFlag.rotate &
+                    ~InteractiveFlag.flingAnimation,
               ),
               onPositionChanged: (MapCamera position, bool hasGesture) {
                 _currentLat = position.center.latitude;

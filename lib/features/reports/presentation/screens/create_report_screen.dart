@@ -357,7 +357,7 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
                       ),
                       const SizedBox(height: 16),
                       DropdownButtonFormField<String>(
-                        key: ValueKey(state.especie),
+                        key: ValueKey('especie_${state.especie}'),
                         initialValue: state.especie,
                         hint: const Text('Selecciona especie'),
                         icon: const Icon(Icons.arrow_drop_down),
@@ -384,7 +384,7 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
                       const SizedBox(height: 16),
                       if (state.especie != null) ...[
                         DropdownButtonFormField<String>(
-                          key: ValueKey(state.razaSeleccionada),
+                          key: ValueKey('raza_${state.razaSeleccionada}'),
                           initialValue: state.razaSeleccionada,
                           icon: const Icon(Icons.arrow_drop_down),
                           decoration: _buildInputDecoration(
@@ -482,7 +482,9 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
                       AnimatedSwitcher(
                         duration: const Duration(milliseconds: 300),
                         child: Container(
-                          key: ValueKey(state.urgenciaSeleccionada),
+                          key: ValueKey(
+                            'urgencia_${state.urgenciaSeleccionada}',
+                          ),
                           padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
                             color: state.urgenciaSeleccionada == 'alta'
@@ -617,7 +619,7 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
                       const SizedBox(height: 16),
                       DropdownButtonFormField<String>(
                         isExpanded: true,
-                        key: ValueKey(state.colorSeleccionado),
+                        key: ValueKey('color_${state.colorSeleccionado}'),
                         initialValue: state.colorSeleccionado,
                         hint: const Text('Selecciona Color Dominante'),
                         icon: const Icon(Icons.arrow_drop_down),
@@ -639,7 +641,7 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
                       ),
                       const SizedBox(height: 16),
                       DropdownButtonFormField<String>(
-                        key: ValueKey(state.sexo),
+                        key: ValueKey('sexo_${state.sexo}'),
                         initialValue: state.sexo,
                         icon: const Icon(Icons.arrow_drop_down),
                         decoration: _buildInputDecoration(
@@ -660,7 +662,7 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
                       ),
                       const SizedBox(height: 16),
                       DropdownButtonFormField<String>(
-                        key: ValueKey(state.edad),
+                        key: ValueKey('edad_${state.edad}'),
                         initialValue: state.edad,
                         icon: const Icon(Icons.arrow_drop_down),
                         decoration: _buildInputDecoration(
@@ -681,7 +683,7 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
                       ),
                       const SizedBox(height: 16),
                       DropdownButtonFormField<String>(
-                        key: ValueKey(state.tamano),
+                        key: ValueKey('tamano_${state.tamano}'),
                         initialValue: state.tamano,
                         icon: const Icon(Icons.arrow_drop_down),
                         decoration: _buildInputDecoration(

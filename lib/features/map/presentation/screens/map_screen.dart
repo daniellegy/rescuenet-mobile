@@ -25,27 +25,27 @@ class MapScreen extends ConsumerStatefulWidget {
 
 class _MapScreenState extends ConsumerState<MapScreen>
     with TickerProviderStateMixin {
-  LatLng? myPosition;
+  final ValueNotifier<LatLng?> _myPosition = ValueNotifier(null);
+  final ValueNotifier<bool> _seguirUsuario = ValueNotifier(true);
+  final ValueNotifier<Offset?> _holdPosition = ValueNotifier(null);
+
+  LatLng? _initialPosition;
+
   late final MapController _mapController;
   StreamSubscription<Position>? _positionStream;
   String _filtroUrgencia = 'todos';
   bool _showUrgencyMenu = false;
-  bool _seguirUsuario = true;
   late AnimationController _holdController;
-  Offset? _holdPosition;
   Timer? _intentTimer;
 
   @override
   void initState() {
     super.initState();
     _mapController = MapController();
-    _holdController =
-        AnimationController(
-          vsync: this,
-          duration: const Duration(milliseconds: 400),
-        )..addListener(() {
-          setState(() {});
-        });
+    _holdController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 400),
+    );
     _iniciarLiveTracking();
   }
 
@@ -55,22 +55,28 @@ class _MapScreenState extends ConsumerState<MapScreen>
     _mapController.dispose();
     _holdController.dispose();
     _intentTimer?.cancel();
+    _myPosition.dispose();
+    _seguirUsuario.dispose();
+    _holdPosition.dispose();
     super.dispose();
   }
 
   void _onPointerDown(PointerDownEvent event) {
-    _holdPosition = event.localPosition;
+    if (_seguirUsuario.value) {
+      _seguirUsuario.value = false;
+    }
+    _holdPosition.value = event.localPosition;
     _intentTimer?.cancel();
     _intentTimer = Timer(const Duration(milliseconds: 100), () {
-      if (_holdPosition != null && mounted) {
+      if (_holdPosition.value != null && mounted) {
         _holdController.forward(from: 0.0);
       }
     });
   }
 
   void _onPointerMove(PointerMoveEvent event) {
-    if (_holdPosition != null) {
-      final distance = (event.localPosition - _holdPosition!).distance;
+    if (_holdPosition.value != null) {
+      final distance = (event.localPosition - _holdPosition.value!).distance;
       if (distance > 15) {
         _cancelPointer();
       }
@@ -86,10 +92,8 @@ class _MapScreenState extends ConsumerState<MapScreen>
     if (_holdController.isAnimating || _holdController.value > 0) {
       _holdController.reset();
     }
-    if (_holdPosition != null && mounted) {
-      setState(() {
-        _holdPosition = null;
-      });
+    if (_holdPosition.value != null) {
+      _holdPosition.value = null;
     }
   }
 
@@ -99,19 +103,18 @@ class _MapScreenState extends ConsumerState<MapScreen>
       final initialPos = await locationService.getCurrentPosition();
       if (mounted) {
         setState(() {
-          myPosition = LatLng(initialPos.latitude, initialPos.longitude);
+          _initialPosition = LatLng(initialPos.latitude, initialPos.longitude);
         });
+        _myPosition.value = _initialPosition;
       }
       _positionStream = locationService.getLiveLocationStream().listen((
         Position position,
       ) {
         if (mounted) {
-          setState(() {
-            myPosition = LatLng(position.latitude, position.longitude);
-            if (_seguirUsuario) {
-              _mapController.move(myPosition!, _mapController.camera.zoom);
-            }
-          });
+          _myPosition.value = LatLng(position.latitude, position.longitude);
+          if (_seguirUsuario.value) {
+            _mapController.move(_myPosition.value!, _mapController.camera.zoom);
+          }
         }
       });
       ref.invalidate(reportesActivosMapaProvider);
@@ -125,10 +128,10 @@ class _MapScreenState extends ConsumerState<MapScreen>
   }
 
   Future<void> _takePhotoAndNavigate({LatLng? customPoint}) async {
-    final targetPosition = customPoint ?? myPosition;
+    final targetPosition = customPoint ?? _myPosition.value;
     if (targetPosition == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Esperando ubicaci n GPS...')),
+        const SnackBar(content: Text('Esperando ubicación GPS...')),
       );
       return;
     }
@@ -204,220 +207,239 @@ class _MapScreenState extends ConsumerState<MapScreen>
     final miRescateAsync = ref.watch(miRescateActivoProvider);
     final perfilAsync = ref.watch(userProfileProvider);
     final String? fotoUrl = perfilAsync.value?['foto_perfil'];
-
     final bool hasActiveRescue = miRescateAsync.maybeWhen(
       data: (rescate) => rescate != null,
       orElse: () => false,
     );
-
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final mapStyle = isDark ? 'mapbox/dark-v11' : 'mapbox/streets-v12';
     final appBarBg = isDark ? const Color(0xE6121212) : const Color(0xE6FFFFFF);
 
-    return Scaffold(
-      extendBody: true,
-      appBar: AppBar(
-        title: const Text('Mapa de rescate'),
-        backgroundColor: appBarBg,
-        actions: [
-          reportesAsync.maybeWhen(
-            loading: () => const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 16.0),
-              child: Center(
-                child: SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                ),
+    final appBar = AppBar(
+      title: const Text('Mapa de rescate'),
+      backgroundColor: appBarBg,
+      actions: [
+        reportesAsync.maybeWhen(
+          loading: () => const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 16.0),
+            child: Center(
+              child: SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(strokeWidth: 2),
               ),
             ),
-            orElse: () => IconButton(
-              icon: const Icon(Icons.refresh, color: Colors.blue),
-              onPressed: _refrescarMapaManual,
-            ),
           ),
-          IconButton(
-            icon: const Icon(Icons.chat_bubble_outline, color: Colors.grey),
-            tooltip: 'Mensajes',
-            onPressed: () => context.push('/inbox'),
+          orElse: () => IconButton(
+            icon: const Icon(Icons.refresh, color: Colors.blue),
+            onPressed: _refrescarMapaManual,
           ),
-        ],
-      ),
-      body: myPosition == null
-          ? const Center(child: CircularProgressIndicator())
-          : Stack(
-              children: [
-                Listener(
-                  onPointerDown: _onPointerDown,
-                  onPointerMove: _onPointerMove,
-                  onPointerUp: _onPointerUp,
-                  onPointerCancel: _onPointerUp,
-                  child: RepaintBoundary(
-                    child: FlutterMap(
-                      mapController: _mapController,
-                      options: MapOptions(
-                        initialCenter: myPosition!,
-                        initialZoom: 18,
-                        minZoom: 5,
-                        maxZoom: 19,
-                        cameraConstraint: CameraConstraint.contain(
-                          bounds: LatLngBounds(
-                            const LatLng(14.53, -118.36),
-                            const LatLng(32.71, -86.71),
-                          ),
-                        ),
-                        onPositionChanged:
-                            (MapCamera position, bool hasGesture) {
-                              if (hasGesture && _seguirUsuario) {
-                                setState(() {
-                                  _seguirUsuario = false;
-                                });
-                              }
-                            },
-                        onTap: (tapPosition, point) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text(
-                                'Mantén presionado en cualquier parte para reportar una emergencia ahí',
-                              ),
-                              duration: Duration(seconds: 2),
-                              behavior: SnackBarBehavior.floating,
-                            ),
-                          );
-                        },
-                        onLongPress: (tapPosition, point) {
-                          _cancelPointer();
-                          _takePhotoAndNavigate(customPoint: point);
-                        },
-                        interactionOptions: const InteractionOptions(
-                          flags: InteractiveFlag.all & ~InteractiveFlag.rotate,
-                          enableMultiFingerGestureRace: false,
-                        ),
-                      ),
-                      children: [
-                        TileLayer(
-                          urlTemplate:
-                              'https://api.mapbox.com/styles/v1/$mapStyle/tiles/{z}/{x}/{y}?access_token=$mapboxToken',
-                          additionalOptions: {
-                            'accessToken': mapboxToken,
-                            'id': mapStyle,
-                          },
-                          evictErrorTileStrategy:
-                              EvictErrorTileStrategy.dispose,
-                        ),
-                        MarkerLayer(
-                          rotate: true,
-                          markers: [
-                            if (myPosition != null)
-                              Marker(
-                                point: myPosition!,
-                                width: 54,
-                                height: 54,
-                                rotate: true,
-                                child: GestureDetector(
-                                  onTap: _mostrarPerfilDirecto,
-                                  child: Container(
-                                    decoration: BoxDecoration(
-                                      shape: BoxShape.circle,
-                                      border: Border.all(
-                                        color: Colors.blueAccent,
-                                        width: 3,
-                                      ),
-                                      boxShadow: [
-                                        BoxShadow(
-                                          color: Colors.blueAccent.withValues(
-                                            alpha: 0.8,
-                                          ),
-                                          blurRadius: 10,
-                                          spreadRadius: 2,
-                                        ),
-                                      ],
-                                    ),
-                                    child: ClipOval(
-                                      child: fotoUrl != null
-                                          ? Image.network(
-                                              fotoUrl,
-                                              fit: BoxFit.cover,
-                                              errorBuilder: (_, __, ___) =>
-                                                  const Icon(
-                                                    Icons.person,
-                                                    color: Colors.white,
-                                                  ),
-                                            )
-                                          : Container(
-                                              color: Colors.blueAccent,
-                                              child: const Icon(
-                                                Icons.person,
-                                                color: Colors.white,
-                                                size: 30,
-                                              ),
-                                            ),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ...reportesAsync.maybeWhen(
-                              data: (reportes) {
-                                return reportes
-                                    .where(
-                                      (r) =>
-                                          _filtroUrgencia == 'todos' ||
-                                          r.urgencia.toLowerCase() ==
-                                              _filtroUrgencia,
-                                    )
-                                    .map((reporte) {
-                                      final bool estaEnProceso =
-                                          reporte.estado
-                                              .toString()
-                                              .trim()
-                                              .toUpperCase() ==
-                                          'EN_PROCESO';
-                                      return Marker(
-                                        point: LatLng(
-                                          reporte.latitud,
-                                          reporte.longitud,
-                                        ),
-                                        width: 50,
-                                        height: 50,
-                                        rotate: true,
-                                        child: GestureDetector(
-                                          onTap: () {
-                                            context
-                                                .push(
-                                                  '/report-detail',
-                                                  extra: reporte,
-                                                )
-                                                .then((_) {
-                                                  ref.invalidate(
-                                                    reportesActivosMapaProvider,
-                                                  );
-                                                  ref.invalidate(
-                                                    miRescateActivoProvider,
-                                                  );
-                                                });
-                                          },
-                                          child: _buildReportMarker(
-                                            reporte.colorUrgencia,
-                                            isInProgress: estaEnProceso,
-                                          ),
-                                        ),
-                                      );
-                                    })
-                                    .toList();
-                              },
-                              orElse: () => [],
-                            ),
-                          ],
-                        ),
-                      ],
+        ),
+        IconButton(
+          icon: const Icon(Icons.chat_bubble_outline, color: Colors.grey),
+          tooltip: 'Mensajes',
+          onPressed: () => context.push('/inbox'),
+        ),
+      ],
+    );
+
+    if (_initialPosition == null) {
+      return Scaffold(
+        extendBody: true,
+        appBar: appBar,
+        body: const Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    return Scaffold(
+      extendBody: true,
+      appBar: appBar,
+      body: Stack(
+        children: [
+          Listener(
+            onPointerDown: _onPointerDown,
+            onPointerMove: _onPointerMove,
+            onPointerUp: _onPointerUp,
+            onPointerCancel: _onPointerUp,
+            child: RepaintBoundary(
+              child: FlutterMap(
+                mapController: _mapController,
+                options: MapOptions(
+                  initialCenter: _initialPosition!,
+                  initialZoom: 18,
+                  minZoom: 5.5,
+                  maxZoom: 19,
+                  cameraConstraint: CameraConstraint.containCenter(
+                    bounds: LatLngBounds(
+                      const LatLng(10.0, -120.0),
+                      const LatLng(35.0, -84.0),
                     ),
                   ),
+                  interactionOptions: const InteractionOptions(
+                    flags:
+                        InteractiveFlag.all &
+                        ~InteractiveFlag.rotate &
+                        ~InteractiveFlag.flingAnimation,
+                  ),
+                  onPositionChanged: (MapCamera position, bool hasGesture) {
+                    if (hasGesture && _seguirUsuario.value) {
+                      _seguirUsuario.value = false;
+                    }
+                  },
+                  onTap: (tapPosition, point) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text(
+                          'Mantén presionado en cualquier parte para reportar una emergencia ahí',
+                        ),
+                        duration: Duration(seconds: 2),
+                        behavior: SnackBarBehavior.floating,
+                      ),
+                    );
+                  },
+                  onLongPress: (tapPosition, point) {
+                    _cancelPointer();
+                    _takePhotoAndNavigate(customPoint: point);
+                  },
                 ),
-                if (_holdPosition != null && _holdController.isAnimating)
-                  Positioned(
-                    left: _holdPosition!.dx - 30,
-                    top: _holdPosition!.dy - 30,
-                    child: IgnorePointer(
+                children: [
+                  TileLayer(
+                    urlTemplate:
+                        'https://api.mapbox.com/styles/v1/$mapStyle/tiles/{z}/{x}/{y}?access_token=$mapboxToken',
+                    additionalOptions: {
+                      'accessToken': mapboxToken,
+                      'id': mapStyle,
+                    },
+                    evictErrorTileStrategy: EvictErrorTileStrategy.dispose,
+                  ),
+                  ValueListenableBuilder<LatLng?>(
+                    valueListenable: _myPosition,
+                    builder: (context, currentPos, _) {
+                      if (currentPos == null) return const SizedBox.shrink();
+                      return MarkerLayer(
+                        rotate: true,
+                        markers: [
+                          Marker(
+                            point: currentPos,
+                            width: 54,
+                            height: 54,
+                            rotate: true,
+                            child: GestureDetector(
+                              onTap: _mostrarPerfilDirecto,
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  border: Border.all(
+                                    color: Colors.blueAccent,
+                                    width: 3,
+                                  ),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.blueAccent.withValues(
+                                        alpha: 0.8,
+                                      ),
+                                      blurRadius: 10,
+                                      spreadRadius: 2,
+                                    ),
+                                  ],
+                                ),
+                                child: ClipOval(
+                                  child: fotoUrl != null
+                                      ? Image.network(
+                                          fotoUrl,
+                                          fit: BoxFit.cover,
+                                          errorBuilder: (_, __, ___) =>
+                                              const Icon(
+                                                Icons.person,
+                                                color: Colors.white,
+                                              ),
+                                        )
+                                      : Container(
+                                          color: Colors.blueAccent,
+                                          child: const Icon(
+                                            Icons.person,
+                                            color: Colors.white,
+                                            size: 30,
+                                          ),
+                                        ),
+                                ),
+                              ),
+                            ),
+                          ),
+                          ...reportesAsync.maybeWhen(
+                            data: (reportes) {
+                              return reportes
+                                  .where(
+                                    (r) =>
+                                        _filtroUrgencia == 'todos' ||
+                                        r.urgencia.toLowerCase() ==
+                                            _filtroUrgencia,
+                                  )
+                                  .map((reporte) {
+                                    final bool estaEnProceso =
+                                        reporte.estado
+                                            .toString()
+                                            .trim()
+                                            .toUpperCase() ==
+                                        'EN_PROCESO';
+                                    return Marker(
+                                      point: LatLng(
+                                        reporte.latitud,
+                                        reporte.longitud,
+                                      ),
+                                      width: 50,
+                                      height: 50,
+                                      rotate: true,
+                                      child: GestureDetector(
+                                        onTap: () {
+                                          context
+                                              .push(
+                                                '/report-detail',
+                                                extra: reporte,
+                                              )
+                                              .then((_) {
+                                                ref.invalidate(
+                                                  reportesActivosMapaProvider,
+                                                );
+                                                ref.invalidate(
+                                                  miRescateActivoProvider,
+                                                );
+                                              });
+                                        },
+                                        child: _buildReportMarker(
+                                          reporte.colorUrgencia,
+                                          isInProgress: estaEnProceso,
+                                        ),
+                                      ),
+                                    );
+                                  })
+                                  .toList();
+                            },
+                            orElse: () => [],
+                          ),
+                        ],
+                      );
+                    },
+                  ),
+                ],
+              ),
+            ),
+          ),
+          ValueListenableBuilder<Offset?>(
+            valueListenable: _holdPosition,
+            builder: (context, holdPos, _) {
+              if (holdPos == null) return const SizedBox.shrink();
+              return Positioned(
+                left: holdPos.dx - 30,
+                top: holdPos.dy - 30,
+                child: AnimatedBuilder(
+                  animation: _holdController,
+                  builder: (context, child) {
+                    if (!_holdController.isAnimating &&
+                        _holdController.value == 0) {
+                      return const SizedBox.shrink();
+                    }
+                    return IgnorePointer(
                       child: Container(
                         width: 60,
                         height: 60,
@@ -434,109 +456,110 @@ class _MapScreenState extends ConsumerState<MapScreen>
                           ),
                         ),
                       ),
-                    ),
-                  ),
-                reportesAsync.maybeWhen(
-                  data: (reportes) {
-                    final reportesFiltrados = reportes.where((r) {
-                      if (_filtroUrgencia == 'todos') {
-                        return true;
-                      }
-                      return r.urgencia.toLowerCase() == _filtroUrgencia;
-                    }).toList();
-                    return OffScreenMarkers(
-                      mapController: _mapController,
-                      reportes: reportesFiltrados,
-                      topMargin: hasActiveRescue ? 110.0 : 24.0,
                     );
                   },
-                  orElse: () => const SizedBox.shrink(),
                 ),
-                Positioned(
-                  bottom: 200,
-                  right: 16,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      FloatingActionButton(
-                        heroTag: 'toggle_filter_btn',
-                        mini: true,
-                        backgroundColor: isDark
-                            ? Colors.grey.shade800
-                            : Colors.white,
-                        foregroundColor: isDark
-                            ? Colors.white
-                            : Colors.blueGrey,
-                        elevation: 4,
-                        onPressed: () {
-                          setState(() {
-                            _showUrgencyMenu = !_showUrgencyMenu;
-                          });
-                        },
-                        child: Icon(
-                          _showUrgencyMenu
-                              ? Icons.close_rounded
-                              : Icons.filter_list_rounded,
-                        ),
-                      ),
-                      if (_showUrgencyMenu) ...[
-                        const SizedBox(height: 12),
-                        UrgencyFilterMenu(
-                          currentFilter: _filtroUrgencia,
-                          onFilterChanged: (newFilter) {
-                            setState(() {
-                              _filtroUrgencia = newFilter;
-                            });
-                          },
-                        ),
-                      ],
-                    ],
+              );
+            },
+          ),
+          reportesAsync.maybeWhen(
+            data: (reportes) {
+              final reportesFiltrados = reportes.where((r) {
+                if (_filtroUrgencia == 'todos') {
+                  return true;
+                }
+                return r.urgencia.toLowerCase() == _filtroUrgencia;
+              }).toList();
+              return OffScreenMarkers(
+                mapController: _mapController,
+                reportes: reportesFiltrados,
+                topMargin: hasActiveRescue ? 110.0 : 24.0,
+              );
+            },
+            orElse: () => const SizedBox.shrink(),
+          ),
+          Positioned(
+            bottom: 200,
+            right: 16,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                FloatingActionButton(
+                  heroTag: 'toggle_filter_btn',
+                  mini: true,
+                  backgroundColor: isDark ? Colors.grey.shade800 : Colors.white,
+                  foregroundColor: isDark ? Colors.white : Colors.blueGrey,
+                  elevation: 4,
+                  onPressed: () {
+                    setState(() {
+                      _showUrgencyMenu = !_showUrgencyMenu;
+                    });
+                  },
+                  child: Icon(
+                    _showUrgencyMenu
+                        ? Icons.close_rounded
+                        : Icons.filter_list_rounded,
                   ),
                 ),
-                Positioned(
-                  bottom: 140,
-                  right: 16,
-                  child: FloatingActionButton(
-                    heroTag: 'my_location_btn',
-                    mini: true,
-                    backgroundColor: _seguirUsuario
-                        ? (isDark ? Colors.blue.shade900 : Colors.blue.shade50)
-                        : (isDark ? Colors.grey.shade800 : Colors.white),
-                    foregroundColor: _seguirUsuario
-                        ? (isDark
-                              ? Colors.blueAccent.shade100
-                              : Colors.blueAccent)
-                        : Colors.grey,
-                    elevation: 4,
-                    child: const Icon(Icons.my_location),
-                    onPressed: () {
+                if (_showUrgencyMenu) ...[
+                  const SizedBox(height: 12),
+                  UrgencyFilterMenu(
+                    currentFilter: _filtroUrgencia,
+                    onFilterChanged: (newFilter) {
                       setState(() {
-                        _seguirUsuario = true;
+                        _filtroUrgencia = newFilter;
                       });
-                      if (myPosition != null) {
-                        _mapController.move(myPosition!, 18);
-                      }
                     },
                   ),
-                ),
-                miRescateAsync.maybeWhen(
-                  data: (rescate) {
-                    if (rescate == null) {
-                      return const SizedBox.shrink();
-                    }
-                    return Positioned(
-                      top: 16,
-                      left: 16,
-                      right: 16,
-                      child: SafeArea(
-                        child: ActiveRescueCard(rescate: rescate),
-                      ),
-                    );
-                  },
-                  orElse: () => const SizedBox.shrink(),
-                ),
+                ],
               ],
             ),
+          ),
+          Positioned(
+            bottom: 140,
+            right: 16,
+            child: ValueListenableBuilder<bool>(
+              valueListenable: _seguirUsuario,
+              builder: (context, seguir, _) {
+                return FloatingActionButton(
+                  heroTag: 'my_location_btn',
+                  mini: true,
+                  backgroundColor: seguir
+                      ? (isDark ? Colors.blue.shade900 : Colors.blue.shade50)
+                      : (isDark ? Colors.grey.shade800 : Colors.white),
+                  foregroundColor: seguir
+                      ? (isDark
+                            ? Colors.blueAccent.shade100
+                            : Colors.blueAccent)
+                      : Colors.grey,
+                  elevation: 4,
+                  onPressed: () {
+                    _seguirUsuario.value = true;
+                    if (_myPosition.value != null) {
+                      _mapController.move(_myPosition.value!, 18);
+                    }
+                  },
+                  child: const Icon(Icons.my_location),
+                );
+              },
+            ),
+          ),
+          miRescateAsync.maybeWhen(
+            data: (rescate) {
+              if (rescate == null) {
+                return const SizedBox.shrink();
+              }
+              return Positioned(
+                top: 16,
+                left: 16,
+                right: 16,
+                child: SafeArea(child: ActiveRescueCard(rescate: rescate)),
+              );
+            },
+            orElse: () => const SizedBox.shrink(),
+          ),
+        ],
+      ),
     );
   }
 }

@@ -4,7 +4,6 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:geolocator/geolocator.dart';
-
 import '../../domain/models/report_model.dart';
 
 class SearchRadarScreen extends StatefulWidget {
@@ -33,7 +32,6 @@ class _SearchRadarScreenState extends State<SearchRadarScreen> {
   void dispose() {
     _positionStreamSubscription?.cancel();
     _positionStreamSubscription = null;
-
     _mapController.dispose();
     super.dispose();
   }
@@ -43,6 +41,17 @@ class _SearchRadarScreenState extends State<SearchRadarScreen> {
     if (permission == LocationPermission.denied) {
       permission = await Geolocator.requestPermission();
       if (permission == LocationPermission.denied) return;
+    }
+
+    final lastPosition = await Geolocator.getLastKnownPosition();
+    if (lastPosition != null && mounted) {
+      setState(() {
+        _currentPosition = LatLng(
+          lastPosition.latitude,
+          lastPosition.longitude,
+        );
+      });
+      _calcularMetricas(lastPosition);
     }
 
     _positionStreamSubscription =
@@ -69,9 +78,7 @@ class _SearchRadarScreenState extends State<SearchRadarScreen> {
       widget.reporte.latitud,
       widget.reporte.longitud,
     );
-
     final double radioReporte = (widget.reporte.radio ?? 500).toDouble();
-
     setState(() {
       _distanciaEnMetros = distancia;
       _estaDentroDelRadar = distancia <= radioReporte;
@@ -85,7 +92,6 @@ class _SearchRadarScreenState extends State<SearchRadarScreen> {
       widget.reporte.latitud,
       widget.reporte.longitud,
     );
-
     return Scaffold(
       appBar: AppBar(
         title: const Text('Modo Búsqueda (Radar)'),
@@ -115,7 +121,6 @@ class _SearchRadarScreenState extends State<SearchRadarScreen> {
                   'id': 'mapbox/streets-v12',
                 },
               ),
-
               PolylineLayer(
                 polylines: [
                   if (_currentPosition != null && !_estaDentroDelRadar)
@@ -126,7 +131,6 @@ class _SearchRadarScreenState extends State<SearchRadarScreen> {
                     ),
                 ],
               ),
-
               CircleLayer(
                 circles: [
                   CircleMarker(
@@ -139,7 +143,6 @@ class _SearchRadarScreenState extends State<SearchRadarScreen> {
                   ),
                 ],
               ),
-
               MarkerLayer(
                 markers: [
                   Marker(
@@ -179,7 +182,6 @@ class _SearchRadarScreenState extends State<SearchRadarScreen> {
               ),
             ],
           ),
-
           Positioned(
             bottom: 140,
             right: 16,
@@ -196,7 +198,6 @@ class _SearchRadarScreenState extends State<SearchRadarScreen> {
               child: const Icon(Icons.my_location),
             ),
           ),
-
           Positioned(
             bottom: 24,
             left: 16,
@@ -206,75 +207,97 @@ class _SearchRadarScreenState extends State<SearchRadarScreen> {
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(16),
               ),
-              color: _estaDentroDelRadar ? Colors.green.shade50 : Colors.white,
+              color: _currentPosition == null
+                  ? Colors.white
+                  : (_estaDentroDelRadar ? Colors.green.shade50 : Colors.white),
               child: Padding(
                 padding: const EdgeInsets.all(18.0),
-                child: _estaDentroDelRadar
-                    ? Row(
+                child: _currentPosition == null
+                    ? const Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(
-                            Icons.check_circle_rounded,
-                            color: Colors.green.shade700,
-                            size: 32,
+                          SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2),
                           ),
-                          const SizedBox(width: 14),
-                          const Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text(
-                                  '¡Estás en la zona!',
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 17,
-                                    color: Colors.green,
-                                  ),
-                                ),
-                                SizedBox(height: 2),
-                                Text(
-                                  'Te encuentras dentro del radar de localización del animal.',
-                                  style: TextStyle(
-                                    fontSize: 13,
-                                    color: Colors.black87,
-                                  ),
-                                ),
-                              ],
+                          SizedBox(width: 14),
+                          Text(
+                            'Calculando distancia...',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 15,
                             ),
                           ),
                         ],
                       )
-                    : Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Row(
-                            children: [
-                              Icon(
-                                Icons.navigation_rounded,
-                                color: Colors.blue.shade700,
-                              ),
-                              const SizedBox(width: 8),
-                              const Text(
-                                'Distancia al objetivo:',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 15,
+                    : (_estaDentroDelRadar
+                          ? Row(
+                              children: [
+                                Icon(
+                                  Icons.check_circle_rounded,
+                                  color: Colors.green.shade700,
+                                  size: 32,
                                 ),
-                              ),
-                            ],
-                          ),
-                          Text(
-                            _distanciaEnMetros > 1000
-                                ? '${(_distanciaEnMetros / 1000).toStringAsFixed(2)} km'
-                                : '${_distanciaEnMetros.round()} m',
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 18,
-                              color: Colors.blue.shade800,
-                            ),
-                          ),
-                        ],
-                      ),
+                                const SizedBox(width: 14),
+                                const Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Text(
+                                        '¡Estás en la zona!',
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 17,
+                                          color: Colors.green,
+                                        ),
+                                      ),
+                                      SizedBox(height: 2),
+                                      Text(
+                                        'Te encuentras dentro del radar de localización del animal.',
+                                        style: TextStyle(
+                                          fontSize: 13,
+                                          color: Colors.black87,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            )
+                          : Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Row(
+                                  children: [
+                                    Icon(
+                                      Icons.navigation_rounded,
+                                      color: Colors.blue.shade700,
+                                    ),
+                                    const SizedBox(width: 8),
+                                    const Text(
+                                      'Distancia al objetivo:',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.w600,
+                                        fontSize: 15,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                Text(
+                                  _distanciaEnMetros > 1000
+                                      ? '${(_distanciaEnMetros / 1000).toStringAsFixed(2)} km'
+                                      : '${_distanciaEnMetros.round()} m',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 18,
+                                    color: Colors.blue.shade800,
+                                  ),
+                                ),
+                              ],
+                            )),
               ),
             ),
           ),
