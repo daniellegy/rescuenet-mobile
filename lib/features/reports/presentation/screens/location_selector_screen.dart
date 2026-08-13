@@ -6,13 +6,11 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 class LocationSelectorScreen extends StatefulWidget {
   final double initialLat;
   final double initialLng;
-
   const LocationSelectorScreen({
     super.key,
     required this.initialLat,
     required this.initialLng,
   });
-
   @override
   State<LocationSelectorScreen> createState() => _LocationSelectorScreenState();
 }
@@ -33,7 +31,6 @@ class _LocationSelectorScreenState extends State<LocationSelectorScreen> {
   @override
   Widget build(BuildContext context) {
     final mapboxToken = dotenv.env['MAPBOX_TOKEN'] ?? '';
-
     return Scaffold(
       appBar: AppBar(
         title: const Text('Ajustar Ubicación'),
@@ -51,11 +48,10 @@ class _LocationSelectorScreenState extends State<LocationSelectorScreen> {
               maxZoom: 22.0,
               cameraConstraint: CameraConstraint.contain(
                 bounds: LatLngBounds(
-                  const LatLng(-90.0, -180.0),
-                  const LatLng(90.0, 180.0),
+                  const LatLng(14.53, -118.36),
+                  const LatLng(32.71, -86.71),
                 ),
               ),
-              // Bloquear la rotación y optimizar el reconocimiento de gestos
               interactionOptions: const InteractionOptions(
                 flags: InteractiveFlag.all & ~InteractiveFlag.rotate,
                 enableMultiFingerGestureRace: false,

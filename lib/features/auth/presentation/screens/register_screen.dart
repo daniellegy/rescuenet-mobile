@@ -244,7 +244,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                   onChanged: (_) => setState(() {}),
                   decoration: _buildInputDecoration(
                     labelText: 'Teléfono',
-                    hintText: '(LADA) 123-4567',
+                    hintText: '(123) 456-7890',
                     prefixIcon: Icons.phone,
                     isValid: _isPhoneValid,
                     isEmpty: _phoneController.text.isEmpty,

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-
+import 'main_layout.dart';
 import '../../features/auth/presentation/providers/auth_provider.dart';
 import '../../features/auth/presentation/screens/login_screen.dart';
 import '../../features/auth/presentation/screens/register_screen.dart';
@@ -20,11 +20,9 @@ import '../../features/messages/presentation/screens/inbox_screen.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
   final authStateNotifier = ValueNotifier<AuthState>(ref.read(authProvider));
-
   ref.listen<AuthState>(authProvider, (_, next) {
     authStateNotifier.value = next;
   });
-
   return GoRouter(
     initialLocation: '/login',
     refreshListenable: authStateNotifier,
@@ -32,15 +30,12 @@ final routerProvider = Provider<GoRouter>((ref) {
       final isLogged = authStateNotifier.value.isLogged;
       final isGoingToLogin = state.matchedLocation == '/login';
       final isGoingToRegister = state.matchedLocation == '/register';
-
       if (!isLogged && !isGoingToLogin && !isGoingToRegister) {
         return '/login';
       }
-
       if (isLogged && (isGoingToLogin || isGoingToRegister)) {
         return '/map';
       }
-
       return null;
     },
     routes: [
@@ -49,14 +44,34 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/register',
         builder: (context, state) => const RegisterScreen(),
       ),
-      GoRoute(path: '/map', builder: (context, state) => const MapScreen()),
-      GoRoute(
-        path: '/lost-dogs',
-        builder: (context, state) => const LostDogsScreen(),
-      ),
-      GoRoute(
-        path: '/history',
-        builder: (context, state) => const HistoryScreen(),
+      ShellRoute(
+        builder: (context, state, child) => MainLayout(child: child),
+        routes: [
+          GoRoute(path: '/map', builder: (context, state) => const MapScreen()),
+          GoRoute(
+            path: '/lost-dogs',
+            builder: (context, state) => const LostDogsScreen(),
+          ),
+          GoRoute(
+            path: '/history',
+            builder: (context, state) => const HistoryScreen(),
+          ),
+          GoRoute(
+            path: '/active-reports',
+            builder: (context, state) => const ActiveReportsScreen(),
+          ),
+          GoRoute(
+            path: '/user-info',
+            builder: (context, state) {
+              final userId = state.extra as int;
+              return UserInfoScreen(userId: userId);
+            },
+          ),
+          GoRoute(
+            path: '/inbox',
+            builder: (context, state) => const InboxScreen(),
+          ),
+        ],
       ),
       GoRoute(
         path: '/report-detail',
@@ -84,10 +99,6 @@ final routerProvider = Provider<GoRouter>((ref) {
         },
       ),
       GoRoute(
-        path: '/active-reports',
-        builder: (context, state) => const ActiveReportsScreen(),
-      ),
-      GoRoute(
         path: '/settings',
         builder: (context, state) => const SettingsScreen(),
       ),
@@ -98,15 +109,6 @@ final routerProvider = Provider<GoRouter>((ref) {
           return RescueStepperScreen(reporte: reporteData);
         },
       ),
-      // NUEVA RUTA PARA PERFIL PÚBLICO
-      GoRoute(
-        path: '/user-info',
-        builder: (context, state) {
-          final userId = state.extra as int;
-          return UserInfoScreen(userId: userId);
-        },
-      ),
-      GoRoute(path: '/inbox', builder: (context, state) => const InboxScreen()),
     ],
   );
 });

@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-
+import 'package:go_router/go_router.dart';
 import '../../../../core/network/dio_client.dart';
+import '../../../auth/presentation/providers/auth_provider.dart';
 
-// Provider exclusivo para traer las estadísticas dinámicas
 final userStatsProvider = FutureProvider.autoDispose
     .family<Map<String, dynamic>, int>((ref, userId) async {
       final dio = ref.watch(dioProvider).instance;
@@ -18,16 +18,25 @@ class UserInfoScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final statsAsync = ref.watch(userStatsProvider(userId));
+    final isMyProfile = ref.watch(authProvider).userId == userId;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Perfil del Usuario')),
+      appBar: AppBar(
+        title: const Text('Perfil del Usuario'),
+        actions: [
+          if (isMyProfile)
+            IconButton(
+              icon: const Icon(Icons.settings),
+              tooltip: 'Configuración',
+              onPressed: () => context.push('/settings'),
+            ),
+        ],
+      ),
       body: statsAsync.when(
         data: (datos) {
           final nombre = datos['nombre_completo'] ?? 'Usuario';
           final foto = datos['foto_perfil'];
           final esVoluntario = datos['role'] == 2;
-
-          // Postgres count viene como String en algunos drivers, así que parseamos
           final reportesCreados =
               int.tryParse(datos['reportes_creados'].toString()) ?? 0;
           final rescatesRealizados =
@@ -81,8 +90,6 @@ class UserInfoScreen extends ConsumerWidget {
                   ),
                 ),
                 const SizedBox(height: 40),
-
-                // SOLUCIÓN APLICADA: IntrinsicHeight + CrossAxisAlignment.stretch
                 IntrinsicHeight(
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -129,8 +136,7 @@ class UserInfoScreen extends ConsumerWidget {
         child: Padding(
           padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 12),
           child: Column(
-            mainAxisAlignment:
-                MainAxisAlignment.center, // Centra el contenido verticalmente
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Icon(icon, size: 40, color: color),
               const SizedBox(height: 12),

@@ -6,19 +6,19 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:geolocator/geolocator.dart';
-
 import '../../../../core/services/location_service.dart';
 import '../../../../core/services/camera_service.dart';
 import '../providers/map_markers_provider.dart';
 import '../../../reports/presentation/providers/my_active_rescue_provider.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
+import '../../../settings/presentation/providers/settings_provider.dart';
 import '../widgets/urgency_filter_menu.dart';
 import '../widgets/active_rescue_card.dart';
-import '../widgets/map_bottom_nav_bar.dart';
 import '../widgets/off_screen_markers.dart';
 
 class MapScreen extends ConsumerStatefulWidget {
   const MapScreen({super.key});
+
   @override
   ConsumerState<MapScreen> createState() => _MapScreenState();
 }
@@ -31,7 +31,6 @@ class _MapScreenState extends ConsumerState<MapScreen>
   String _filtroUrgencia = 'todos';
   bool _showUrgencyMenu = false;
   bool _seguirUsuario = true;
-
   late AnimationController _holdController;
   Offset? _holdPosition;
   Timer? _intentTimer;
@@ -129,7 +128,7 @@ class _MapScreenState extends ConsumerState<MapScreen>
     final targetPosition = customPoint ?? myPosition;
     if (targetPosition == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Esperando ubicación GPS...')),
+        const SnackBar(content: Text('Esperando ubicaci n GPS...')),
       );
       return;
     }
@@ -203,13 +202,14 @@ class _MapScreenState extends ConsumerState<MapScreen>
     final mapboxToken = dotenv.env['MAPBOX_TOKEN'] ?? '';
     final reportesAsync = ref.watch(reportesActivosMapaProvider);
     final miRescateAsync = ref.watch(miRescateActivoProvider);
+    final perfilAsync = ref.watch(userProfileProvider);
+    final String? fotoUrl = perfilAsync.value?['foto_perfil'];
 
     final bool hasActiveRescue = miRescateAsync.maybeWhen(
       data: (rescate) => rescate != null,
       orElse: () => false,
     );
 
-    // Integración de Mapa Adaptativo:
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final mapStyle = isDark ? 'mapbox/dark-v11' : 'mapbox/streets-v12';
     final appBarBg = isDark ? const Color(0xE6121212) : const Color(0xE6FFFFFF);
@@ -237,9 +237,9 @@ class _MapScreenState extends ConsumerState<MapScreen>
             ),
           ),
           IconButton(
-            icon: const Icon(Icons.settings, color: Colors.grey),
-            tooltip: 'Configuración',
-            onPressed: () => context.push('/settings'),
+            icon: const Icon(Icons.chat_bubble_outline, color: Colors.grey),
+            tooltip: 'Mensajes',
+            onPressed: () => context.push('/inbox'),
           ),
         ],
       ),
@@ -262,8 +262,8 @@ class _MapScreenState extends ConsumerState<MapScreen>
                         maxZoom: 19,
                         cameraConstraint: CameraConstraint.contain(
                           bounds: LatLngBounds(
-                            const LatLng(-90.0, -180.0),
-                            const LatLng(90.0, 180.0),
+                            const LatLng(14.53, -118.36),
+                            const LatLng(32.71, -86.71),
                           ),
                         ),
                         onPositionChanged:
@@ -311,16 +311,47 @@ class _MapScreenState extends ConsumerState<MapScreen>
                             if (myPosition != null)
                               Marker(
                                 point: myPosition!,
-                                width: 50,
-                                height: 50,
+                                width: 54,
+                                height: 54,
                                 rotate: true,
                                 child: GestureDetector(
                                   onTap: _mostrarPerfilDirecto,
-                                  child: const RepaintBoundary(
-                                    child: Icon(
-                                      Icons.person_pin,
-                                      color: Colors.blue,
-                                      size: 40,
+                                  child: Container(
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      border: Border.all(
+                                        color: Colors.blueAccent,
+                                        width: 3,
+                                      ),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: Colors.blueAccent.withValues(
+                                            alpha: 0.8,
+                                          ),
+                                          blurRadius: 10,
+                                          spreadRadius: 2,
+                                        ),
+                                      ],
+                                    ),
+                                    child: ClipOval(
+                                      child: fotoUrl != null
+                                          ? Image.network(
+                                              fotoUrl,
+                                              fit: BoxFit.cover,
+                                              errorBuilder: (_, __, ___) =>
+                                                  const Icon(
+                                                    Icons.person,
+                                                    color: Colors.white,
+                                                  ),
+                                            )
+                                          : Container(
+                                              color: Colors.blueAccent,
+                                              child: const Icon(
+                                                Icons.person,
+                                                color: Colors.white,
+                                                size: 30,
+                                              ),
+                                            ),
                                     ),
                                   ),
                                 ),
@@ -382,7 +413,6 @@ class _MapScreenState extends ConsumerState<MapScreen>
                     ),
                   ),
                 ),
-
                 if (_holdPosition != null && _holdController.isAnimating)
                   Positioned(
                     left: _holdPosition!.dx - 30,
@@ -406,7 +436,6 @@ class _MapScreenState extends ConsumerState<MapScreen>
                       ),
                     ),
                   ),
-
                 reportesAsync.maybeWhen(
                   data: (reportes) {
                     final reportesFiltrados = reportes.where((r) {
@@ -508,16 +537,6 @@ class _MapScreenState extends ConsumerState<MapScreen>
                 ),
               ],
             ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => _takePhotoAndNavigate(),
-        backgroundColor: Colors.redAccent,
-        foregroundColor: Colors.white,
-        elevation: 4,
-        shape: const CircleBorder(),
-        child: const Icon(Icons.add_a_photo, size: 28),
-      ),
-      bottomNavigationBar: const MapBottomNavBar(),
     );
   }
 }

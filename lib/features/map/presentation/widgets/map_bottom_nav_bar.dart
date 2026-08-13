@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../auth/presentation/providers/auth_provider.dart';
 
-class MapBottomNavBar extends StatelessWidget {
+class MapBottomNavBar extends ConsumerWidget {
   const MapBottomNavBar({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-
     return BottomAppBar(
       shape: const CircularNotchedRectangle(),
       notchMargin: 8.0,
@@ -19,7 +20,7 @@ class MapBottomNavBar extends StatelessWidget {
           IconButton(
             icon: const Icon(Icons.map, color: Colors.redAccent),
             tooltip: 'Mapa',
-            onPressed: () {}, // Ya estamos en el mapa
+            onPressed: () => context.go('/map'),
           ),
           IconButton(
             icon: Icon(
@@ -29,9 +30,7 @@ class MapBottomNavBar extends StatelessWidget {
             tooltip: 'Mi Historial',
             onPressed: () => context.push('/history'),
           ),
-          const SizedBox(
-            width: 48,
-          ), // Espaciador central para el bot n FAB (Cámara)
+          const SizedBox(width: 48), // Espaciador central para el bot n FAB
           IconButton(
             icon: Icon(
               Icons.warning_amber_rounded,
@@ -42,11 +41,16 @@ class MapBottomNavBar extends StatelessWidget {
           ),
           IconButton(
             icon: Icon(
-              Icons.chat_bubble_outline,
+              Icons.person,
               color: isDark ? Colors.grey.shade400 : Colors.grey,
             ),
-            tooltip: 'Mensajes',
-            onPressed: () => context.push('/inbox'),
+            tooltip: 'Perfil',
+            onPressed: () {
+              final userId = ref.read(authProvider).userId;
+              if (userId != null) {
+                context.push('/user-info', extra: userId);
+              }
+            },
           ),
         ],
       ),
