@@ -10,58 +10,74 @@ class MapBottomNavBar extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    // Obtenemos la ruta actual para saber en qué pestaña estamos
     final String currentLocation = GoRouterState.of(context).uri.path;
 
-    // Función auxiliar para determinar el color del ícono
     Color getColor(String path) {
       if (currentLocation.startsWith(path)) {
         return Colors.redAccent;
       }
-      return isDark ? Colors.grey.shade400 : Colors.grey;
+      return isDark ? Colors.grey.shade400 : Colors.grey.shade700;
+    }
+
+    Widget buildNavItem(String label, IconData iconData, String path, {VoidCallback? customAction}) {
+      final color = getColor(path);
+      return Expanded(
+        child: GestureDetector(
+          onTap: customAction ?? () => context.go(path),
+          behavior: HitTestBehavior.opaque,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(iconData, color: color, size: 22),
+              const SizedBox(height: 2),
+              Text(
+                label,
+                style: TextStyle(
+                  color: color,
+                  fontSize: 9.5, 
+                  fontWeight: currentLocation.startsWith(path) ? FontWeight.bold : FontWeight.w500,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
+          ),
+        ),
+      );
     }
 
     return BottomAppBar(
+      height: 50.0, 
       shape: const CircularNotchedRectangle(),
-      notchMargin: 8.0,
-      padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 2.0),
+      notchMargin: 8.0, 
+      padding: EdgeInsets.zero,
       color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
-        children: [
-          IconButton(
-            icon: Icon(Icons.map, color: getColor('/map')),
-            tooltip: 'Mapa',
-            onPressed: () => context.go('/map'),
-          ),
-          IconButton(
-            icon: Icon(Icons.history, color: getColor('/history')),
-            tooltip: 'Mi Historial',
-            // Cambiado de push() a go() para un comportamiento correcto de tabs
-            onPressed: () => context.go('/history'),
-          ),
-          const SizedBox(width: 48), // Espaciador central para el botón FAB
-          IconButton(
-            icon: Icon(
-              Icons.warning_amber_rounded,
-              color: getColor('/active-reports'),
-            ),
-            tooltip: 'Emergencias Activas',
-            // Cambiado de push() a go() para un comportamiento correcto de tabs
-            onPressed: () => context.go('/active-reports'),
-          ),
-          IconButton(
-            icon: Icon(Icons.person, color: getColor('/user-info')),
-            tooltip: 'Perfil',
-            onPressed: () {
+      elevation: 10,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 4.0),
+        child: Row(
+          children: [
+            buildNavItem('Comunidad', Icons.people_alt_outlined, '/community', customAction: () {
+              context.push('/community'); 
+            }),
+            
+            buildNavItem('Reportes', Icons.pets_rounded, '/reports', customAction: () {
+              context.push('/reports');
+            }),
+
+            const SizedBox(width: 56), 
+
+            buildNavItem('Mensajes', Icons.chat_bubble_outline_rounded, '/inbox'),
+            
+            buildNavItem('Yo', Icons.person_outline_rounded, '/user-info', customAction: () {
               final userId = ref.read(authProvider).userId;
               if (userId != null) {
-                // Mantenemos push para poder usar el botón de retroceso nativo al salir del perfil
                 context.push('/user-info', extra: userId);
               }
-            },
-          ),
-        ],
+            }),
+          ],
+        ),
       ),
     );
   }

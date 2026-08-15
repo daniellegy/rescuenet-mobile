@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_map/flutter_map.dart';
-import 'package:latlong2/latlong.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
+// AQUÍ VA EL CAMBIO: Quitamos flutter_map, latlong2 y dotenv. Ahora usamos Google Maps puro.
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 class LocationSelectorScreen extends StatefulWidget {
   final double initialLat;
@@ -18,22 +17,40 @@ class LocationSelectorScreen extends StatefulWidget {
 }
 
 class _LocationSelectorScreenState extends State<LocationSelectorScreen> {
-  late final MapController _mapController;
+  // AQUÍ VA EL CAMBIO: Usamos el controlador nativo de Google Maps
+  GoogleMapController? _mapController;
   late double _currentLat;
   late double _currentLng;
+
+  // Mantenemos el mapa limpio de comercios (POIs) igual que en la pantalla principal
+  final String _mapStyle = '''
+  [
+    {
+      "featureType": "poi",
+      "stylers": [{"visibility": "off"}]
+    },
+    {
+      "featureType": "transit",
+      "stylers": [{"visibility": "off"}]
+    }
+  ]
+  ''';
 
   @override
   void initState() {
     super.initState();
-    _mapController = MapController();
     _currentLat = widget.initialLat;
     _currentLng = widget.initialLng;
   }
 
   @override
-  Widget build(BuildContext context) {
-    final mapboxToken = dotenv.env['MAPBOX_TOKEN'] ?? '';
+  void dispose() {
+    _mapController?.dispose();
+    super.dispose();
+  }
 
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Ajustar Ubicación'),
@@ -42,42 +59,42 @@ class _LocationSelectorScreenState extends State<LocationSelectorScreen> {
       body: Stack(
         alignment: Alignment.center,
         children: [
-          FlutterMap(
-            mapController: _mapController,
-            options: MapOptions(
-              initialCenter: LatLng(_currentLat, _currentLng),
-              initialZoom: 18.0,
-              minZoom: 5.5,
-              maxZoom: 22.0,
-              cameraConstraint: CameraConstraint.containCenter(
-                bounds: LatLngBounds(
-                  const LatLng(10.0, -120.0),
-                  const LatLng(35.0, -84.0),
-                ),
-              ),
-              interactionOptions: const InteractionOptions(
-                // FIX: Apagamos flingAnimation al igual que en la pantalla principal
-                flags:
-                    InteractiveFlag.all &
-                    ~InteractiveFlag.rotate &
-                    ~InteractiveFlag.flingAnimation,
-              ),
-              onPositionChanged: (MapCamera position, bool hasGesture) {
-                _currentLat = position.center.latitude;
-                _currentLng = position.center.longitude;
-              },
+          // AQUÍ VA EL CAMBIO: GoogleMap reemplaza a FlutterMap
+          GoogleMap(
+            initialCameraPosition: CameraPosition(
+              target: LatLng(_currentLat, _currentLng),
+              zoom: 18.0,
             ),
-            children: [
-              TileLayer(
-                urlTemplate:
-                    'https://api.mapbox.com/styles/v1/mapbox/streets-v12/tiles/{z}/{x}/{y}?access_token=$mapboxToken',
+            minMaxZoomPreference: const MinMaxZoomPreference(5.5, 22.0),
+            // Restringimos la cámara a los límites de México (Aprox)
+            cameraTargetBounds: CameraTargetBounds(
+              LatLngBounds(
+                southwest: const LatLng(10.0, -120.0),
+                northeast: const LatLng(35.0, -84.0),
               ),
-            ],
+            ),
+            // Apagamos la rotación para no desorientar al usuario al elegir ubicación
+            rotateGesturesEnabled: false,
+            mapToolbarEnabled: false,
+            zoomControlsEnabled: false,
+            myLocationButtonEnabled: false,
+            onMapCreated: (GoogleMapController controller) {
+              _mapController = controller;
+              _mapController!.setMapStyle(_mapStyle);
+            },
+            // Leemos el movimiento en tiempo real a 60 FPS
+            onCameraMove: (CameraPosition position) {
+              _currentLat = position.target.latitude;
+              _currentLng = position.target.longitude;
+            },
           ),
+          
+          // PIN CENTRAL FIJO: Exactamente la misma lógica, hiper eficiente.
           const Padding(
-            padding: EdgeInsets.only(bottom: 40.0),
+            padding: EdgeInsets.only(bottom: 40.0), // Ajuste visual para que la "punta" apunte al centro
             child: Icon(Icons.location_on, size: 50.0, color: Colors.red),
           ),
+
           Positioned(
             top: 20,
             child: Container(
@@ -85,6 +102,13 @@ class _LocationSelectorScreenState extends State<LocationSelectorScreen> {
               decoration: BoxDecoration(
                 color: Colors.black.withValues(alpha: 0.7),
                 borderRadius: BorderRadius.circular(20),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.2),
+                    blurRadius: 8,
+                    offset: const Offset(0, 4),
+                  ),
+                ]
               ),
               child: const Text(
                 'Mueve el mapa para ajustar el PIN',
@@ -100,6 +124,7 @@ class _LocationSelectorScreenState extends State<LocationSelectorScreen> {
       floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () {
+          // Retornamos las coordenadas exactas de donde quedó apuntando el mapa
           Navigator.pop(context, {'lat': _currentLat, 'lng': _currentLng});
         },
         backgroundColor: const Color(0xFFD32F2F),

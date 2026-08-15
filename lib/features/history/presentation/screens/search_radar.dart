@@ -1,8 +1,9 @@
 import 'dart:async';
+import 'dart:typed_data';
+import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
-import 'package:flutter_map/flutter_map.dart';
-import 'package:latlong2/latlong.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
+// AQUÍ VA EL CAMBIO: Importamos Google Maps y quitamos flutter_map, latlong2 y dotenv
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:geolocator/geolocator.dart';
 import '../../domain/models/report_model.dart';
 
@@ -15,25 +16,88 @@ class SearchRadarScreen extends StatefulWidget {
 }
 
 class _SearchRadarScreenState extends State<SearchRadarScreen> {
-  late final MapController _mapController;
+  // AQUÍ VA EL CAMBIO: Controlador nativo de Google Maps
+  GoogleMapController? _mapController;
   LatLng? _currentPosition;
   double _distanciaEnMetros = 0.0;
   bool _estaDentroDelRadar = false;
   StreamSubscription<Position>? _positionStreamSubscription;
 
+  BitmapDescriptor? _targetIcon;
+  BitmapDescriptor? _userIcon;
+
+  // Mapa con estilo limpio sin POIs
+  final String _mapStyle = '''
+  [
+    {
+      "featureType": "poi",
+      "stylers": [{"visibility": "off"}]
+    },
+    {
+      "featureType": "transit",
+      "stylers": [{"visibility": "off"}]
+    }
+  ]
+  ''';
+
   @override
   void initState() {
     super.initState();
-    _mapController = MapController();
     _iniciarSeguimientoGPS();
+    _generarIconosCanvas();
   }
 
   @override
   void dispose() {
     _positionStreamSubscription?.cancel();
     _positionStreamSubscription = null;
-    _mapController.dispose();
+    _mapController?.dispose();
     super.dispose();
+  }
+
+  // AQUÍ VA EL CAMBIO: Generador hiper-rápido de íconos nativos con Canvas
+  Future<void> _generarIconosCanvas() async {
+    _targetIcon = await _createIconFromMaterial(widget.reporte.colorUrgencia, Icons.warning_rounded);
+    _userIcon = await _createIconFromMaterial(Colors.red, Icons.person_pin);
+    if (mounted) setState(() {});
+  }
+
+  Future<BitmapDescriptor> _createIconFromMaterial(Color color, IconData iconData) async {
+    final ui.PictureRecorder pictureRecorder = ui.PictureRecorder();
+    final Canvas canvas = Canvas(pictureRecorder);
+    const double size = 100;
+    
+    // Fondo semitransparente
+    final Paint paint = Paint()..color = color.withValues(alpha: 0.2);
+    // Borde sólido
+    final Paint borderPaint = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 4;
+
+    canvas.drawCircle(const Offset(size / 2, size / 2), size / 2 - 4, paint);
+    canvas.drawCircle(const Offset(size / 2, size / 2), size / 2 - 4, borderPaint);
+
+    // Dibujamos el Material Icon exacto en el centro
+    TextPainter textPainter = TextPainter(textDirection: TextDirection.ltr);
+    textPainter.text = TextSpan(
+      text: String.fromCharCode(iconData.codePoint),
+      style: TextStyle(
+        fontSize: 60.0,
+        fontFamily: iconData.fontFamily,
+        package: iconData.fontPackage,
+        color: color,
+      ),
+    );
+    textPainter.layout();
+    textPainter.paint(
+      canvas, 
+      Offset((size - textPainter.width) / 2, (size - textPainter.height) / 2)
+    );
+
+    final ui.Image img = await pictureRecorder.endRecording().toImage(size.toInt(), size.toInt());
+    final ByteData? data = await img.toByteData(format: ui.ImageByteFormat.png);
+    return BitmapDescriptor.fromBytes(data!.buffer.asUint8List());
   }
 
   Future<void> _iniciarSeguimientoGPS() async {
@@ -46,29 +110,25 @@ class _SearchRadarScreenState extends State<SearchRadarScreen> {
     final lastPosition = await Geolocator.getLastKnownPosition();
     if (lastPosition != null && mounted) {
       setState(() {
-        _currentPosition = LatLng(
-          lastPosition.latitude,
-          lastPosition.longitude,
-        );
+        _currentPosition = LatLng(lastPosition.latitude, lastPosition.longitude);
       });
       _calcularMetricas(lastPosition);
     }
 
-    _positionStreamSubscription =
-        Geolocator.getPositionStream(
-          locationSettings: const LocationSettings(
-            accuracy: LocationAccuracy.high,
-            distanceFilter: 15,
-          ),
-        ).listen((Position position) {
-          if (mounted) {
-            final userLatLng = LatLng(position.latitude, position.longitude);
-            setState(() {
-              _currentPosition = userLatLng;
-            });
-            _calcularMetricas(position);
-          }
+    _positionStreamSubscription = Geolocator.getPositionStream(
+      locationSettings: const LocationSettings(
+        accuracy: LocationAccuracy.high,
+        distanceFilter: 15,
+      ),
+    ).listen((Position position) {
+      if (mounted) {
+        final userLatLng = LatLng(position.latitude, position.longitude);
+        setState(() {
+          _currentPosition = userLatLng;
         });
+        _calcularMetricas(position);
+      }
+    });
   }
 
   void _calcularMetricas(Position posicionUsuario) {
@@ -87,11 +147,55 @@ class _SearchRadarScreenState extends State<SearchRadarScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final mapboxToken = dotenv.env['MAPBOX_TOKEN'] ?? '';
-    final targetReport = LatLng(
-      widget.reporte.latitud,
-      widget.reporte.longitud,
-    );
+    final targetReport = LatLng(widget.reporte.latitud, widget.reporte.longitud);
+
+    // AQUÍ VA EL CAMBIO: Ensamblaje nativo de Marcadores, Círculos y Polilíneas
+    final Set<Marker> markers = {};
+    if (_targetIcon != null) {
+      markers.add(
+        Marker(
+          markerId: const MarkerId('target'),
+          position: targetReport,
+          icon: _targetIcon!,
+          anchor: const Offset(0.5, 0.5),
+        ),
+      );
+    }
+    if (_currentPosition != null && _userIcon != null) {
+      markers.add(
+        Marker(
+          markerId: const MarkerId('user'),
+          position: _currentPosition!,
+          icon: _userIcon!,
+          anchor: const Offset(0.5, 0.5),
+        ),
+      );
+    }
+
+    final Set<Polyline> polylines = {};
+    if (_currentPosition != null && !_estaDentroDelRadar) {
+      polylines.add(
+        Polyline(
+          polylineId: const PolylineId('distance_line'),
+          points: [_currentPosition!, targetReport],
+          color: Colors.blue.shade800,
+          width: 4,
+          patterns: [PatternItem.dash(20), PatternItem.gap(10)], // Línea punteada profesional
+        ),
+      );
+    }
+
+    final Set<Circle> circles = {
+      Circle(
+        circleId: const CircleId('radar_zone'),
+        center: targetReport,
+        radius: (widget.reporte.radio ?? 500).toDouble(),
+        fillColor: Colors.blue.withValues(alpha: 0.15),
+        strokeColor: Colors.blue.shade700,
+        strokeWidth: 2,
+      ),
+    };
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Modo Búsqueda (Radar)'),
@@ -101,86 +205,20 @@ class _SearchRadarScreenState extends State<SearchRadarScreen> {
       ),
       body: Stack(
         children: [
-          FlutterMap(
-            mapController: _mapController,
-            options: MapOptions(
-              initialCenter: targetReport,
-              initialZoom: 16.0,
-              minZoom: 5.0,
-              maxZoom: 19.0,
-              interactionOptions: const InteractionOptions(
-                flags: InteractiveFlag.all & ~InteractiveFlag.rotate,
-              ),
-            ),
-            children: [
-              TileLayer(
-                urlTemplate:
-                    'https://api.mapbox.com/styles/v1/mapbox/streets-v12/tiles/{z}/{x}/{y}?access_token=$mapboxToken',
-                additionalOptions: {
-                  'accessToken': mapboxToken,
-                  'id': 'mapbox/streets-v12',
-                },
-              ),
-              PolylineLayer(
-                polylines: [
-                  if (_currentPosition != null && !_estaDentroDelRadar)
-                    Polyline(
-                      points: [_currentPosition!, targetReport],
-                      color: Colors.blue.shade800,
-                      strokeWidth: 4.0,
-                    ),
-                ],
-              ),
-              CircleLayer(
-                circles: [
-                  CircleMarker(
-                    point: targetReport,
-                    radius: (widget.reporte.radio ?? 500).toDouble(),
-                    useRadiusInMeter: true,
-                    color: Colors.blue.withValues(alpha: 0.15),
-                    borderColor: Colors.blue.shade700,
-                    borderStrokeWidth: 2.0,
-                  ),
-                ],
-              ),
-              MarkerLayer(
-                markers: [
-                  Marker(
-                    point: targetReport,
-                    width: 50,
-                    height: 50,
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: widget.reporte.colorUrgencia.withValues(
-                          alpha: 0.2,
-                        ),
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: widget.reporte.colorUrgencia,
-                          width: 2.5,
-                        ),
-                      ),
-                      child: Icon(
-                        Icons.warning_rounded,
-                        color: widget.reporte.colorUrgencia,
-                        size: 26,
-                      ),
-                    ),
-                  ),
-                  if (_currentPosition != null)
-                    Marker(
-                      point: _currentPosition!,
-                      width: 50,
-                      height: 50,
-                      child: const Icon(
-                        Icons.person_pin,
-                        color: Colors.red,
-                        size: 40,
-                      ),
-                    ),
-                ],
-              ),
-            ],
+          GoogleMap(
+            initialCameraPosition: CameraPosition(target: targetReport, zoom: 16.0),
+            minMaxZoomPreference: const MinMaxZoomPreference(5.0, 19.0),
+            markers: markers,
+            circles: circles,
+            polylines: polylines,
+            rotateGesturesEnabled: false,
+            mapToolbarEnabled: false,
+            zoomControlsEnabled: false,
+            myLocationButtonEnabled: false,
+            onMapCreated: (controller) {
+              _mapController = controller;
+              controller.setMapStyle(_mapStyle);
+            },
           ),
           Positioned(
             bottom: 140,
@@ -191,8 +229,8 @@ class _SearchRadarScreenState extends State<SearchRadarScreen> {
               foregroundColor: Colors.blueAccent,
               elevation: 4,
               onPressed: () {
-                if (_currentPosition != null) {
-                  _mapController.move(_currentPosition!, 18);
+                if (_currentPosition != null && _mapController != null) {
+                  _mapController!.animateCamera(CameraUpdate.newLatLngZoom(_currentPosition!, 18));
                 }
               },
               child: const Icon(Icons.my_location),
@@ -242,8 +280,7 @@ class _SearchRadarScreenState extends State<SearchRadarScreen> {
                                 const SizedBox(width: 14),
                                 const Expanded(
                                   child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
+                                    crossAxisAlignment: CrossAxisAlignment.start,
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
                                       Text(

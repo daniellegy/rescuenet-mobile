@@ -11,18 +11,24 @@ import '../../features/reports/presentation/screens/create_report_screen.dart';
 import '../../features/history/presentation/screens/history_screen.dart';
 import '../../features/history/presentation/screens/report_detail_screen.dart';
 import '../../features/history/domain/models/report_model.dart';
+// Mantendremos esta importación porque la usaremos dentro de ReportsScreen pronto
 import '../../features/reports/presentation/screens/active_reports_screen.dart';
 import '../../features/settings/presentation/screens/settings_screen.dart';
 import '../../features/history/presentation/screens/search_radar.dart';
 import '../../features/reports/presentation/screens/rescue_stepper_screen.dart';
 import '../../features/history/presentation/screens/user_info_screen.dart';
 import '../../features/messages/presentation/screens/inbox_screen.dart';
+import '../../features/community/presentation/screens/community_screen.dart';
+
+// AQUÍ VA EL CAMBIO: Importamos nuestro nuevo súper-modal de reportes
+import '../../features/reports/presentation/screens/reports_screen.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
   final authStateNotifier = ValueNotifier<AuthState>(ref.read(authProvider));
   ref.listen<AuthState>(authProvider, (_, next) {
     authStateNotifier.value = next;
   });
+  
   return GoRouter(
     initialLocation: '/login',
     refreshListenable: authStateNotifier,
@@ -57,10 +63,6 @@ final routerProvider = Provider<GoRouter>((ref) {
             builder: (context, state) => const HistoryScreen(),
           ),
           GoRoute(
-            path: '/active-reports',
-            builder: (context, state) => const ActiveReportsScreen(),
-          ),
-          GoRoute(
             path: '/user-info',
             builder: (context, state) {
               final userId = state.extra as int;
@@ -73,6 +75,51 @@ final routerProvider = Provider<GoRouter>((ref) {
           ),
         ],
       ),
+      
+      // MODAL: COMUNIDAD
+      GoRoute(
+        path: '/community',
+        pageBuilder: (context, state) {
+          return CustomTransitionPage(
+            key: state.pageKey,
+            opaque: false,
+            barrierDismissible: true,
+            barrierColor: Colors.black54,
+            transitionDuration: const Duration(milliseconds: 350),
+            child: const CommunityScreen(),
+            transitionsBuilder: (context, animation, secondaryAnimation, child) {
+              return SlideTransition(
+                position: Tween<Offset>(begin: const Offset(0, 1), end: Offset.zero)
+                    .animate(CurvedAnimation(parent: animation, curve: Curves.easeOutCubic)),
+                child: child,
+              );
+            },
+          );
+        },
+      ),
+
+      // AQUÍ VA EL CAMBIO: MODAL: REPORTES (Mismo efecto que Comunidad)
+      GoRoute(
+        path: '/reports',
+        pageBuilder: (context, state) {
+          return CustomTransitionPage(
+            key: state.pageKey,
+            opaque: false, 
+            barrierDismissible: true,
+            barrierColor: Colors.black54, 
+            transitionDuration: const Duration(milliseconds: 350),
+            child: const ReportsScreen(),
+            transitionsBuilder: (context, animation, secondaryAnimation, child) {
+              return SlideTransition(
+                position: Tween<Offset>(begin: const Offset(0, 1), end: Offset.zero)
+                    .animate(CurvedAnimation(parent: animation, curve: Curves.easeOutCubic)),
+                child: child,
+              );
+            },
+          );
+        },
+      ),
+
       GoRoute(
         path: '/report-detail',
         builder: (context, state) {

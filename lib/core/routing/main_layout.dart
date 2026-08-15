@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:latlong2/latlong.dart';
-import '../../features/map/presentation/widgets/map_bottom_nav_bar.dart';
-import '../../core/services/camera_service.dart';
-import '../../core/services/location_service.dart';
+
+// AQUÍ VA EL CAMBIO: Rutas absolutas. Si el archivo existe, Flutter lo encontrará 100% garantizado.
+import 'package:rescuenet_mobile/features/map/presentation/widgets/map_bottom_nav_bar.dart';
+import 'package:rescuenet_mobile/core/services/camera_service.dart';
+import 'package:rescuenet_mobile/core/services/location_service.dart';
 
 class MainLayout extends ConsumerWidget {
   final Widget child;
@@ -49,7 +50,7 @@ class MainLayout extends ConsumerWidget {
         shape: const CircleBorder(),
         child: const Icon(Icons.add_a_photo, size: 28),
       ),
-      bottomNavigationBar: const MapBottomNavBar(),
+      bottomNavigationBar: const MapBottomNavBar(),// Restauramos el const si tu NavBar tiene constructor constante, si te marca subrayado rojo aquí quítale el const.
     );
   }
 }
