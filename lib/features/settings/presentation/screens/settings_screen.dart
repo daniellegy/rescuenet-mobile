@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:go_router/go_router.dart';
+
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../providers/settings_provider.dart';
 import '../providers/map_limit_provider.dart';
@@ -74,6 +75,7 @@ class SettingsScreen extends ConsumerWidget {
       final pickedFile = await cameraService.takePicture(
         fromGallery: fromGallery,
       );
+
       if (pickedFile != null && context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -81,9 +83,11 @@ class SettingsScreen extends ConsumerWidget {
             duration: Duration(seconds: 2),
           ),
         );
+
         await ref
             .read(userProfileProvider.notifier)
             .actualizarFotoPerfil(pickedFile.path);
+
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
@@ -195,11 +199,11 @@ class SettingsScreen extends ConsumerWidget {
           : const Icon(Icons.circle_outlined),
       onTap: () async {
         Navigator.pop(modalContext);
+
         if (rolTarget == rolActual) {
           return;
         }
 
-        // VALIDACIÓN: Limitar el cambio de rol si existe reporte activo
         if (rolActual == 1) {
           final historial = ref.read(misReportesProvider).value ?? [];
           final tieneActivos = historial.any(
@@ -237,10 +241,12 @@ class SettingsScreen extends ConsumerWidget {
           if (!acepto) {
             return;
           }
+
           try {
             final messaging = FirebaseMessaging.instance;
             NotificationSettings settings = await messaging
                 .getNotificationSettings();
+
             if (settings.authorizationStatus !=
                 AuthorizationStatus.authorized) {
               settings = await messaging.requestPermission(
@@ -257,9 +263,11 @@ class SettingsScreen extends ConsumerWidget {
             debugPrint('Error solicitando permisos FCM en cambio de rol: $e');
           }
         }
+
         if (!parentContext.mounted) {
           return;
         }
+
         if (rolTarget == 2 &&
             (curpActual == null || curpActual.trim().isEmpty)) {
           _mostrarDialogoRegistroCurp(parentContext, ref, tokenFCM);
@@ -284,6 +292,7 @@ class SettingsScreen extends ConsumerWidget {
   ) {
     final TextEditingController curpController = TextEditingController();
     final curpRegex = RegExp(r'^[A-Z]{4}\d{6}[HM][A-Z]{5}[A-Z\d]\d$');
+
     showDialog(
       context: parentContext,
       barrierDismissible: false,
@@ -331,6 +340,7 @@ class SettingsScreen extends ConsumerWidget {
                   );
                   return;
                 }
+
                 Navigator.pop(dialogContext);
                 _procesarCambioDeRol(
                   parentContext,
@@ -366,7 +376,9 @@ class SettingsScreen extends ConsumerWidget {
             curp: nuevaCurp,
             fcmToken: tokenFCM,
           );
+
       ref.read(authProvider.notifier).updateLocalRole(rolTarget);
+
       if (parentContext.mounted) {
         ScaffoldMessenger.of(parentContext).showSnackBar(
           SnackBar(
@@ -394,6 +406,7 @@ class SettingsScreen extends ConsumerWidget {
     final TextEditingController controller = TextEditingController(
       text: valorActual,
     );
+
     showDialog(
       context: parentContext,
       builder: (dialogContext) {
@@ -420,6 +433,7 @@ class SettingsScreen extends ConsumerWidget {
             FilledButton(
               onPressed: () async {
                 final nuevoValor = controller.text.trim();
+
                 if (campoBaseDatos == 'email') {
                   final emailRegex = RegExp(
                     r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$',
@@ -445,6 +459,7 @@ class SettingsScreen extends ConsumerWidget {
                     return;
                   }
                 }
+
                 if (nuevoValor.isNotEmpty && nuevoValor != valorActual) {
                   Navigator.pop(dialogContext);
                   try {
@@ -492,6 +507,7 @@ class SettingsScreen extends ConsumerWidget {
     int radioActual,
   ) {
     int radioSeleccionado = radioActual;
+
     showDialog(
       context: parentContext,
       builder: (dialogContext) {
@@ -503,7 +519,7 @@ class SettingsScreen extends ConsumerWidget {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    'Ver reportes y recibir alertas de rescates a un máximo de $radioSeleccionado km a la redonda.',
+                    'Recibir notificaciones de nuevas emergencias a un máximo de $radioSeleccionado km a la redonda.',
                     style: const TextStyle(fontSize: 14),
                   ),
                   const SizedBox(height: 16),
@@ -534,8 +550,7 @@ class SettingsScreen extends ConsumerWidget {
                             .actualizarCampo(
                               radioNotificaciones: radioSeleccionado,
                             );
-                        ref.invalidate(reportesActivosMapaProvider);
-                        ref.invalidate(activeReportsProvider);
+                        // Eliminamos la recarga del mapa aquí, solo actualiza ajustes backend
                         if (parentContext.mounted) {
                           ScaffoldMessenger.of(parentContext).showSnackBar(
                             const SnackBar(
@@ -572,6 +587,7 @@ class SettingsScreen extends ConsumerWidget {
     int limiteActual,
   ) {
     int limiteSeleccionado = limiteActual;
+
     showDialog(
       context: parentContext,
       builder: (dialogContext) {
@@ -680,11 +696,14 @@ class SettingsScreen extends ConsumerWidget {
           final email = datos['email'] ?? 'Sin registrar';
           final curp = datos['curp'];
           final String? fotoUrl = datos['foto_perfil'];
+
           final int rolActualId = datos['role'] ?? 1;
           final int radioNotificaciones = datos['radio_notificaciones'] ?? 30;
           final String? tokenFCMActual = datos['fcm_token'];
+
           final bool notificacionesActivas =
               tokenFCMActual != null && tokenFCMActual.trim().isNotEmpty;
+
           return ListView(
             padding: const EdgeInsets.only(
               left: 16.0,
@@ -882,6 +901,7 @@ class SettingsScreen extends ConsumerWidget {
                             badge: true,
                             sound: true,
                           );
+
                       if (settings.authorizationStatus ==
                           AuthorizationStatus.authorized) {
                         final token = await messaging.getToken();
@@ -924,7 +944,7 @@ class SettingsScreen extends ConsumerWidget {
               const Divider(height: 1),
               ListTile(
                 leading: const Icon(Icons.radar, color: Colors.purple),
-                title: const Text('Radio de Búsqueda'),
+                title: const Text('Radio de Notificaciones'),
                 subtitle: Text('$radioNotificaciones km de área para alertas'),
                 trailing: const Icon(
                   Icons.edit,
@@ -1083,6 +1103,7 @@ class SettingsScreen extends ConsumerWidget {
                                     .read(authProvider.notifier)
                                     .eliminarCuentaEnServidor();
                                 await ref.read(authProvider.notifier).logout();
+
                                 if (context.mounted) {
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     const SnackBar(

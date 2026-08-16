@@ -66,6 +66,8 @@ class InboxScreen extends ConsumerWidget {
                       showModalBottomSheet(
                         context: context,
                         isScrollControlled: true,
+                        useRootNavigator:
+                            true, // Esto corrige el estorbo del Botón / NavigationBar
                         builder: (ctx) => CanalChatSheet(
                           reporteId: r.id,
                           onCanalCerrado: () {

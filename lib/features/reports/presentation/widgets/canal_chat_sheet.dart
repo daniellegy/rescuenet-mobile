@@ -122,14 +122,18 @@ class _CanalChatSheetState extends ConsumerState<CanalChatSheet> {
       ),
     );
 
-    if (confirmar != true) return;
+    if (confirmar != true) {
+      return;
+    }
 
     try {
       await ref
           .read(reportRepositoryProvider)
           .cerrarCanalManual(widget.reporteId);
       widget.onCanalCerrado();
-      if (mounted) Navigator.pop(context);
+      if (mounted) {
+        Navigator.pop(context);
+      }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(
@@ -140,12 +144,15 @@ class _CanalChatSheetState extends ConsumerState<CanalChatSheet> {
   }
 
   Future<void> _cargarMensajes({required bool mostrarLoading}) async {
-    if (mostrarLoading) setState(() => _isLoadingInicial = true);
+    if (mostrarLoading) {
+      setState(() => _isLoadingInicial = true);
+    }
     try {
       final data = await ref
           .read(reportRepositoryProvider)
           .obtenerMensajesCanal(widget.reporteId);
       final mensajes = data.map((m) => CanalMensajeModel.fromJson(m)).toList();
+
       if (mounted) {
         setState(() {
           _mensajes = mensajes;
@@ -153,6 +160,7 @@ class _CanalChatSheetState extends ConsumerState<CanalChatSheet> {
         });
         _irAlFinal();
       }
+
       if (mensajes.isNotEmpty) {
         await _marcarUltimoMensajeComoLeido(mensajes.last.id);
       }
@@ -181,14 +189,18 @@ class _CanalChatSheetState extends ConsumerState<CanalChatSheet> {
 
   Future<void> _enviarMensaje() async {
     final texto = _mensajeController.text.trim();
-    if (texto.isEmpty || _isSending) return;
+    if (texto.isEmpty || _isSending) {
+      return;
+    }
 
     setState(() => _isSending = true);
+
     try {
       final response = await ref
           .read(reportRepositoryProvider)
           .enviarMensajeCanal(widget.reporteId, texto);
       final nuevoMensaje = CanalMensajeModel.fromJson(response);
+
       if (mounted) {
         setState(() {
           if (!_mensajes.any((m) => m.id == nuevoMensaje.id)) {
@@ -205,7 +217,9 @@ class _CanalChatSheetState extends ConsumerState<CanalChatSheet> {
         );
       }
     } finally {
-      if (mounted) setState(() => _isSending = false);
+      if (mounted) {
+        setState(() => _isSending = false);
+      }
     }
   }
 
@@ -213,18 +227,18 @@ class _CanalChatSheetState extends ConsumerState<CanalChatSheet> {
   Widget build(BuildContext context) {
     final authState = ref.watch(authProvider);
     final miUsuarioId = authState.userId;
-    final mediaQuery = MediaQuery.of(context);
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    return Padding(
-      padding: EdgeInsets.only(bottom: mediaQuery.viewInsets.bottom),
-      child: DraggableScrollableSheet(
-        initialChildSize: 0.75,
-        minChildSize: 0.5,
-        maxChildSize: 0.95,
-        expand: false,
-        builder: (context, scrollSheetController) {
-          return Container(
+    return DraggableScrollableSheet(
+      initialChildSize: 0.75,
+      minChildSize: 0.5,
+      maxChildSize: 0.95,
+      expand: false,
+      builder: (context, scrollSheetController) {
+        return Scaffold(
+          backgroundColor: Colors
+              .transparent, // Scaffold maneja el teclado de manera nativa sin estirar DraggableSheet
+          body: Container(
             decoration: BoxDecoration(
               color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
               borderRadius: const BorderRadius.vertical(
@@ -413,9 +427,9 @@ class _CanalChatSheetState extends ConsumerState<CanalChatSheet> {
                 ),
               ],
             ),
-          );
-        },
-      ),
+          ),
+        );
+      },
     );
   }
 }

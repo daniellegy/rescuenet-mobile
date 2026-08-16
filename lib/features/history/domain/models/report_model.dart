@@ -173,7 +173,7 @@ class ReportModel {
       case 'media':
         return Colors.orange;
       case 'baja':
-        return Colors.yellow;
+        return Colors.amber;
       default:
         return Colors.blue;
     }

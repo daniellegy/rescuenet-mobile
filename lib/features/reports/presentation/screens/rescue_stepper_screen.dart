@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
 import '../../../history/domain/models/report_model.dart';
 import '../../data/report_repository.dart';
 import '../providers/active_reports_provider.dart';
@@ -17,6 +18,7 @@ import '../widgets/canal_chat_sheet.dart';
 
 class RescueStepperScreen extends ConsumerStatefulWidget {
   final ReportModel reporte;
+
   const RescueStepperScreen({super.key, required this.reporte});
 
   @override
@@ -134,6 +136,7 @@ class _RescueStepperScreenState extends ConsumerState<RescueStepperScreen> {
       _mostrarError('Selecciona el lugar al que te diriges.');
       return;
     }
+
     try {
       await ref
           .read(reportRepositoryProvider)
@@ -142,8 +145,10 @@ class _RescueStepperScreenState extends ConsumerState<RescueStepperScreen> {
             lugarTraslado: estado.lugarTraslado,
           );
       _invalidarProveedores();
+
       final url = _directorios[estado.tipoTraslado]![estado.lugarTraslado]!;
       await _lanzarUrl(url);
+
       ref
           .read(rescueStepperProvider.notifier)
           .updateField(step: estado.currentStep + 1);
@@ -159,21 +164,26 @@ class _RescueStepperScreenState extends ConsumerState<RescueStepperScreen> {
     setState(() {
       _isLoading = true;
     });
+
     try {
       final costoLimpio = _costoController.text.replaceAll(
         RegExp(r'[^\d.]'),
         '',
       );
+
       final detalles = {
         'condicion': estado.condicion ?? 'Desconocida',
         'destino': estado.destino,
         'costo': double.tryParse(costoLimpio) ?? 0.0,
         'conclusion': _conclusionController.text,
       };
+
       await ref
           .read(reportRepositoryProvider)
           .finalizeReport(widget.reporte.id, detalles, estado.evidenciaPath);
+
       ref.read(rescueStepperProvider.notifier).reset();
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -280,9 +290,11 @@ class _RescueStepperScreenState extends ConsumerState<RescueStepperScreen> {
   Future<void> _procesarAvancePaso() async {
     final state = ref.read(rescueStepperProvider);
     final isStepValid = await _validarPasoActual(state.currentStep, state);
+
     if (!isStepValid) {
       return;
     }
+
     if (state.currentStep < 7) {
       ref
           .read(rescueStepperProvider.notifier)
@@ -365,6 +377,7 @@ class _RescueStepperScreenState extends ConsumerState<RescueStepperScreen> {
                           await showModalBottomSheet(
                             context: context,
                             isScrollControlled: true,
+                            useRootNavigator: true,
                             builder: (ctx) => CanalChatSheet(
                               reporteId: widget.reporte.id,
                               onCanalCerrado: () {
@@ -381,11 +394,11 @@ class _RescueStepperScreenState extends ConsumerState<RescueStepperScreen> {
                       ),
                       if (hayNuevos)
                         Positioned(
-                          top: 6,
-                          right: 6,
+                          top: 12,
+                          right: 12,
                           child: Container(
-                            width: 12,
-                            height: 12,
+                            width: 10,
+                            height: 10,
                             decoration: const BoxDecoration(
                               color: Colors.red,
                               shape: BoxShape.circle,
@@ -407,10 +420,12 @@ class _RescueStepperScreenState extends ConsumerState<RescueStepperScreen> {
                 onStepCancel: _procesarRetrocesoPaso,
                 controlsBuilder: (context, details) {
                   final isLast = stepperState.currentStep == 7;
+
                   if (stepperState.currentStep == 3 &&
                       stepperState.lugarTraslado == null) {
                     return const SizedBox.shrink();
                   }
+
                   return Padding(
                     padding: const EdgeInsets.only(top: 16.0),
                     child: Row(
@@ -582,6 +597,7 @@ class _RescueStepperScreenState extends ConsumerState<RescueStepperScreen> {
                       opcionesValidas.contains(state.lugarTraslado)
                       ? state.lugarTraslado
                       : null;
+
                   return DropdownButtonFormField<String>(
                     isExpanded: true,
                     key: ValueKey(valorSeguro),

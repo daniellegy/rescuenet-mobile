@@ -28,7 +28,7 @@ class _OffScreenMarkersState extends State<OffScreenMarkers> {
   void initState() {
     super.initState();
     widget.cameraNotifier.addListener(_updateBounds);
-    _updateBounds(); // Llamada inicial
+    _updateBounds();
   }
 
   @override
@@ -46,9 +46,10 @@ class _OffScreenMarkersState extends State<OffScreenMarkers> {
     super.dispose();
   }
 
-  // AQUÍ VA EL CAMBIO: Usamos los límites reales de Google Maps de forma ultra-rápida
   Future<void> _updateBounds() async {
-    if (widget.mapController == null) return;
+    if (widget.mapController == null) {
+      return;
+    }
     try {
       final bounds = await widget.mapController!.getVisibleRegion();
       if (mounted) {
@@ -57,7 +58,7 @@ class _OffScreenMarkersState extends State<OffScreenMarkers> {
         });
       }
     } catch (e) {
-      // Ignorar errores en movimientos bruscos
+      // Ignorar errores de movimiento rápido de la cámara
     }
   }
 
@@ -72,8 +73,9 @@ class _OffScreenMarkersState extends State<OffScreenMarkers> {
         return ValueListenableBuilder<CameraPosition?>(
           valueListenable: widget.cameraNotifier,
           builder: (context, camera, _) {
-            // Esperamos a que los límites estén calculados
-            if (camera == null || widget.mapController == null || _bounds == null) {
+            if (camera == null ||
+                widget.mapController == null ||
+                _bounds == null) {
               return const SizedBox.shrink();
             }
 
@@ -81,24 +83,31 @@ class _OffScreenMarkersState extends State<OffScreenMarkers> {
             final height = constraints.maxHeight;
             final center = Offset(width / 2, height / 2);
 
-            final sideMargin = 24.0;
-            final bottomMargin = 130.0;
-            final minX = sideMargin;
-            final maxX = width - sideMargin;
-            final minY = widget.topMargin;
-            final maxY = height - bottomMargin;
+            // ==========================================
+            // GEOMETRÍA DEL PERÍMETRO DE COLISIÓN
+            // ==========================================
+            final minX = 24.0;
+            final maxX = width - 24.0;
+            final minY =
+                widget.topMargin + (widget.topMargin > 160 ? 55.0 : 15.0);
+            final maxYBottom = height - 85.0;
+            final centerFabLeft = (width / 2) - 52.0;
+            final centerFabRight = (width / 2) + 52.0;
+            final maxYCenter = height - 130.0;
+            final cutX = width - 85.0;
+            final maxYRight = height - 230.0;
 
             return Stack(
               fit: StackFit.expand,
               children: widget.reportes.map((reporte) {
                 final pos = LatLng(reporte.latitud, reporte.longitud);
 
-                // 1. Verificación perfecta: Si está dentro de los límites de Google, NO dibujes el radar.
+                // Si está dentro de la vista normal de Google, no dibuja el radar
                 if (_bounds!.contains(pos)) {
-                  return const SizedBox.shrink(); 
+                  return const SizedBox.shrink();
                 }
 
-                // 2. Cálculo del Ángulo (Bearing)
+                // Cálculo del rumbo (bearing) verdadero (True North)
                 final centerLat = camera.target.latitude;
                 final centerLng = camera.target.longitude;
 
@@ -108,44 +117,131 @@ class _OffScreenMarkersState extends State<OffScreenMarkers> {
                 final lng2 = pos.longitude * math.pi / 180;
 
                 final dLng = lng2 - lng1;
-                final y = math.sin(dLng) * math.cos(lat2);
-                final x = math.cos(lat1) * math.sin(lat2) -
-                    math.sin(lat1) * math.cos(lat2) * math.cos(dLng);
-                final bearing = math.atan2(y, x);
 
-                final dx = math.sin(bearing);
-                final dy = -math.cos(bearing);
+                final y = math.sin(dLng) * math.cos(lat2);
+                final x =
+                    math.cos(lat1) * math.sin(lat2) -
+                    math.sin(lat1) * math.cos(lat2) * math.cos(dLng);
+
+                final bearingOriginal = math.atan2(y, x);
+
+                // NUEVO: Ajustamos el bearing restando la rotación actual de la cámara del mapa
+                final cameraBearingRad = camera.bearing * (math.pi / 180.0);
+                final screenAngle = bearingOriginal - cameraBearingRad;
+
+                // Calculamos el diferencial de eje visual en pantalla con el ángulo ajustado
+                final dx = math.sin(screenAngle);
+                final dy = -math.cos(screenAngle);
 
                 if (dx.abs() < 0.0001 && dy.abs() < 0.0001) {
                   return const SizedBox.shrink();
                 }
 
-                // 3. Intersección con los bordes
-                double t = double.infinity;
-                if (dx.abs() > 0.0001) {
-                  if (dx > 0) t = math.min(t, (maxX - center.dx) / dx);
-                  if (dx < 0) t = math.min(t, (minX - center.dx) / dx);
+                double minT = double.infinity;
+
+                // Función auxiliar que busca la intersección del rayo con los segmentos del polígono
+                void checkLine(double x1, double y1, double x2, double y2) {
+                  double tCandidate = double.infinity;
+
+                  if (y1 == y2) {
+                    // Evaluación Horizontal
+                    if (dy.abs() > 0.0001) {
+                      tCandidate = (y1 - center.dy) / dy;
+                      if (tCandidate > 0) {
+                        double intersectX = center.dx + tCandidate * dx;
+                        double minXBound = math.min(x1, x2);
+                        double maxXBound = math.max(x1, x2);
+                        if (intersectX >= minXBound - 0.1 &&
+                            intersectX <= maxXBound + 0.1) {
+                          if (tCandidate < minT) {
+                            minT = tCandidate;
+                          }
+                        }
+                      }
+                    }
+                  } else if (x1 == x2) {
+                    // Evaluación Vertical
+                    if (dx.abs() > 0.0001) {
+                      tCandidate = (x1 - center.dx) / dx;
+                      if (tCandidate > 0) {
+                        double intersectY = center.dy + tCandidate * dy;
+                        double minYBound = math.min(y1, y2);
+                        double maxYBound = math.max(y1, y2);
+                        if (intersectY >= minYBound - 0.1 &&
+                            intersectY <= maxYBound + 0.1) {
+                          if (tCandidate < minT) {
+                            minT = tCandidate;
+                          }
+                        }
+                      }
+                    }
+                  }
                 }
-                if (dy.abs() > 0.0001) {
-                  if (dy > 0) t = math.min(t, (maxY - center.dy) / dy);
-                  if (dy < 0) t = math.min(t, (minY - center.dy) / dy);
+
+                // Construcción y evaluación del perímetro de colisión envolvente:
+                checkLine(minX, minY, maxX, minY); // Borde Superior
+                checkLine(maxX, minY, maxX, maxYRight); // Borde Derecho Alto
+                checkLine(maxX, maxYRight, cutX, maxYRight); // Techo de botones
+                checkLine(
+                  cutX,
+                  maxYRight,
+                  cutX,
+                  maxYBottom,
+                ); // Muro lateral botones
+                checkLine(
+                  cutX,
+                  maxYBottom,
+                  centerFabRight,
+                  maxYBottom,
+                ); // Inferior der
+                checkLine(
+                  centerFabRight,
+                  maxYBottom,
+                  centerFabRight,
+                  maxYCenter,
+                ); // Muro der FAB
+                checkLine(
+                  centerFabRight,
+                  maxYCenter,
+                  centerFabLeft,
+                  maxYCenter,
+                ); // Techo FAB
+                checkLine(
+                  centerFabLeft,
+                  maxYCenter,
+                  centerFabLeft,
+                  maxYBottom,
+                ); // Muro izq FAB
+                checkLine(
+                  centerFabLeft,
+                  maxYBottom,
+                  minX,
+                  maxYBottom,
+                ); // Inferior izq
+                checkLine(minX, maxYBottom, minX, minY); // Borde Izquierdo
+
+                if (minT == double.infinity) {
+                  return const SizedBox.shrink();
                 }
 
-                if (t == double.infinity || t.isNaN) return const SizedBox.shrink();
+                // Coordenadas finales de la intersección
+                final indicatorX = center.dx + minT * dx;
+                final indicatorY = center.dy + minT * dy;
 
-                final indicatorX = center.dx + t * dx;
-                final indicatorY = center.dy + t * dy;
-
-                if (indicatorX.isNaN || indicatorY.isNaN) return const SizedBox.shrink();
+                if (indicatorX.isNaN || indicatorY.isNaN) {
+                  return const SizedBox.shrink();
+                }
 
                 final bool estaEnProceso =
-                    reporte.estado.toString().trim().toUpperCase() == 'EN_PROCESO';
+                    reporte.estado.toString().trim().toUpperCase() ==
+                    'EN_PROCESO';
 
                 return Positioned(
                   left: indicatorX - 18,
                   top: indicatorY - 18,
                   child: Transform.rotate(
-                    angle: bearing,
+                    angle:
+                        screenAngle, // Rota exactamente hacia la orilla de la pantalla
                     child: GestureDetector(
                       onTap: () {
                         widget.mapController!.animateCamera(
@@ -159,7 +255,9 @@ class _OffScreenMarkersState extends State<OffScreenMarkers> {
                           shape: BoxShape.circle,
                           boxShadow: [
                             BoxShadow(
-                              color: reporte.colorUrgencia.withValues(alpha: 0.6),
+                              color: reporte.colorUrgencia.withValues(
+                                alpha: 0.6,
+                              ),
                               blurRadius: 8,
                               spreadRadius: 2,
                             ),
@@ -167,7 +265,9 @@ class _OffScreenMarkersState extends State<OffScreenMarkers> {
                           border: Border.all(color: Colors.white, width: 2),
                         ),
                         child: Icon(
-                          estaEnProceso ? Icons.hourglass_top_rounded : Icons.arrow_upward_rounded,
+                          estaEnProceso
+                              ? Icons.hourglass_top_rounded
+                              : Icons.arrow_upward_rounded,
                           color: Colors.white,
                           size: 18,
                         ),

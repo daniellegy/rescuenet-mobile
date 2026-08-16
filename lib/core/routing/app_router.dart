@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+
 import 'main_layout.dart';
 import '../../features/auth/presentation/providers/auth_provider.dart';
 import '../../features/auth/presentation/screens/login_screen.dart';
@@ -11,7 +12,6 @@ import '../../features/reports/presentation/screens/create_report_screen.dart';
 import '../../features/history/presentation/screens/history_screen.dart';
 import '../../features/history/presentation/screens/report_detail_screen.dart';
 import '../../features/history/domain/models/report_model.dart';
-// Mantendremos esta importación porque la usaremos dentro de ReportsScreen pronto
 import '../../features/reports/presentation/screens/active_reports_screen.dart';
 import '../../features/settings/presentation/screens/settings_screen.dart';
 import '../../features/history/presentation/screens/search_radar.dart';
@@ -19,16 +19,16 @@ import '../../features/reports/presentation/screens/rescue_stepper_screen.dart';
 import '../../features/history/presentation/screens/user_info_screen.dart';
 import '../../features/messages/presentation/screens/inbox_screen.dart';
 import '../../features/community/presentation/screens/community_screen.dart';
-
-// AQUÍ VA EL CAMBIO: Importamos nuestro nuevo súper-modal de reportes
 import '../../features/reports/presentation/screens/reports_screen.dart';
+import '../../features/community/presentation/screens/institutions_screen.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
   final authStateNotifier = ValueNotifier<AuthState>(ref.read(authProvider));
+
   ref.listen<AuthState>(authProvider, (_, next) {
     authStateNotifier.value = next;
   });
-  
+
   return GoRouter(
     initialLocation: '/login',
     refreshListenable: authStateNotifier,
@@ -36,6 +36,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       final isLogged = authStateNotifier.value.isLogged;
       final isGoingToLogin = state.matchedLocation == '/login';
       final isGoingToRegister = state.matchedLocation == '/register';
+
       if (!isLogged && !isGoingToLogin && !isGoingToRegister) {
         return '/login';
       }
@@ -73,53 +74,27 @@ final routerProvider = Provider<GoRouter>((ref) {
             path: '/inbox',
             builder: (context, state) => const InboxScreen(),
           ),
+          GoRoute(
+            path: '/community',
+            builder: (context, state) => const CommunityScreen(),
+          ),
+          // CORRECCIÓN APLICADA AQUÍ: Se procesa el estado extra para enviarlo a ReportsScreen
+          GoRoute(
+            path: '/reports',
+            builder: (context, state) {
+              int initialIndex = 0;
+
+              if (state.extra != null) {
+                // Utilizando el marcador '?' recomendado en lugar de comprobaciones estrictas e implementando el bloque {}
+                final extraParams = state.extra as Map<String, dynamic>?;
+                initialIndex = extraParams?['initialIndex'] as int? ?? 0;
+              }
+
+              return ReportsScreen(initialIndex: initialIndex);
+            },
+          ),
         ],
       ),
-      
-      // MODAL: COMUNIDAD
-      GoRoute(
-        path: '/community',
-        pageBuilder: (context, state) {
-          return CustomTransitionPage(
-            key: state.pageKey,
-            opaque: false,
-            barrierDismissible: true,
-            barrierColor: Colors.black54,
-            transitionDuration: const Duration(milliseconds: 350),
-            child: const CommunityScreen(),
-            transitionsBuilder: (context, animation, secondaryAnimation, child) {
-              return SlideTransition(
-                position: Tween<Offset>(begin: const Offset(0, 1), end: Offset.zero)
-                    .animate(CurvedAnimation(parent: animation, curve: Curves.easeOutCubic)),
-                child: child,
-              );
-            },
-          );
-        },
-      ),
-
-      // AQUÍ VA EL CAMBIO: MODAL: REPORTES (Mismo efecto que Comunidad)
-      GoRoute(
-        path: '/reports',
-        pageBuilder: (context, state) {
-          return CustomTransitionPage(
-            key: state.pageKey,
-            opaque: false, 
-            barrierDismissible: true,
-            barrierColor: Colors.black54, 
-            transitionDuration: const Duration(milliseconds: 350),
-            child: const ReportsScreen(),
-            transitionsBuilder: (context, animation, secondaryAnimation, child) {
-              return SlideTransition(
-                position: Tween<Offset>(begin: const Offset(0, 1), end: Offset.zero)
-                    .animate(CurvedAnimation(parent: animation, curve: Curves.easeOutCubic)),
-                child: child,
-              );
-            },
-          );
-        },
-      ),
-
       GoRoute(
         path: '/report-detail',
         builder: (context, state) {
@@ -155,6 +130,10 @@ final routerProvider = Provider<GoRouter>((ref) {
           final reporteData = state.extra as ReportModel;
           return RescueStepperScreen(reporte: reporteData);
         },
+      ),
+      GoRoute(
+        path: '/institutions',
+        builder: (context, state) => const InstitutionsScreen(),
       ),
     ],
   );

@@ -4,6 +4,7 @@ import 'package:geocoding/geocoding.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
 import '../../domain/models/report_model.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../reports/data/report_repository.dart';
@@ -16,6 +17,7 @@ import '../../../reports/presentation/widgets/canal_chat_sheet.dart';
 
 class ReportDetailScreen extends ConsumerStatefulWidget {
   final ReportModel reporte;
+
   const ReportDetailScreen({super.key, required this.reporte});
 
   @override
@@ -79,11 +81,9 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
       final mensajes = await ref
           .read(reportRepositoryProvider)
           .obtenerMensajesCanal(widget.reporte.id);
-
       if (mensajes.isEmpty) {
         return false;
       }
-
       final ultimoId = mensajes.last['id'] as int;
       final prefs = await SharedPreferences.getInstance();
       final leidoId = prefs.getInt('canal_leido_${widget.reporte.id}') ?? 0;
@@ -139,7 +139,9 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
         );
       }
     } finally {
-      if (mounted) setState(() => _isLoading = false);
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 
@@ -164,6 +166,7 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
         ],
       ),
     );
+
     if (confirmar == true) {
       setState(() => _isLoading = true);
       try {
@@ -189,7 +192,9 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
           );
         }
       } finally {
-        if (mounted) setState(() => _isLoading = false);
+        if (mounted) {
+          setState(() => _isLoading = false);
+        }
       }
     }
   }
@@ -198,12 +203,15 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
     await showModalBottomSheet(
       context: context,
       isScrollControlled: true,
+      useRootNavigator: true, // Esto corrige superposiciones de NavigationBar
       builder: (ctx) => CanalChatSheet(
         reporteId: widget.reporte.id,
         onCanalCerrado: () => setState(() => _canalCerradoLocalmente = true),
       ),
     );
-    if (mounted) setState(() {});
+    if (mounted) {
+      setState(() {});
+    }
   }
 
   @override
@@ -211,8 +219,6 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
     final authState = ref.watch(authProvider);
     final esVoluntario = authState.role == AppRole.voluntario;
     final esMiRescate = widget.reporte.usuarioRescatistaId == authState.userId;
-
-    // Obtenemos si está en modo oscuro para adaptar los widgets
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     _reporteLocal ??= widget.reporte;
@@ -232,7 +238,9 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
     final estaEnProceso = reporteActual.estado == 'En_Proceso';
 
     List<String> photos = [];
-    if (reporteActual.fotoUrl != null) photos.add(reporteActual.fotoUrl!);
+    if (reporteActual.fotoUrl != null) {
+      photos.add(reporteActual.fotoUrl!);
+    }
     if (reporteActual.fotoEvidenciaUrl != null) {
       photos.add(reporteActual.fotoEvidenciaUrl!);
     }
@@ -240,7 +248,41 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Detalles de Emergencia'),
-        // Eliminado "backgroundColor: Colors.white" para que use el tema general dinámico
+        actions: [
+          if (reporteActual.canalComunicacionHabilitado &&
+              reporteActual.canalComunicacionEstado == 'activo' &&
+              !_canalCerradoLocalmente)
+            FutureBuilder<bool>(
+              future: _hayMensajesSinLeer(),
+              builder: (context, snapshot) {
+                final hayNuevos = snapshot.data ?? false;
+                return Stack(
+                  alignment: Alignment.center,
+                  clipBehavior: Clip.none,
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.chat_bubble_outline),
+                      tooltip: 'Canal de comunicación',
+                      onPressed: _abrirCanalComunicacion,
+                    ),
+                    if (hayNuevos)
+                      Positioned(
+                        top: 14,
+                        right: 14,
+                        child: Container(
+                          width: 10,
+                          height: 10,
+                          decoration: const BoxDecoration(
+                            color: Colors.red,
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                      ),
+                  ],
+                );
+              },
+            ),
+        ],
       ),
       body: SingleChildScrollView(
         child: Column(
@@ -337,7 +379,6 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
                   if (!estaNuevo) ...[
                     Card(
                       elevation: 0,
-                      // Color de fondo adaptativo
                       color: isDark
                           ? Colors.blueGrey.shade900.withValues(alpha: 0.5)
                           : Colors.blueGrey.shade50,
@@ -402,7 +443,6 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
                     const SizedBox(height: 16),
                   ],
                   Material(
-                    // Color del botón de mapa adaptativo
                     color: isDark
                         ? Colors.blue.shade900.withValues(alpha: 0.2)
                         : Colors.blue.shade50,
@@ -560,56 +600,6 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
                       style: const TextStyle(fontSize: 15, height: 1.5),
                     ),
                   ],
-                  if (reporteActual.canalComunicacionHabilitado &&
-                      reporteActual.canalComunicacionEstado == 'activo' &&
-                      !_canalCerradoLocalmente) ...[
-                    const SizedBox(height: 16),
-                    FutureBuilder<bool>(
-                      future: _hayMensajesSinLeer(),
-                      builder: (context, snapshot) {
-                        final hayNuevos = snapshot.data ?? false;
-                        return Stack(
-                          clipBehavior: Clip.none,
-                          children: [
-                            FilledButton.icon(
-                              onPressed: _abrirCanalComunicacion,
-                              style: FilledButton.styleFrom(
-                                backgroundColor: Colors.green.shade700,
-                                padding: const EdgeInsets.symmetric(
-                                  vertical: 16,
-                                ),
-                                minimumSize: const Size(double.infinity, 50),
-                              ),
-                              icon: const Icon(
-                                Icons.chat_bubble_outline,
-                                color: Colors.white,
-                              ),
-                              label: const Text(
-                                'Canal de comunicación',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  color: Colors.white,
-                                ),
-                              ),
-                            ),
-                            if (hayNuevos)
-                              Positioned(
-                                top: -4,
-                                right: 12,
-                                child: Container(
-                                  width: 14,
-                                  height: 14,
-                                  decoration: const BoxDecoration(
-                                    color: Colors.red,
-                                    shape: BoxShape.circle,
-                                  ),
-                                ),
-                              ),
-                          ],
-                        );
-                      },
-                    ),
-                  ],
                   if (!reporteActual.canalComunicacionHabilitado &&
                       esReportador &&
                       reporteActual.estado != 'Resuelto' &&
@@ -686,8 +676,7 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
                       ),
                     ),
                   ],
-                  if (esVoluntario &&
-                      (estaNuevo || (estaEnProceso && esMiRescate))) ...[
+                  if (esVoluntario && estaNuevo) ...[
                     const SizedBox(height: 24),
                     FilledButton.icon(
                       onPressed: () =>
@@ -755,22 +744,36 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
           child: Row(
             children: [
               Expanded(
-                flex: 2,
+                flex: 1,
                 child: FilledButton(
                   onPressed: _isLoading ? null : _confirmarYAbortar,
                   style: FilledButton.styleFrom(
                     backgroundColor: Colors.red,
                     padding: const EdgeInsets.symmetric(vertical: 16),
                   ),
-                  child: const Text(
-                    'Abortar',
-                    style: TextStyle(fontSize: 16, color: Colors.white),
-                  ),
+                  child: const Icon(Icons.close, color: Colors.white),
                 ),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 8),
               Expanded(
-                flex: 3,
+                flex: 1,
+                child: FilledButton(
+                  onPressed: _isLoading
+                      ? null
+                      : () => context.push(
+                          '/search-radar',
+                          extra: widget.reporte,
+                        ),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: Colors.blue.shade700,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                  ),
+                  child: const Icon(Icons.radar_rounded, color: Colors.white),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                flex: 2,
                 child: FilledButton.icon(
                   onPressed: _isLoading
                       ? null
@@ -779,13 +782,13 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
                           extra: widget.reporte,
                         ),
                   style: FilledButton.styleFrom(
-                    backgroundColor: Colors.blue.shade700,
+                    backgroundColor: Colors.green.shade700,
                     padding: const EdgeInsets.symmetric(vertical: 16),
                   ),
                   icon: const Icon(Icons.linear_scale_rounded),
                   label: const Text(
-                    'Fases del Rescate',
-                    style: TextStyle(fontSize: 16, color: Colors.white),
+                    'Asistente',
+                    style: TextStyle(fontSize: 15, color: Colors.white),
                   ),
                 ),
               ),
@@ -827,9 +830,11 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8.0),
       child: InkWell(
-        onTap: userId != null
-            ? () => context.push('/user-info', extra: userId)
-            : null,
+        onTap: () {
+          if (userId != null) {
+            context.push('/user-info', extra: userId);
+          }
+        },
         borderRadius: BorderRadius.circular(8),
         child: Padding(
           padding: const EdgeInsets.symmetric(vertical: 4.0),

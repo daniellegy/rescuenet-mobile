@@ -23,8 +23,12 @@ class AuthNotifier extends Notifier<AuthState> {
   }
 
   AppRole _roleFromRolId(int rolId) {
-    if (rolId == 1) return AppRole.reportante;
-    if (rolId == 2) return AppRole.voluntario;
+    if (rolId == 1) {
+      return AppRole.reportante;
+    }
+    if (rolId == 2) {
+      return AppRole.voluntario;
+    }
     return AppRole.ninguno;
   }
 
@@ -48,10 +52,13 @@ class AuthNotifier extends Notifier<AuthState> {
       state = AuthState(isLogged: false, role: AppRole.ninguno, userId: null);
       return;
     }
+
     try {
       final payload = _decodeJwtPayload(token);
       final usuario = payload['usuario'];
-      if (usuario is! Map) throw const FormatException('Sin datos de usuario');
+      if (usuario is! Map) {
+        throw const FormatException('Sin datos de usuario');
+      }
 
       final userId = usuario['id'];
       final rolId = usuario['rol_id'];
@@ -88,8 +95,12 @@ class AuthNotifier extends Notifier<AuthState> {
     await _storage.write(key: 'jwt_token', value: token);
 
     AppRole userRole = AppRole.ninguno;
-    if (rolId == 1) userRole = AppRole.reportante;
-    if (rolId == 2) userRole = AppRole.voluntario;
+    if (rolId == 1) {
+      userRole = AppRole.reportante;
+    }
+    if (rolId == 2) {
+      userRole = AppRole.voluntario;
+    }
 
     state = AuthState(isLogged: true, role: userRole, userId: idUsuario);
   }
@@ -128,13 +139,13 @@ class AuthNotifier extends Notifier<AuthState> {
 
   Future<void> eliminarCuentaEnServidor() async {
     final token = await _storage.read(key: 'jwt_token');
-    if (token == null || token.isEmpty)
+    if (token == null || token.isEmpty) {
       throw Exception('No hay una sesión activa.');
+    }
     final repository = ref.read(authRepositoryProvider);
     await repository.eliminarCuenta(token);
   }
 
-  // MÉTODO NUEVO: Actualiza el estado local tras un cambio de rol en settings
   void updateLocalRole(int rolId) {
     state = AuthState(
       isLogged: state.isLogged,

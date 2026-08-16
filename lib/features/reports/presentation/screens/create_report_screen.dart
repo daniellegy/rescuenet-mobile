@@ -1,9 +1,14 @@
+// Archivo: features/reports/presentation/screens/create_report_screen.dart
+
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:geolocator/geolocator.dart';
+
 import '../../../../core/errors/app_exception.dart';
 import '../../../map/presentation/providers/map_markers_provider.dart';
+import '../../../settings/presentation/providers/settings_provider.dart';
 import '../providers/active_reports_provider.dart';
 import '../providers/create_report_provider.dart';
 import 'location_selector_screen.dart';
@@ -59,6 +64,7 @@ class CreateReportScreen extends ConsumerStatefulWidget {
   final double lat;
   final double lng;
   final String imagePath;
+
   const CreateReportScreen({
     super.key,
     required this.lat,
@@ -75,6 +81,7 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
   final _caracController = TextEditingController();
   final _referenciasController = TextEditingController();
   final _razaPersonalizadaController = TextEditingController();
+
   final Set<String> _interactedDropdowns = {};
 
   @override
@@ -117,6 +124,7 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
     Color iconColor = (isEmpty || isNeutral)
         ? Colors.grey.shade600
         : (isValid ? Colors.green.shade600 : Colors.red);
+
     return InputDecoration(
       labelText: labelText,
       hintText: hintText,
@@ -149,7 +157,34 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
       setState(() {});
       return;
     }
+
+    final state = ref.read(createReportProvider);
+    final perfil = ref.read(userProfileProvider).value;
+
+    final double maxDistance = (perfil?['radio_notificaciones'] ?? 30) * 1000.0;
+    final distance = Geolocator.distanceBetween(
+      widget.lat,
+      widget.lng,
+      state.lat,
+      state.lng,
+    );
+
+    if (distance > maxDistance) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'No puedes crear reportes a más de ${maxDistance / 1000} km de distancia. Límite de tu configuración.',
+            ),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+      }
+      return;
+    }
+
     final notifier = ref.read(createReportProvider.notifier);
+
     try {
       await notifier.submitReport(
         imagePath: widget.imagePath,
@@ -157,13 +192,17 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
         referencias: _referenciasController.text,
         razaPersonalizada: _razaPersonalizadaController.text,
       );
+
       if (mounted) {
         _caracController.clear();
         _referenciasController.clear();
         _razaPersonalizadaController.clear();
+
         ref.invalidate(reportesActivosMapaProvider);
         ref.invalidate(activeReportsProvider);
+
         context.pop();
+
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Reporte creado con éxito')),
         );
@@ -267,6 +306,7 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
       canPop: false,
       onPopInvokedWithResult: (didPop, result) async {
         if (didPop) return;
+
         final confirm = await showDialog<bool>(
           context: context,
           builder: (ctx) => AlertDialog(
@@ -287,6 +327,7 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
             ],
           ),
         );
+
         if (confirm == true && context.mounted) {
           Navigator.of(context).pop();
         }
@@ -409,9 +450,12 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
                                   )
                                   .toList(),
                           onChanged: (val) => notifier.updateField(raza: val),
-                          validator: (value) => value == null
-                              ? 'Por favor selecciona una opción'
-                              : null,
+                          validator: (value) {
+                            if (value == null) {
+                              return 'Por favor selecciona una opción';
+                            }
+                            return null;
+                          },
                         ),
                         const SizedBox(height: 16),
                         if (state.razaSeleccionada == 'Otro') ...[
@@ -635,9 +679,12 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
                             )
                             .toList(),
                         onChanged: (val) => notifier.updateField(color: val),
-                        validator: (value) => value == null
-                            ? 'Por favor selecciona un color'
-                            : null,
+                        validator: (value) {
+                          if (value == null) {
+                            return 'Por favor selecciona un color';
+                          }
+                          return null;
+                        },
                       ),
                       const SizedBox(height: 16),
                       DropdownButtonFormField<String>(

@@ -9,11 +9,8 @@ class AppException implements Exception {
   @override
   String toString() => message;
 
-  /// Factory para centralizar el mapeo de errores de red en un solo lugar.
-  /// Aplica el principio DRY (Don't Repeat Yourself).
   factory AppException.fromDioException(DioException e) {
-    // 1. Errores controlados por tu Backend Node.js (Vienen en e.response.data['error'])
-    if (e.response != null && e.response?.data is Map<String, dynamic>) {
+    if (e.response?.data is Map<String, dynamic>) {
       final data = e.response!.data as Map<String, dynamic>;
       if (data.containsKey('error') && data['error'] != null) {
         return AppException(
@@ -23,7 +20,6 @@ class AppException implements Exception {
       }
     }
 
-    // 2. Errores a nivel de red, timeouts o caídas de servidor
     switch (e.type) {
       case DioExceptionType.connectionTimeout:
       case DioExceptionType.sendTimeout:

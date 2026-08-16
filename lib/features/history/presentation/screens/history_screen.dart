@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+
 import '../../domain/models/report_model.dart';
 import '../providers/history_provider.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
@@ -22,9 +23,12 @@ class HistoryScreen extends ConsumerStatefulWidget {
 
 class _HistoryScreenState extends ConsumerState<HistoryScreen> {
   FiltroOrden _ordenActual = FiltroOrden.masRecientes;
+  String _filtroUrgencia = 'todos';
+  String _filtroEspecie = 'todos';
 
   List<ReportModel> _ordenarReportes(List<ReportModel> reportes) {
     List<ReportModel> lista = List.from(reportes);
+
     switch (_ordenActual) {
       case FiltroOrden.masRecientes:
         lista.sort(
@@ -85,6 +89,89 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
     return lista;
   }
 
+  void _mostrarMenuOpciones(
+    String titulo,
+    List<String> opciones,
+    Function(String) onSeleccionado,
+  ) {
+    showModalBottomSheet(
+      context: context,
+      useRootNavigator: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Text(
+                'Filtrar por $titulo',
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+            ...opciones.map(
+              (opc) => ListTile(
+                title: Text(opc.toUpperCase(), textAlign: TextAlign.center),
+                onTap: () {
+                  onSeleccionado(opc);
+                  Navigator.pop(ctx);
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFilterChip(String label, bool isSelected, VoidCallback onTap) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        margin: const EdgeInsets.only(right: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? Colors.blueAccent.withValues(alpha: 0.1)
+              : Colors.transparent,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: isSelected
+                ? Colors.blueAccent
+                : (isDark ? Colors.grey.shade600 : Colors.grey.shade400),
+          ),
+        ),
+        child: Row(
+          children: [
+            Text(
+              label,
+              style: TextStyle(
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                color: isSelected
+                    ? Colors.blueAccent
+                    : (isDark ? Colors.grey.shade300 : Colors.grey.shade600),
+              ),
+            ),
+            const SizedBox(width: 4),
+            Icon(
+              Icons.keyboard_arrow_down_rounded,
+              size: 16,
+              color: isSelected
+                  ? Colors.blueAccent
+                  : (isDark ? Colors.grey.shade300 : Colors.grey.shade600),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final authState = ref.watch(authProvider);
@@ -136,7 +223,26 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
             return const Center(child: Text('No tienes reportes registrados'));
           }
 
-          final historialOrdenado = _ordenarReportes(historialBruto);
+          final filtrados = historialBruto.where((r) {
+            if (_filtroUrgencia != 'todos' &&
+                r.urgencia.toLowerCase() != _filtroUrgencia) {
+              return false;
+            }
+            final esp = (r.especie ?? '').toLowerCase();
+            if (_filtroEspecie == 'perros' && !esp.contains('perro')) {
+              return false;
+            }
+            if (_filtroEspecie == 'gatos' && !esp.contains('gato')) {
+              return false;
+            }
+            if (_filtroEspecie == 'silvestres' &&
+                !(esp.contains('silvestre') || esp.contains('mapache'))) {
+              return false;
+            }
+            return true;
+          }).toList();
+
+          final historialOrdenado = _ordenarReportes(filtrados);
 
           final reportesActivos = historialOrdenado
               .where(
@@ -145,6 +251,7 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
                     r.estado != 'Rescatado',
               )
               .toList();
+
           final reportesConcluidos = historialOrdenado
               .where(
                 (r) =>
@@ -153,11 +260,43 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
               )
               .toList();
 
+          final filterBar = Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: 16.0,
+              vertical: 8.0,
+            ),
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              physics: const BouncingScrollPhysics(),
+              child: Row(
+                children: [
+                  _buildFilterChip('Urgencia', _filtroUrgencia != 'todos', () {
+                    _mostrarMenuOpciones('Urgencia', [
+                      'todos',
+                      'alta',
+                      'media',
+                      'baja',
+                    ], (val) => setState(() => _filtroUrgencia = val));
+                  }),
+                  _buildFilterChip('Especie', _filtroEspecie != 'todos', () {
+                    _mostrarMenuOpciones('Especie', [
+                      'todos',
+                      'perros',
+                      'gatos',
+                      'silvestres',
+                    ], (val) => setState(() => _filtroEspecie = val));
+                  }),
+                ],
+              ),
+            ),
+          );
+
           if (!esVoluntario) {
             return DefaultTabController(
               length: 2,
               child: Column(
                 children: [
+                  filterBar,
                   const TabBar(
                     labelColor: Colors.red,
                     unselectedLabelColor: Colors.grey,
@@ -207,6 +346,7 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
             length: 3,
             child: Column(
               children: [
+                filterBar,
                 const TabBar(
                   labelColor: Colors.red,
                   unselectedLabelColor: Colors.grey,
@@ -259,11 +399,13 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
   }
 
   Widget _buildListaReportes(List<ReportModel> lista) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return ListView.builder(
       itemCount: lista.length,
       itemBuilder: (context, index) {
         final reporte = lista[index];
         return Card(
+          color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
           margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           child: ListTile(
             leading: reporte.fotoUrl != null
