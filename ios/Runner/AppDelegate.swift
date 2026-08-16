@@ -11,7 +11,7 @@ import GoogleMaps
   ) -> Bool {
     
     // AQUÍ VA EL CAMBIO 2: Inicializamos el motor con tu llave antes de que Flutter construya la UI
-    GMSServices.provideAPIKey("AIzaSyAMvqpQ8QedNNSVrw4HQ9S0ss3EFU7rKkA")
+    GMSServices.provideAPIKey("AIzaSyAKAw5z3gmZaNK2h4P9exlBsDv7I1PbnP8")
     
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
   }
