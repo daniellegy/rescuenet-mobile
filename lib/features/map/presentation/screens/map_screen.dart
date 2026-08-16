@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:typed_data';
 import 'dart:ui' as ui;
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -26,6 +25,7 @@ class MapScreen extends ConsumerStatefulWidget {
 class _MapScreenState extends ConsumerState<MapScreen>
     with TickerProviderStateMixin {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+
   final ValueNotifier<LatLng?> _myPosition = ValueNotifier(null);
   final ValueNotifier<double> _myHeading = ValueNotifier(0.0);
   final ValueNotifier<bool> _seguirUsuario = ValueNotifier(true);
@@ -35,12 +35,15 @@ class _MapScreenState extends ConsumerState<MapScreen>
   LatLng? _initialPosition;
   GoogleMapController? _mapController;
   StreamSubscription<Position>? _positionStream;
+
   String _filtroUrgencia = 'todos';
   String _filtroEspecie = 'todos';
   double _filtroDistancia = 5.0;
+  String _ciudadSeleccionadaLabel = 'Buscar Ciudad o Región...';
 
   late AnimationController _holdController;
   Timer? _intentTimer;
+
   final Map<String, BitmapDescriptor> _customIcons = {};
   BitmapDescriptor? _userMarkerIcon;
 
@@ -83,12 +86,37 @@ class _MapScreenState extends ConsumerState<MapScreen>
     _mapController?.dispose();
     _holdController.dispose();
     _intentTimer?.cancel();
+
     _myPosition.dispose();
     _myHeading.dispose();
     _seguirUsuario.dispose();
     _holdPosition.dispose();
     _cameraPosition.dispose();
     super.dispose();
+  }
+
+  void _actualizarEtiquetaCiudadSegunUbicacion(LatLng pos) {
+    // Distancias a los centros de las ciudades para actualizar el buscador
+    final distPuebla = Geolocator.distanceBetween(
+      pos.latitude,
+      pos.longitude,
+      19.0414,
+      -98.2063,
+    );
+    final distMina = Geolocator.distanceBetween(
+      pos.latitude,
+      pos.longitude,
+      17.9895,
+      -94.5559,
+    );
+
+    if (distPuebla < 50000) {
+      setState(() => _ciudadSeleccionadaLabel = 'Puebla (Mi ubicación)');
+    } else if (distMina < 50000) {
+      setState(() => _ciudadSeleccionadaLabel = 'Minatitlán (Mi ubicación)');
+    } else {
+      setState(() => _ciudadSeleccionadaLabel = 'Ubicación actual');
+    }
   }
 
   Future<void> _generarTodosLosIconos() async {
@@ -100,7 +128,7 @@ class _MapScreenState extends ConsumerState<MapScreen>
     final emojis = {
       'perro': '🐶',
       'gato': '🐱',
-      'silvestre': '🦝',
+      'silvestre': '🦊',
       'default': '🐾',
     };
 
@@ -110,7 +138,6 @@ class _MapScreenState extends ConsumerState<MapScreen>
         _customIcons['${col.key}_${em.key}'] = icon;
       }
     }
-
     _userMarkerIcon = await _crearUserMarkerCanvas();
     if (mounted) {
       setState(() {});
@@ -170,7 +197,6 @@ class _MapScreenState extends ConsumerState<MapScreen>
       radius,
       shadowPaint,
     );
-
     canvas.drawCircle(const Offset(centerPoint, centerPoint), radius, paint);
 
     final Paint whitePaint = Paint()..color = Colors.white;
@@ -247,6 +273,7 @@ class _MapScreenState extends ConsumerState<MapScreen>
           _initialPosition = LatLng(initialPos.latitude, initialPos.longitude);
         });
         _myPosition.value = _initialPosition;
+        _actualizarEtiquetaCiudadSegunUbicacion(_initialPosition!);
       }
 
       _positionStream = locationService.getLiveLocationStream().listen((
@@ -280,9 +307,33 @@ class _MapScreenState extends ConsumerState<MapScreen>
       return;
     }
 
+    // APLICACIÓN DE REGLA: Bloquear si se crea a más de 100km
+    if (customPoint != null && _myPosition.value != null) {
+      final distance = Geolocator.distanceBetween(
+        _myPosition.value!.latitude,
+        _myPosition.value!.longitude,
+        customPoint.latitude,
+        customPoint.longitude,
+      );
+
+      if (distance > 100000) {
+        // 100 km en metros
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Estás muy lejos de esta ubicación para crear un reporte',
+            ),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+    }
+
     try {
       final cameraService = ref.read(cameraServiceProvider);
       final pickedFile = await cameraService.takePicture();
+
       if (pickedFile != null && mounted) {
         context.push(
           '/create-report',
@@ -315,47 +366,79 @@ class _MapScreenState extends ConsumerState<MapScreen>
   }
 
   void _mostrarBuscadorCiudades() {
-    final ciudades = {
-      'Puebla Centro': const LatLng(19.0414, -98.2063),
-      'Cholula': const LatLng(19.0605, -98.3047),
-      'Atlixco': const LatLng(18.9042, -98.4384),
-      'Tehuacán': const LatLng(18.4633, -97.3929),
-      'San Martín Texmelucan': const LatLng(19.2847, -98.4358),
+    final Map<String, Map<String, LatLng>> regionesPorCiudad = {
+      'Puebla': {
+        'Puebla Centro': const LatLng(19.0414, -98.2063),
+        'Cholula': const LatLng(19.0605, -98.3047),
+        'Atlixco': const LatLng(18.9042, -98.4384),
+      },
+      'Minatitlán': {
+        'Minatitlán Centro': const LatLng(17.9895, -94.5559),
+        'Cosoleacaque': const LatLng(17.9972, -94.6339),
+        'El Naranjito': const LatLng(18.0050, -94.5761),
+      },
     };
 
     showModalBottomSheet(
       context: context,
       useRootNavigator: true,
+      isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       builder: (ctx) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Padding(
-              padding: EdgeInsets.all(16.0),
-              child: Text(
-                'Buscar Ciudad o Región',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-              ),
-            ),
-            ...ciudades.entries.map(
-              (e) => ListTile(
-                leading: const Icon(
-                  Icons.location_city,
-                  color: Colors.blueAccent,
+        child: Padding(
+          padding: const EdgeInsets.only(bottom: 16.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Padding(
+                padding: EdgeInsets.all(16.0),
+                child: Text(
+                  'Buscar Ciudad o Región',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                 ),
-                title: Text(e.key),
-                onTap: () {
-                  Navigator.pop(ctx);
-                  _mapController?.animateCamera(
-                    CameraUpdate.newLatLngZoom(e.value, 13),
-                  );
-                },
               ),
-            ),
-          ],
+              Flexible(
+                child: SingleChildScrollView(
+                  child: Column(
+                    children: regionesPorCiudad.entries.map((ciudad) {
+                      return ExpansionTile(
+                        leading: const Icon(
+                          Icons.location_city,
+                          color: Colors.blueAccent,
+                        ),
+                        title: Text(
+                          ciudad.key,
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        children: ciudad.value.entries.map((region) {
+                          return ListTile(
+                            contentPadding: const EdgeInsets.only(
+                              left: 40,
+                              right: 16,
+                            ),
+                            leading: const Icon(Icons.map, color: Colors.grey),
+                            title: Text(region.key),
+                            onTap: () {
+                              Navigator.pop(ctx);
+                              setState(() {
+                                _ciudadSeleccionadaLabel =
+                                    '${ciudad.key}, ${region.key}';
+                              });
+                              _mapController?.animateCamera(
+                                CameraUpdate.newLatLngZoom(region.value, 13),
+                              );
+                            },
+                          );
+                        }).toList(),
+                      );
+                    }).toList(),
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -468,7 +551,6 @@ class _MapScreenState extends ConsumerState<MapScreen>
     final marcadores = reportes.map((reporte) {
       final urgRaw = reporte.urgencia.toString().toLowerCase();
       final espRaw = (reporte.especie ?? '').toString().toLowerCase();
-
       String urgKey = 'alta';
       if (urgRaw == 'media') {
         urgKey = 'media';
@@ -526,6 +608,7 @@ class _MapScreenState extends ConsumerState<MapScreen>
   Widget build(BuildContext context) {
     final reportesAsync = ref.watch(reportesActivosMapaProvider);
     final miRescateAsync = ref.watch(miRescateActivoProvider);
+
     final bool hasActiveRescue = miRescateAsync.maybeWhen(
       data: (rescate) => rescate != null,
       orElse: () => false,
@@ -547,7 +630,6 @@ class _MapScreenState extends ConsumerState<MapScreen>
           reporte.urgencia.toLowerCase() == _filtroUrgencia;
       final especieReporte = (reporte.especie ?? '').toString().toLowerCase();
       bool pasaEspecie = false;
-
       if (_filtroEspecie == 'todos') {
         pasaEspecie = true;
       } else if (_filtroEspecie == 'perros' &&
@@ -611,7 +693,6 @@ class _MapScreenState extends ConsumerState<MapScreen>
                   children: [
                     RichText(
                       text: TextSpan(
-                        // Reutilizamos la fuente exacta de los títulos de las vistas
                         style:
                             Theme.of(context).appBarTheme.titleTextStyle
                                 ?.copyWith(fontSize: 28) ??
@@ -860,7 +941,9 @@ class _MapScreenState extends ConsumerState<MapScreen>
                               const SizedBox(width: 10),
                               Expanded(
                                 child: Text(
-                                  'Buscar Ciudad...',
+                                  _ciudadSeleccionadaLabel,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
                                   style: TextStyle(
                                     fontSize: 16,
                                     color: isDark
@@ -1040,6 +1123,9 @@ class _MapScreenState extends ConsumerState<MapScreen>
                       onPressed: () {
                         _seguirUsuario.value = true;
                         if (_myPosition.value != null) {
+                          _actualizarEtiquetaCiudadSegunUbicacion(
+                            _myPosition.value!,
+                          );
                           _mapController?.animateCamera(
                             CameraUpdate.newLatLngZoom(_myPosition.value!, 18),
                           );

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geocoding/geocoding.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -14,10 +15,10 @@ import '../../../reports/presentation/providers/my_active_rescue_provider.dart';
 import '../providers/history_provider.dart';
 import '../../../reports/presentation/providers/rescue_stepper_provider.dart';
 import '../../../reports/presentation/widgets/canal_chat_sheet.dart';
+import '../../../../core/services/location_service.dart';
 
 class ReportDetailScreen extends ConsumerStatefulWidget {
   final ReportModel reporte;
-
   const ReportDetailScreen({super.key, required this.reporte});
 
   @override
@@ -30,6 +31,7 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
   int _currentPhotoIndex = 0;
   bool _canalCerradoLocalmente = false;
   ReportModel? _reporteLocal;
+  Position? _userPos;
 
   Color _obtenerColorPorEstado(String estado) {
     switch (estado.toLowerCase()) {
@@ -49,31 +51,18 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
   void initState() {
     super.initState();
     _obtenerDireccionFisica();
+    _obtenerUbicacionUsuario();
   }
 
-  Future<void> _obtenerDireccionFisica() async {
+  Future<void> _obtenerUbicacionUsuario() async {
     try {
-      List<Placemark> placemarks = await placemarkFromCoordinates(
-        widget.reporte.latitud,
-        widget.reporte.longitud,
-      );
-      if (placemarks.isNotEmpty) {
-        Placemark place = placemarks.first;
-        if (mounted) {
-          setState(
-            () => _direccion =
-                '${place.street}, ${place.subLocality}, ${place.locality}',
-          );
-        }
-      }
-    } catch (e) {
+      final pos = await ref
+          .read(locationServiceProvider)
+          .getCurrentPosition(requestPermission: false);
       if (mounted) {
-        setState(
-          () => _direccion =
-              'Coordenadas: ${widget.reporte.latitud}, ${widget.reporte.longitud}',
-        );
+        setState(() => _userPos = pos);
       }
-    }
+    } catch (_) {}
   }
 
   Future<bool> _hayMensajesSinLeer() async {
@@ -113,6 +102,48 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
         );
       }
     }
+  }
+
+  Future<void> _intentarAceptar() async {
+    Position? currentPos = _userPos;
+
+    // Fallback rápido si el caché inicial falló
+    if (currentPos == null) {
+      setState(() => _isLoading = true);
+      try {
+        currentPos = await ref
+            .read(locationServiceProvider)
+            .getCurrentPosition(requestPermission: false);
+        _userPos = currentPos;
+      } catch (_) {}
+      setState(() => _isLoading = false);
+    }
+
+    if (currentPos != null) {
+      final distance = Geolocator.distanceBetween(
+        currentPos.latitude,
+        currentPos.longitude,
+        widget.reporte.latitud,
+        widget.reporte.longitud,
+      );
+
+      // Regla de negocio: Bloquear aceptación si estás a más de 100km (en otra ciudad)
+      if (distance > 100000) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                'Estás muy lejos de esta ciudad para aceptar el rescate.',
+              ),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+        return;
+      }
+    }
+
+    _ejecutarAceptar();
   }
 
   Future<void> _ejecutarAceptar() async {
@@ -166,7 +197,6 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
         ],
       ),
     );
-
     if (confirmar == true) {
       setState(() => _isLoading = true);
       try {
@@ -203,7 +233,7 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
     await showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      useRootNavigator: true, // Esto corrige superposiciones de NavigationBar
+      useRootNavigator: true,
       builder: (ctx) => CanalChatSheet(
         reporteId: widget.reporte.id,
         onCanalCerrado: () => setState(() => _canalCerradoLocalmente = true),
@@ -211,6 +241,31 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
     );
     if (mounted) {
       setState(() {});
+    }
+  }
+
+  Future<void> _obtenerDireccionFisica() async {
+    try {
+      List<Placemark> placemarks = await placemarkFromCoordinates(
+        widget.reporte.latitud,
+        widget.reporte.longitud,
+      );
+      if (placemarks.isNotEmpty) {
+        Placemark place = placemarks.first;
+        if (mounted) {
+          setState(
+            () => _direccion =
+                '${place.street}, ${place.subLocality}, ${place.locality}',
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(
+          () => _direccion =
+              'Coordenadas: ${widget.reporte.latitud}, ${widget.reporte.longitud}',
+        );
+      }
     }
   }
 
@@ -720,13 +775,12 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
     if (!esVoluntario) {
       return const SizedBox.shrink();
     }
-
     if (estaNuevo) {
       return SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(24.0),
           child: FilledButton(
-            onPressed: _isLoading ? null : _ejecutarAceptar,
+            onPressed: _isLoading ? null : _intentarAceptar,
             style: FilledButton.styleFrom(
               backgroundColor: Colors.green,
               padding: const EdgeInsets.symmetric(vertical: 16),
@@ -826,7 +880,6 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
     bool isRescatista = false,
   }) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-
     return Padding(
       padding: const EdgeInsets.only(bottom: 8.0),
       child: InkWell(
@@ -896,7 +949,6 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
     String value,
   ) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-
     return Padding(
       padding: const EdgeInsets.only(bottom: 8.0),
       child: Row(

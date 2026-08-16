@@ -81,10 +81,6 @@ class CommunityScreen extends StatelessWidget {
           style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 1.5),
         ),
         centerTitle: true,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => context.go('/map'),
-        ),
       ),
       body: SingleChildScrollView(
         physics: const BouncingScrollPhysics(),
