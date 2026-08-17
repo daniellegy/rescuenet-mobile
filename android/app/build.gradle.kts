@@ -5,6 +5,20 @@ plugins {
     id("com.google.gms.google-services")
 }
 
+import java.util.Base64
+
+val dartEnvironmentVariables = mutableMapOf<String, String>()
+if (project.hasProperty("dart-defines")) {
+    val dartDefines = project.property("dart-defines") as? String
+    dartDefines?.split(",")?.forEach { entry ->
+        val decoded = String(Base64.getDecoder().decode(entry), Charsets.UTF_8)
+        val pair = decoded.split("=", limit = 2)
+        if (pair.size == 2) {
+            dartEnvironmentVariables[pair[0]] = pair[1]
+        }
+    }
+}
+
 android {
     namespace = "mx.buap.rescuenet.rescuenet_mobile"
     compileSdk = flutter.compileSdkVersion
@@ -25,6 +39,8 @@ android {
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+
+        manifestPlaceholders["googleMapsApiKey"] = dartEnvironmentVariables["ANDROID_GOOGLE_MAPS_API_KEY"] ?: ""
     }
 
     buildTypes {

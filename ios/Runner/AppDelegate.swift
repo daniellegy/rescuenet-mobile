@@ -1,6 +1,5 @@
 import Flutter
 import UIKit
-// AQUÍ VA EL CAMBIO 1: Importamos la librería nativa de Google Maps
 import GoogleMaps
 
 @main
@@ -10,8 +9,9 @@ import GoogleMaps
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
   ) -> Bool {
     
-    // AQUÍ VA EL CAMBIO 2: Inicializamos el motor con tu llave antes de que Flutter construya la UI
-    GMSServices.provideAPIKey("AIzaSyAKAw5z3gmZaNK2h4P9exlBsDv7I1PbnP8")
+    let apiKey = Bundle.main.object(forInfoDictionaryKey: "GoogleMapsApiKey") as? String ?? ""
+
+    GMSServices.provideAPIKey(apiKey)
     
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
   }
