@@ -24,13 +24,37 @@ class MapBottomNavBar extends ConsumerWidget {
     Widget buildNavItem(
       String label,
       IconData iconData,
-      String path, {
-      VoidCallback? customAction,
-    }) {
+      String path,
+    ) {
       final color = getColor(path);
       return Expanded(
         child: GestureDetector(
-          onTap: customAction ?? () => context.go(path),
+          // AQUÍ VA LA MAGIA: Lógica de ruteo inteligente
+          onTap: () {
+            if (currentLocation == path) return; // Si ya estás en ese modal, ignóralo
+
+            // Detectamos si la app tiene un Súper-Modal abierto encima del mapa
+            final bool isInModal = currentLocation == '/reports' || currentLocation == '/community';
+
+            if (path == '/map') {
+              if (isInModal) {
+                // Si presionas el mapa y hay un modal, activa la animación de descenso nativa.
+                Navigator.maybePop(context);
+              } else {
+                context.go('/map');
+              }
+            } else if (path == '/reports' || path == '/community') {
+              if (isInModal) {
+                // Si pasas de Reportes a Comunidad, hace un cross-fade instantáneo (para no empalmar)
+                context.pushReplacement(path);
+              } else {
+                // Si vas del Mapa al Modal, lo empuja encima
+                context.push(path);
+              }
+            } else {
+              context.push(path);
+            }
+          },
           behavior: HitTestBehavior.opaque,
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -77,16 +101,26 @@ class MapBottomNavBar extends ConsumerWidget {
             buildNavItem('Reportes', Icons.pets_rounded, '/reports'),
             const SizedBox(width: 56),
             buildNavItem('Comunidad', Icons.people_alt_outlined, '/community'),
-            buildNavItem(
-              'Yo',
-              Icons.person_outline_rounded,
-              '/user-info',
-              customAction: () {
-                final userId = ref.read(authProvider).userId;
-                if (userId != null) {
-                  context.push('/user-info', extra: userId);
-                }
-              },
+            Expanded(
+              child: GestureDetector(
+                onTap: () {
+                  final userId = ref.read(authProvider).userId;
+                  if (userId != null) context.push('/user-info', extra: userId);
+                },
+                behavior: HitTestBehavior.opaque,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    if (photoUrl != null)
+                      CircleAvatar(radius: 11, backgroundImage: NetworkImage(photoUrl))
+                    else
+                      Icon(Icons.person_outline_rounded, color: getColor('/user-info'), size: 22),
+                    const SizedBox(height: 2),
+                    Text('Yo', style: TextStyle(color: getColor('/user-info'), fontSize: 9.5, fontWeight: FontWeight.w500)),
+                  ],
+                ),
+              ),
             ),
           ],
         ),

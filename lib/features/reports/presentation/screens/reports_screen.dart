@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -7,6 +8,10 @@ import '../../../history/domain/models/report_model.dart';
 import '../../../history/presentation/providers/history_provider.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../providers/active_reports_provider.dart';
+import 'package:rescuenet_mobile/features/map/presentation/widgets/map_bottom_nav_bar.dart';
+
+// AQUÍ VA EL CAMBIO 1: Importamos el servicio de cámara
+import '../../../../core/services/camera_service.dart';
 
 class ReportsScreen extends ConsumerStatefulWidget {
   final int initialIndex;
@@ -17,7 +22,7 @@ class ReportsScreen extends ConsumerStatefulWidget {
   ConsumerState<ReportsScreen> createState() => _ReportsScreenState();
 }
 
-class _ReportsScreenState extends ConsumerState<ReportsScreen> {
+class _ReportsScreenState extends ConsumerState<ReportsScreen> with SingleTickerProviderStateMixin {
   String _filtroUrgencia = 'todos';
   String _filtroEspecie = 'todos';
   double _filtroDistancia = 999;
@@ -27,10 +32,39 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
   bool _verMasRescates = false;
   bool _verMasConcluidos = false;
 
+  late AnimationController _slideController;
+  late Animation<Offset> _slideAnimation;
+
   @override
   void initState() {
     super.initState();
     _obtenerUbicacionUsuario();
+
+    _slideController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 350),
+    );
+    _slideAnimation = Tween<Offset>(
+      begin: const Offset(0, 1), 
+      end: Offset.zero, 
+    ).animate(CurvedAnimation(
+      parent: _slideController,
+      curve: Curves.easeOutCubic, 
+    ));
+
+    _slideController.forward();
+  }
+
+  @override
+  void dispose() {
+    _slideController.dispose();
+    super.dispose();
+  }
+
+  void _cerrarPantalla() {
+    _slideController.reverse().then((_) {
+      if (mounted) context.pop();
+    });
   }
 
   Future<void> _obtenerUbicacionUsuario() async {
@@ -44,41 +78,185 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
     } catch (_) {}
   }
 
+  // AQUÍ VA EL CAMBIO 2: Replicamos la función de tomar foto del mapa
+  Future<void> _takePhotoAndNavigate() async {
+    try {
+      final cameraService = ref.read(cameraServiceProvider);
+      final pickedFile = await cameraService.takePicture();
+
+      if (pickedFile != null && mounted) {
+        context.push(
+          '/create-report',
+          extra: {
+            'lat': _userPosition?.latitude ?? 0.0,
+            'lng': _userPosition?.longitude ?? 0.0,
+            'imagePath': pickedFile.path,
+          },
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.toString().replaceAll('Exception: ', ''))),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text(
-          'Reportes',
-          style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 1.5),
+    final screenHeight = MediaQuery.sizeOf(context).height;
+
+    return PopScope(
+      canPop: false, 
+      onPopInvoked: (didPop) {
+        if (!didPop) _cerrarPantalla();
+      },
+      child: Scaffold(
+        backgroundColor: Colors.transparent, // Permite ver el mapa detrás
+        
+        // AQUÍ VA EL CAMBIO 3: Anclamos la Barra y la Cámara NATIVAMENTE al Scaffold
+        extendBody: true, // Esto hace que el fondo oscuro pase por detrás de la barra
+        floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
+        floatingActionButton: FloatingActionButton(
+          heroTag: 'camera_reports_fab', // Evita conflictos de hero tags con la principal
+          backgroundColor: Colors.redAccent,
+          elevation: 6,
+          shape: const CircleBorder(),
+          onPressed: _takePhotoAndNavigate,
+          child: const Icon(Icons.camera_alt_rounded, color: Colors.white, size: 28),
         ),
-        centerTitle: true,
-      ),
-      body: DefaultTabController(
-        // SOLUCIÓN: Agregando esta línea forzamos a redibujar el índice
-        key: ValueKey(widget.initialIndex),
-        length: 2,
-        initialIndex: widget.initialIndex,
-        child: Column(
+        bottomNavigationBar: const MapBottomNavBar(),
+
+        body: Stack(
           children: [
-            const TabBar(
-              indicatorColor: Colors.blueAccent,
-              labelColor: Colors.blueAccent,
-              unselectedLabelColor: Colors.grey,
-              labelStyle: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-              tabs: [
-                Tab(text: 'REPORTES ACTIVOS'),
-                Tab(text: 'HISTORIAL'),
-              ],
+            // Fondo oscuro semitransparente
+            Positioned.fill(
+              child: AnimatedBuilder(
+                animation: _slideController,
+                builder: (context, child) => GestureDetector(
+                  onTap: _cerrarPantalla,
+                  child: Container(
+                    color: Colors.black.withValues(alpha: 0.5 * _slideController.value),
+                  ),
+                ),
+              ),
             ),
-            Expanded(
-              child: TabBarView(
-                physics: const BouncingScrollPhysics(),
-                children: [
-                  _buildReportesLocalesTab(isDark),
-                  _buildMisReportesTab(isDark),
-                ],
+            
+            // Panel deslizable
+            Align(
+              alignment: Alignment.bottomCenter,
+              child: SlideTransition(
+                position: _slideAnimation,
+                child: GestureDetector(
+                  onVerticalDragUpdate: (details) {
+                    double dy = details.primaryDelta! / screenHeight;
+                    _slideController.value -= dy;
+                  },
+                  onVerticalDragEnd: (details) {
+                    if (_slideController.value < 0.75 || details.primaryVelocity! > 300) {
+                      _cerrarPantalla();
+                    } else {
+                      _slideController.forward(); 
+                    }
+                  },
+                  child: Container(
+                    height: screenHeight * 0.95, 
+                    padding: const EdgeInsets.only(bottom: 70), // Margen para protegerse de la navbar
+                    decoration: BoxDecoration(
+                      color: isDark ? const Color(0xFF1A1A1A) : const Color(0xFFF8F9FA),
+                      borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.4),
+                          blurRadius: 25,
+                          offset: const Offset(0, -5),
+                        )
+                      ],
+                    ),
+                    child: Column(
+                      children: [
+                        // HEADER Y LÍNEA DE ARRASTRE
+                        Padding(
+                          padding: const EdgeInsets.only(top: 12.0, bottom: 8.0, left: 16.0, right: 16.0),
+                          child: Column(
+                            children: [
+                              Container(
+                                width: 44,
+                                height: 5,
+                                decoration: BoxDecoration(
+                                  color: Colors.grey.withValues(alpha: 0.4),
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                              ),
+                              const SizedBox(height: 12),
+                              Stack(
+                                alignment: Alignment.center,
+                                children: [
+                                  const Align(
+                                    alignment: Alignment.center,
+                                    child: Text(
+                                      'REPORTES',
+                                      style: TextStyle(
+                                        fontFamily: 'Archivo Black',
+                                        fontSize: 22,
+                                        fontWeight: FontWeight.w900,
+                                        letterSpacing: 1.5,
+                                      ),
+                                    ),
+                                  ),
+                                  Align(
+                                    alignment: Alignment.centerRight,
+                                    child: IconButton(
+                                      icon: const Icon(Icons.close_rounded),
+                                      style: IconButton.styleFrom(
+                                        backgroundColor: Colors.grey.withValues(alpha: 0.1),
+                                      ),
+                                      onPressed: _cerrarPantalla,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+
+                        // CONTENIDO Y PESTAÑAS
+                        Expanded(
+                          child: DefaultTabController(
+                            key: ValueKey(widget.initialIndex),
+                            length: 2,
+                            initialIndex: widget.initialIndex,
+                            child: Column(
+                              children: [
+                                const TabBar(
+                                  indicatorColor: Colors.blueAccent,
+                                  labelColor: Colors.blueAccent,
+                                  unselectedLabelColor: Colors.grey,
+                                  labelStyle: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                                  tabs: [
+                                    Tab(text: 'REPORTES LOCALES'),
+                                    Tab(text: 'MIS REPORTES'),
+                                  ],
+                                ),
+                                Expanded(
+                                  child: TabBarView(
+                                    physics: const BouncingScrollPhysics(),
+                                    children: [
+                                      _buildReportesLocalesTab(isDark),
+                                      _buildMisReportesTab(isDark),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
               ),
             ),
           ],
@@ -210,14 +388,12 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
             .where(
               (r) =>
                   r.usuarioRescatistaId == currentUserId &&
-                  r.estado == 'Rescatado',
+                  r.estado != 'Rescatado', 
             )
             .toList();
         final misCierres = reportes
             .where(
-              (r) =>
-                  r.usuarioReportadorId == currentUserId &&
-                  r.estado == 'Rescatado',
+              (r) => r.estado == 'Rescatado', 
             )
             .toList();
 
@@ -258,7 +434,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
         );
       },
       loading: () => const Center(child: CircularProgressIndicator()),
-      error: (e, _) => Center(child: Text('Error al cargar tu historial')),
+      error: (e, _) => const Center(child: Text('Error al cargar tu historial')),
     );
   }
 
@@ -293,10 +469,10 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                   ),
                   const SizedBox(width: 8),
                   Text(
-                    title,
+                    title.toUpperCase(),
                     style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
+                      fontFamily: 'Archivo Black',
+                      fontSize: 16,
                       color: isDark ? Colors.white : Colors.black87,
                     ),
                   ),
@@ -400,10 +576,10 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
             Padding(
               padding: const EdgeInsets.all(16),
               child: Text(
-                'Filtrar por $titulo',
+                'FILTRAR POR $titulo'.toUpperCase(),
                 style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
+                  fontFamily: 'Archivo Black',
+                  fontSize: 16,
                 ),
               ),
             ),

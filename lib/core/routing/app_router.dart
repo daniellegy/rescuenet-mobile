@@ -12,7 +12,6 @@ import '../../features/reports/presentation/screens/create_report_screen.dart';
 import '../../features/history/presentation/screens/history_screen.dart';
 import '../../features/history/presentation/screens/report_detail_screen.dart';
 import '../../features/history/domain/models/report_model.dart';
-import '../../features/reports/presentation/screens/active_reports_screen.dart';
 import '../../features/settings/presentation/screens/settings_screen.dart';
 import '../../features/history/presentation/screens/search_radar.dart';
 import '../../features/reports/presentation/screens/rescue_stepper_screen.dart';
@@ -21,6 +20,24 @@ import '../../features/messages/presentation/screens/inbox_screen.dart';
 import '../../features/community/presentation/screens/community_screen.dart';
 import '../../features/reports/presentation/screens/reports_screen.dart';
 import '../../features/community/presentation/screens/institutions_screen.dart';
+
+// AQUÍ VA EL CAMBIO 1: Creamos una clase de ruta 100% transparente
+// PageRouteBuilder con 'opaque: false' es la clave de oro para que Google Maps no muera.
+class TransparentRoute<T> extends Page<T> {
+  final Widget child;
+
+  const TransparentRoute({required this.child, super.key});
+
+  @override
+  Route<T> createRoute(BuildContext context) {
+    return PageRouteBuilder<T>(
+      settings: this,
+      opaque: false, // 🔴 ESTO ES LO QUE MANTIENE VIVO AL MAPA DE FONDO
+      barrierColor: Colors.transparent,
+      pageBuilder: (context, animation, secondaryAnimation) => child,
+    );
+  }
+}
 
 final routerProvider = Provider<GoRouter>((ref) {
   final authStateNotifier = ValueNotifier<AuthState>(ref.read(authProvider));
@@ -51,6 +68,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/register',
         builder: (context, state) => const RegisterScreen(),
       ),
+
       ShellRoute(
         builder: (context, state, child) => MainLayout(child: child),
         routes: [
@@ -76,25 +94,31 @@ final routerProvider = Provider<GoRouter>((ref) {
           ),
           GoRoute(
             path: '/community',
-            builder: (context, state) => const CommunityScreen(),
-          ),
-          // CORRECCIÓN APLICADA AQUÍ: Se procesa el estado extra para enviarlo a ReportsScreen
-          GoRoute(
-            path: '/reports',
-            builder: (context, state) {
-              int initialIndex = 0;
-
-              if (state.extra != null) {
-                // Utilizando el marcador '?' recomendado en lugar de comprobaciones estrictas e implementando el bloque {}
-                final extraParams = state.extra as Map<String, dynamic>?;
-                initialIndex = extraParams?['initialIndex'] as int? ?? 0;
-              }
-
-              return ReportsScreen(initialIndex: initialIndex);
-            },
+            pageBuilder: (context, state) => const TransparentRoute(
+              child: CommunityScreen(),
+            ),
           ),
         ],
       ),
+
+      // AQUÍ VA EL CAMBIO 2: Aplicamos la TransparentRoute
+      GoRoute(
+        path: '/reports',
+        pageBuilder: (context, state) {
+          int initialIndex = 0;
+
+          if (state.extra != null) {
+            final extraParams = state.extra as Map<String, dynamic>?;
+            initialIndex = extraParams?['initialIndex'] as int? ?? 0;
+          }
+
+          return TransparentRoute(
+            key: state.pageKey,
+            child: ReportsScreen(initialIndex: initialIndex),
+          );
+        },
+      ),
+
       GoRoute(
         path: '/report-detail',
         builder: (context, state) {

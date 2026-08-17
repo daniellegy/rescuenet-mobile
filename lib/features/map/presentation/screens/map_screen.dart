@@ -38,7 +38,10 @@ class _MapScreenState extends ConsumerState<MapScreen>
 
   String _filtroUrgencia = 'todos';
   String _filtroEspecie = 'todos';
-  double _filtroDistancia = 5.0;
+  
+  // Distancia predeterminada a "Todas" (999 km)
+  double _filtroDistancia = 999.0;
+  
   String _ciudadSeleccionadaLabel = 'Buscar Ciudad o Región...';
 
   late AnimationController _holdController;
@@ -46,6 +49,8 @@ class _MapScreenState extends ConsumerState<MapScreen>
 
   final Map<String, BitmapDescriptor> _customIcons = {};
   BitmapDescriptor? _userMarkerIcon;
+  
+  Brightness? _lastBrightness;
 
   final String _mapStyleLight = '''
     [{"featureType": "poi", "stylers": [{"visibility": "off"}]},
@@ -96,18 +101,11 @@ class _MapScreenState extends ConsumerState<MapScreen>
   }
 
   void _actualizarEtiquetaCiudadSegunUbicacion(LatLng pos) {
-    // Distancias a los centros de las ciudades para actualizar el buscador
     final distPuebla = Geolocator.distanceBetween(
-      pos.latitude,
-      pos.longitude,
-      19.0414,
-      -98.2063,
+      pos.latitude, pos.longitude, 19.0414, -98.2063,
     );
     final distMina = Geolocator.distanceBetween(
-      pos.latitude,
-      pos.longitude,
-      17.9895,
-      -94.5559,
+      pos.latitude, pos.longitude, 17.9895, -94.5559,
     );
 
     if (distPuebla < 50000) {
@@ -120,15 +118,16 @@ class _MapScreenState extends ConsumerState<MapScreen>
   }
 
   Future<void> _generarTodosLosIconos() async {
+    // AQUÍ VA EL CAMBIO 1: Nueva paleta de colores de intensidad máxima
     final colores = {
-      'alta': const Color(0xFFF52727),
-      'media': const Color(0xFFFFAC69),
-      'baja': Colors.amber,
+      'alta': const Color(0xFFD50000), // Rojo Intenso (Material Red 700)
+      'media': const Color(0xFFFF6D00), // Naranja Más Intenso
+      'baja': const Color(0xFFFFD600), // Amarillo Brillante
     };
     final emojis = {
       'perro': '🐶',
       'gato': '🐱',
-      'silvestre': '🦊',
+      'silvestre': '🦝', 
       'default': '🐾',
     };
 
@@ -197,6 +196,7 @@ class _MapScreenState extends ConsumerState<MapScreen>
       radius,
       shadowPaint,
     );
+    
     canvas.drawCircle(const Offset(centerPoint, centerPoint), radius, paint);
 
     final Paint whitePaint = Paint()..color = Colors.white;
@@ -307,7 +307,6 @@ class _MapScreenState extends ConsumerState<MapScreen>
       return;
     }
 
-    // APLICACIÓN DE REGLA: Bloquear si se crea a más de 100km
     if (customPoint != null && _myPosition.value != null) {
       final distance = Geolocator.distanceBetween(
         _myPosition.value!.latitude,
@@ -317,7 +316,6 @@ class _MapScreenState extends ConsumerState<MapScreen>
       );
 
       if (distance > 100000) {
-        // 100 km en metros
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text(
@@ -494,12 +492,15 @@ class _MapScreenState extends ConsumerState<MapScreen>
               Icon(icon, size: 14, color: textColor),
               const SizedBox(width: 4),
             ],
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
-                color: textColor,
+            Flexible(
+              child: Text(
+                label,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
+                  color: textColor,
+                ),
               ),
             ),
             const SizedBox(width: 2),
@@ -563,7 +564,7 @@ class _MapScreenState extends ConsumerState<MapScreen>
         espKey = 'perro';
       } else if (espRaw.contains('gato')) {
         espKey = 'gato';
-      } else if (espRaw.contains('silvestre') || espRaw.contains('mapache')) {
+      } else if (espRaw.contains('silvestre') || espRaw.contains('mapache') || espRaw.contains('tlacuache') || espRaw.contains('ave')) {
         espKey = 'silvestre';
       }
 
@@ -575,6 +576,8 @@ class _MapScreenState extends ConsumerState<MapScreen>
         position: LatLng(reporte.latitud, reporte.longitud),
         icon: icon,
         anchor: const Offset(0.5, 0.5),
+        // AQUÍ VA EL CAMBIO 2: zIndex a 10 para los reportes (Siempre quedan encima)
+        zIndex: 10,
         onTap: () {
           context.push('/report-detail', extra: reporte).then((_) {
             ref.invalidate(reportesActivosMapaProvider);
@@ -591,7 +594,8 @@ class _MapScreenState extends ConsumerState<MapScreen>
           position: _myPosition.value!,
           icon: _userMarkerIcon!,
           anchor: const Offset(0.5, 0.5),
-          zIndex: 999,
+          // AQUÍ VA EL CAMBIO 3: zIndex a 0 para tu foto de perfil (Queda por debajo de los reportes)
+          zIndex: 0, 
           onTap: () {
             final userId = ref.read(authProvider).userId;
             if (userId != null) {
@@ -615,7 +619,15 @@ class _MapScreenState extends ConsumerState<MapScreen>
     );
 
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    _mapController?.setMapStyle(isDark ? _mapStyleDark : _mapStyleLight);
+    
+    if (_lastBrightness != Theme.of(context).brightness) {
+      _lastBrightness = Theme.of(context).brightness;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          _mapController?.setMapStyle(isDark ? _mapStyleDark : _mapStyleLight);
+        }
+      });
+    }
 
     if (_initialPosition == null) {
       return const Scaffold(
@@ -639,7 +651,7 @@ class _MapScreenState extends ConsumerState<MapScreen>
         pasaEspecie = true;
       } else if (_filtroEspecie == 'silvestres' &&
           (especieReporte.contains('silvestre') ||
-              especieReporte.contains('mapache'))) {
+              especieReporte.contains('mapache') || especieReporte.contains('tlacuache') || especieReporte.contains('ave'))) {
         pasaEspecie = true;
       }
 
@@ -660,11 +672,11 @@ class _MapScreenState extends ConsumerState<MapScreen>
 
     Color? colorUrgencia;
     if (_filtroUrgencia == 'alta') {
-      colorUrgencia = const Color(0xFFF52727);
+      colorUrgencia = const Color(0xFFD50000); // Rojo intenso
     } else if (_filtroUrgencia == 'media') {
-      colorUrgencia = const Color(0xFFFFAC69);
+      colorUrgencia = const Color(0xFFFF6D00); // Naranja intenso
     } else if (_filtroUrgencia == 'baja') {
-      colorUrgencia = Colors.amber;
+      colorUrgencia = const Color(0xFFFFD600); // Amarillo puro
     }
 
     final reportesFiltrados = reportesAsync.maybeWhen(
@@ -785,61 +797,56 @@ class _MapScreenState extends ConsumerState<MapScreen>
             onPointerMove: _onPointerMove,
             onPointerUp: _onPointerUp,
             onPointerCancel: _onPointerUp,
-            child: ValueListenableBuilder<double>(
-              valueListenable: _myHeading,
-              builder: (context, heading, _) {
-                return GoogleMap(
-                  initialCameraPosition: CameraPosition(
-                    target: _initialPosition!,
-                    zoom: 18,
-                  ),
-                  myLocationEnabled: false,
-                  myLocationButtonEnabled: false,
-                  zoomControlsEnabled: false,
-                  mapToolbarEnabled: false,
-                  compassEnabled: false,
-                  markers: marcadores,
-                  cameraTargetBounds: CameraTargetBounds(
-                    LatLngBounds(
-                      southwest: const LatLng(14.5321, -118.3651),
-                      northeast: const LatLng(32.7187, -86.7125),
-                    ),
-                  ),
-                  minMaxZoomPreference: const MinMaxZoomPreference(4.5, 22.0),
-                  onMapCreated: (GoogleMapController controller) {
-                    _mapController = controller;
-                    _cameraPosition.value = CameraPosition(
-                      target: _initialPosition!,
-                      zoom: 18,
-                    );
-                    controller.setMapStyle(
-                      isDark ? _mapStyleDark : _mapStyleLight,
-                    );
-                  },
-                  onCameraMoveStarted: () {
-                    if (_seguirUsuario.value) {
-                      _seguirUsuario.value = false;
-                    }
-                  },
-                  onCameraMove: (position) {
-                    _cameraPosition.value = position;
-                  },
-                  onTap: (point) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text(
-                          'Mantén presionado para reportar una emergencia ahí',
-                        ),
-                        duration: Duration(seconds: 2),
-                        behavior: SnackBarBehavior.floating,
-                      ),
-                    );
-                  },
-                  onLongPress: (point) {
-                    _cancelPointer();
-                    _takePhotoAndNavigate(customPoint: point);
-                  },
+            child: GoogleMap(
+              initialCameraPosition: CameraPosition(
+                target: _initialPosition!,
+                zoom: 18,
+              ),
+              myLocationEnabled: false,
+              myLocationButtonEnabled: false,
+              zoomControlsEnabled: false,
+              mapToolbarEnabled: false,
+              compassEnabled: false,
+              markers: marcadores,
+              cameraTargetBounds: CameraTargetBounds(
+                LatLngBounds(
+                  southwest: const LatLng(14.5321, -118.3651),
+                  northeast: const LatLng(32.7187, -86.7125),
+                ),
+              ),
+              minMaxZoomPreference: const MinMaxZoomPreference(4.5, 22.0),
+              onMapCreated: (GoogleMapController controller) {
+                _mapController = controller;
+                _cameraPosition.value = CameraPosition(
+                  target: _initialPosition!,
+                  zoom: 18,
                 );
+                controller.setMapStyle(
+                  isDark ? _mapStyleDark : _mapStyleLight,
+                );
+              },
+              onCameraMoveStarted: () {
+                if (_seguirUsuario.value) {
+                  _seguirUsuario.value = false;
+                }
+              },
+              onCameraMove: (position) {
+                _cameraPosition.value = position;
+              },
+              onTap: (point) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text(
+                      'Mantén presionado para reportar una emergencia ahí',
+                    ),
+                    duration: Duration(seconds: 2),
+                    behavior: SnackBarBehavior.floating,
+                  ),
+                );
+              },
+              onLongPress: (point) {
+                _cancelPointer();
+                _takePhotoAndNavigate(customPoint: point);
               },
             ),
           ),
@@ -988,7 +995,7 @@ class _MapScreenState extends ConsumerState<MapScreen>
                             child: Text(
                               'Alta',
                               style: TextStyle(
-                                color: Colors.red,
+                                color: Color(0xFFD50000), // Rojo
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
@@ -998,7 +1005,7 @@ class _MapScreenState extends ConsumerState<MapScreen>
                             child: Text(
                               'Media',
                               style: TextStyle(
-                                color: Colors.orange,
+                                color: Color(0xFFFF6D00), // Naranja
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
@@ -1008,7 +1015,7 @@ class _MapScreenState extends ConsumerState<MapScreen>
                             child: Text(
                               'Baja',
                               style: TextStyle(
-                                color: Colors.amber,
+                                color: Color(0xFFFFD600), // Amarilla
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
