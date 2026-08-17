@@ -43,6 +43,8 @@
     <string>RescueNet necesita tu ubicación en todo momento para mantener el rastreo durante la emergencia y actualizar el mapa de rescates.</string>
     <key>NSPhotoLibraryUsageDescription</key>
     <string>RescueNet necesita acceso a la galería para adjuntar fotos al reporte.</string>
+    <key>GoogleMapsApiKey</key>
+<string>$(IOS_GOOGLE_MAPS_API_KEY)</string>
     <key>UIApplicationSceneManifest</key>
     <dict>
         <key>UIApplicationSupportsMultipleScenes</key>
