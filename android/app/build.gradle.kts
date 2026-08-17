@@ -5,14 +5,18 @@ plugins {
     id("com.google.gms.google-services")
 }
 
-def dartEnvironmentVariables = [:]
-if (project.hasProperty('dart-defines')) {
-    dartEnvironmentVariables = dartEnvironmentVariables + project.property('dart-defines')
-        .split(',')
-        .collectEntries { entry ->
-            def pair = new String(entry.decodeBase64(), 'UTF-8').split('=', 2)
-            [(pair.first()): pair.last()]
+import java.util.Base64
+
+val dartEnvironmentVariables = mutableMapOf<String, String>()
+if (project.hasProperty("dart-defines")) {
+    val dartDefines = project.property("dart-defines") as? String
+    dartDefines?.split(",")?.forEach { entry ->
+        val decoded = String(Base64.getDecoder().decode(entry), Charsets.UTF_8)
+        val pair = decoded.split("=", limit = 2)
+        if (pair.size == 2) {
+            dartEnvironmentVariables[pair[0]] = pair[1]
         }
+    }
 }
 
 android {
@@ -36,10 +40,7 @@ android {
         versionCode = flutter.versionCode
         versionName = flutter.versionName
 
-        manifestPlaceholders = [
-            // Extrae la variable, si no existe usa una cadena vacía por defecto
-            googleMapsApiKey: dartEnvironmentVariables.ANDROID_GOOGLE_MAPS_API_KEY ?: ""
-        ]
+        manifestPlaceholders["googleMapsApiKey"] = dartEnvironmentVariables["ANDROID_GOOGLE_MAPS_API_KEY"] ?: ""
     }
 
     buildTypes {
