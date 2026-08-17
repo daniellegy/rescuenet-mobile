@@ -98,25 +98,27 @@ final routerProvider = Provider<GoRouter>((ref) {
               child: CommunityScreen(),
             ),
           ),
+          // >>> CAMBIO 2: /reports se movió aquí adentro del ShellRoute
+          // (antes estaba como GoRoute suelto fuera del ShellRoute, por eso
+          // no compartía MainLayout/MapBottomNavBar con /map y /community).
+          GoRoute(
+            path: '/reports',
+            pageBuilder: (context, state) {
+              int initialIndex = 0;
+
+              if (state.extra != null) {
+                final extraParams = state.extra as Map<String, dynamic>?;
+                initialIndex = extraParams?['initialIndex'] as int? ?? 0;
+              }
+
+              return TransparentRoute(
+                key: state.pageKey,
+                child: ReportsScreen(initialIndex: initialIndex),
+              );
+            },
+          ),
+          // <<< FIN CAMBIO 2
         ],
-      ),
-
-      // AQUÍ VA EL CAMBIO 2: Aplicamos la TransparentRoute
-      GoRoute(
-        path: '/reports',
-        pageBuilder: (context, state) {
-          int initialIndex = 0;
-
-          if (state.extra != null) {
-            final extraParams = state.extra as Map<String, dynamic>?;
-            initialIndex = extraParams?['initialIndex'] as int? ?? 0;
-          }
-
-          return TransparentRoute(
-            key: state.pageKey,
-            child: ReportsScreen(initialIndex: initialIndex),
-          );
-        },
       ),
 
       GoRoute(

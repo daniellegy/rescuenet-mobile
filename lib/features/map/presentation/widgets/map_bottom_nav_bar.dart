@@ -21,6 +21,39 @@ class MapBottomNavBar extends ConsumerWidget {
       return isDark ? Colors.grey.shade400 : Colors.grey.shade700;
     }
 
+    // AQUÍ VA LA MAGIA MAESTRA: Navegación de Instancia Única
+    void _manejarNavegacion(String targetPath) {
+      if (currentLocation == targetPath) return; // Si ya estás ahí, ignóralo
+
+      // Lista de pantallas que funcionan como "Modales Transparentes" sobre el mapa
+      final bool currentlyInModal = currentLocation == '/reports' || 
+                                    currentLocation == '/community' || 
+                                    currentLocation == '/user-info';
+                                    
+      final bool targetIsModal = targetPath == '/reports' || 
+                                 targetPath == '/community' || 
+                                 targetPath == '/user-info';
+
+      if (targetPath == '/map') {
+        if (currentlyInModal) {
+          // Destruye el modal suavemente y regresa al cascarón del mapa
+          context.pop(); 
+        } else {
+          context.go('/map');
+        }
+      } else if (targetIsModal) {
+        if (currentlyInModal) {
+          // Si cambias entre modales (Ej. de Reportes a Perfil), REEMPLAZA para no apilarlos al infinito
+          context.pushReplacement(targetPath, extra: targetPath == '/user-info' ? ref.read(authProvider).userId : null);
+        } else {
+          // Si vienes del mapa limpio, APILA el modal por primera vez
+          context.push(targetPath, extra: targetPath == '/user-info' ? ref.read(authProvider).userId : null);
+        }
+      } else {
+        context.push(targetPath);
+      }
+    }
+
     Widget buildNavItem(
       String label,
       IconData iconData,
@@ -29,32 +62,7 @@ class MapBottomNavBar extends ConsumerWidget {
       final color = getColor(path);
       return Expanded(
         child: GestureDetector(
-          // AQUÍ VA LA MAGIA: Lógica de ruteo inteligente
-          onTap: () {
-            if (currentLocation == path) return; // Si ya estás en ese modal, ignóralo
-
-            // Detectamos si la app tiene un Súper-Modal abierto encima del mapa
-            final bool isInModal = currentLocation == '/reports' || currentLocation == '/community';
-
-            if (path == '/map') {
-              if (isInModal) {
-                // Si presionas el mapa y hay un modal, activa la animación de descenso nativa.
-                Navigator.maybePop(context);
-              } else {
-                context.go('/map');
-              }
-            } else if (path == '/reports' || path == '/community') {
-              if (isInModal) {
-                // Si pasas de Reportes a Comunidad, hace un cross-fade instantáneo (para no empalmar)
-                context.pushReplacement(path);
-              } else {
-                // Si vas del Mapa al Modal, lo empuja encima
-                context.push(path);
-              }
-            } else {
-              context.push(path);
-            }
-          },
+          onTap: () => _manejarNavegacion(path),
           behavior: HitTestBehavior.opaque,
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -99,29 +107,9 @@ class MapBottomNavBar extends ConsumerWidget {
           children: [
             buildNavItem('Mapa', Icons.map_rounded, '/map'),
             buildNavItem('Reportes', Icons.pets_rounded, '/reports'),
-            const SizedBox(width: 56),
+            const SizedBox(width: 56), // Espacio para la cámara flotante
             buildNavItem('Comunidad', Icons.people_alt_outlined, '/community'),
-            Expanded(
-              child: GestureDetector(
-                onTap: () {
-                  final userId = ref.read(authProvider).userId;
-                  if (userId != null) context.push('/user-info', extra: userId);
-                },
-                behavior: HitTestBehavior.opaque,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    if (photoUrl != null)
-                      CircleAvatar(radius: 11, backgroundImage: NetworkImage(photoUrl))
-                    else
-                      Icon(Icons.person_outline_rounded, color: getColor('/user-info'), size: 22),
-                    const SizedBox(height: 2),
-                    Text('Yo', style: TextStyle(color: getColor('/user-info'), fontSize: 9.5, fontWeight: FontWeight.w500)),
-                  ],
-                ),
-              ),
-            ),
+            buildNavItem('Yo', Icons.person_outline_rounded, '/user-info'),
           ],
         ),
       ),

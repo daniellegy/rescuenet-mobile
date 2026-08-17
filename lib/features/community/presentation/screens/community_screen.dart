@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-// AQUÍ VA EL CAMBIO 1: Importamos url_launcher para abrir Google Maps real
 import 'package:url_launcher/url_launcher.dart';
 
 class CommunityScreen extends ConsumerStatefulWidget {
@@ -47,7 +46,6 @@ class _CommunityScreenState extends ConsumerState<CommunityScreen> with SingleTi
     });
   }
 
-  // AQUÍ VA EL CAMBIO 2: Función para abrir Google Maps con la dirección
   Future<void> _abrirEnGoogleMaps(String titulo, String ubicacion) async {
     final query = Uri.encodeComponent('$titulo, $ubicacion');
     final url = Uri.parse('https://www.google.com/maps/search/?api=1&query=$query');
@@ -67,6 +65,10 @@ class _CommunityScreenState extends ConsumerState<CommunityScreen> with SingleTi
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final screenHeight = MediaQuery.sizeOf(context).height;
+
+    // AQUÍ VA EL CAMBIO: Eliminamos cálculos rígidos de altura del modal
+    // Solo necesitamos saber el offset superior seguro.
+    final double topOffset = MediaQuery.of(context).padding.top + 20;
 
     final veterinarias = [
       {
@@ -154,13 +156,10 @@ class _CommunityScreenState extends ConsumerState<CommunityScreen> with SingleTi
       child: Scaffold(
         backgroundColor: Colors.transparent, 
         
-        // AQUÍ VA EL CAMBIO 3: Eliminamos la NavBar y FAB duplicados del Scaffold.
-        // Ahora el modal simplemente dejará el espacio inferior libre.
         body: Stack(
           children: [
-            // Área oscura que no tapa los 85px de abajo
-            Positioned(
-              top: 0, left: 0, right: 0, bottom: 85, 
+            // Fondo oscuro protector, sin cortes
+            Positioned.fill(
               child: AnimatedBuilder(
                 animation: _slideController,
                 builder: (context, child) => GestureDetector(
@@ -172,10 +171,12 @@ class _CommunityScreenState extends ConsumerState<CommunityScreen> with SingleTi
               ),
             ),
             
-            // Modal que emerge respetando la barra inferior original
+            // Modal Cristal, ahora abarca hasta abajo libremente
             Positioned(
-              top: MediaQuery.of(context).padding.top + 20, 
-              left: 0, right: 0, bottom: 85, 
+              top: topOffset, 
+              left: 0, 
+              right: 0, 
+              bottom: 0, // Se estira hasta abajo para no cortar
               child: Align(
                 alignment: Alignment.bottomCenter,
                 child: SlideTransition(
@@ -253,7 +254,9 @@ class _CommunityScreenState extends ConsumerState<CommunityScreen> with SingleTi
                           Expanded(
                             child: SingleChildScrollView(
                               physics: const BouncingScrollPhysics(),
-                              padding: const EdgeInsets.only(bottom: 20, top: 10),
+                              // AQUÍ VA EL CAMBIO: El padding bottom lo lleva el SCROLL para protegerse de la Navbar, 
+                              // pero el contenedor en sí no está cortado.
+                              padding: EdgeInsets.only(bottom: 90 + MediaQuery.of(context).padding.bottom, top: 10),
                               child: Column(
                                 children: [
                                   if (_seccionExpandida == null || _seccionExpandida == 'veterinarias')
@@ -536,7 +539,6 @@ class _CommunityScreenState extends ConsumerState<CommunityScreen> with SingleTi
               ),
             ),
             
-            // AQUÍ VA EL CAMBIO 4: Botón interactivo que lanza Maps real
             IconButton(
               icon: const Icon(Icons.map_rounded, color: Colors.blueAccent, size: 28),
               style: IconButton.styleFrom(

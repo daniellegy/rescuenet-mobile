@@ -8,10 +8,12 @@ import '../../../history/domain/models/report_model.dart';
 import '../../../history/presentation/providers/history_provider.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../providers/active_reports_provider.dart';
-import 'package:rescuenet_mobile/features/map/presentation/widgets/map_bottom_nav_bar.dart';
+// >>> CAMBIO 1: se eliminó el import de MapBottomNavBar (ya no se usa aquí,
+// ahora la barra vive solo en MainLayout).
+// import 'package:rescuenet_mobile/features/map/presentation/widgets/map_bottom_nav_bar.dart';
 
-// AQUÍ VA EL CAMBIO 1: Importamos el servicio de cámara
-import '../../../../core/services/camera_service.dart';
+// >>> CAMBIO 2: se eliminó el import de camera_service.dart (ya no se usa aquí).
+// import '../../../../core/services/camera_service.dart';
 
 class ReportsScreen extends ConsumerStatefulWidget {
   final int initialIndex;
@@ -78,30 +80,8 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> with SingleTicker
     } catch (_) {}
   }
 
-  // AQUÍ VA EL CAMBIO 2: Replicamos la función de tomar foto del mapa
-  Future<void> _takePhotoAndNavigate() async {
-    try {
-      final cameraService = ref.read(cameraServiceProvider);
-      final pickedFile = await cameraService.takePicture();
-
-      if (pickedFile != null && mounted) {
-        context.push(
-          '/create-report',
-          extra: {
-            'lat': _userPosition?.latitude ?? 0.0,
-            'lng': _userPosition?.longitude ?? 0.0,
-            'imagePath': pickedFile.path,
-          },
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.toString().replaceAll('Exception: ', ''))),
-        );
-      }
-    }
-  }
+  // >>> CAMBIO 3: se eliminó por completo el método _takePhotoAndNavigate()
+  // (ya nadie lo llama porque se quitó el FAB duplicado de esta pantalla).
 
   @override
   Widget build(BuildContext context) {
@@ -113,23 +93,14 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> with SingleTicker
       onPopInvoked: (didPop) {
         if (!didPop) _cerrarPantalla();
       },
-      child: Scaffold(
-        backgroundColor: Colors.transparent, // Permite ver el mapa detrás
-        
-        // AQUÍ VA EL CAMBIO 3: Anclamos la Barra y la Cámara NATIVAMENTE al Scaffold
-        extendBody: true, // Esto hace que el fondo oscuro pase por detrás de la barra
-        floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
-        floatingActionButton: FloatingActionButton(
-          heroTag: 'camera_reports_fab', // Evita conflictos de hero tags con la principal
-          backgroundColor: Colors.redAccent,
-          elevation: 6,
-          shape: const CircleBorder(),
-          onPressed: _takePhotoAndNavigate,
-          child: const Icon(Icons.camera_alt_rounded, color: Colors.white, size: 28),
-        ),
-        bottomNavigationBar: const MapBottomNavBar(),
-
-        body: Stack(
+      // >>> CAMBIO 4: Scaffold -> Material.
+      // Antes este Scaffold traía su propio extendBody, floatingActionButton
+      // (FAB de cámara con heroTag 'camera_reports_fab') y
+      // bottomNavigationBar: MapBottomNavBar(), duplicando lo que ya pone
+      // MainLayout por debajo. Ahora solo es un contenedor transparente.
+      child: Material(
+        color: Colors.transparent, // Permite ver el mapa detrás
+        child: Stack(
           children: [
             // Fondo oscuro semitransparente
             Positioned.fill(
