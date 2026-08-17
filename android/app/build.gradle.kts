@@ -35,6 +35,11 @@ android {
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+
+        manifestPlaceholders = [
+            // Extrae la variable, si no existe usa una cadena vacía por defecto
+            googleMapsApiKey: dartEnvironmentVariables.ANDROID_GOOGLE_MAPS_API_KEY ?: ""
+        ]
     }
 
     buildTypes {
