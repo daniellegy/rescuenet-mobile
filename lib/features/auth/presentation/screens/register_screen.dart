@@ -148,46 +148,68 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   }
 
   Future<void> _ejecutarRegistro() async {
-    if (_formKey.currentState?.validate() == true) {
-      if (_selectedRole == 'Voluntario') {
-        final acepto = await _mostrarManifiestoVoluntario();
-        if (!acepto) {
-          return;
-        }
+    // Si la validación falla, lanzamos el aviso y salimos temprano (Early Return)
+    if (_formKey.currentState?.validate() != true) {
+      setState(() {});
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Row(
+              children: [
+                Icon(Icons.warning_amber_rounded, color: Colors.white),
+                SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    'Por favor, completa correctamente todos los campos obligatorios.',
+                  ),
+                ),
+              ],
+            ),
+            backgroundColor: Colors.redAccent,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+      return;
+    }
 
-        try {
-          await FirebaseMessaging.instance.requestPermission(
-            alert: true,
-            badge: true,
-            sound: true,
-          );
-        } catch (e) {
-          debugPrint('Error al solicitar permisos FCM en registro: $e');
-        }
+    // Si llega aquí, es porque el formulario es válido
+    if (_selectedRole == 'Voluntario') {
+      final acepto = await _mostrarManifiestoVoluntario();
+      if (!acepto) {
+        return;
       }
 
       try {
-        await ref
-            .read(authProvider.notifier)
-            .register(
-              nombre: _nameController.text,
-              telefono: _phoneMaskFormatter.getUnmaskedText(),
-              email: _emailController.text,
-              password: _passwordController.text,
-              rolId: _selectedRole == 'Voluntario' ? 2 : 1,
-              curp: _selectedRole == 'Voluntario'
-                  ? _curpController.text.trim().toUpperCase()
-                  : null,
-            );
+        await FirebaseMessaging.instance.requestPermission(
+          alert: true,
+          badge: true,
+          sound: true,
+        );
       } catch (e) {
-        if (mounted) {
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(SnackBar(content: Text(e.toString())));
-        }
+        debugPrint('Error al solicitar permisos FCM en registro: $e');
       }
-    } else {
-      setState(() {});
+    }
+
+    try {
+      await ref
+          .read(authProvider.notifier)
+          .register(
+            nombre: _nameController.text,
+            telefono: _phoneMaskFormatter.getUnmaskedText(),
+            email: _emailController.text,
+            password: _passwordController.text,
+            rolId: _selectedRole == 'Voluntario' ? 2 : 1,
+            curp: _selectedRole == 'Voluntario'
+                ? _curpController.text.trim().toUpperCase()
+                : null,
+          );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(e.toString())));
+      }
     }
   }
 

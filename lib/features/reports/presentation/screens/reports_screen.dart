@@ -24,7 +24,8 @@ class ReportsScreen extends ConsumerStatefulWidget {
   ConsumerState<ReportsScreen> createState() => _ReportsScreenState();
 }
 
-class _ReportsScreenState extends ConsumerState<ReportsScreen> with SingleTickerProviderStateMixin {
+class _ReportsScreenState extends ConsumerState<ReportsScreen>
+    with SingleTickerProviderStateMixin {
   String _filtroUrgencia = 'todos';
   String _filtroEspecie = 'todos';
   double _filtroDistancia = 999;
@@ -46,13 +47,10 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> with SingleTicker
       vsync: this,
       duration: const Duration(milliseconds: 350),
     );
-    _slideAnimation = Tween<Offset>(
-      begin: const Offset(0, 1), 
-      end: Offset.zero, 
-    ).animate(CurvedAnimation(
-      parent: _slideController,
-      curve: Curves.easeOutCubic, 
-    ));
+    _slideAnimation = Tween<Offset>(begin: const Offset(0, 1), end: Offset.zero)
+        .animate(
+          CurvedAnimation(parent: _slideController, curve: Curves.easeOutCubic),
+        );
 
     _slideController.forward();
   }
@@ -89,7 +87,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> with SingleTicker
     final screenHeight = MediaQuery.sizeOf(context).height;
 
     return PopScope(
-      canPop: false, 
+      canPop: false,
       onPopInvoked: (didPop) {
         if (!didPop) _cerrarPantalla();
       },
@@ -109,12 +107,14 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> with SingleTicker
                 builder: (context, child) => GestureDetector(
                   onTap: _cerrarPantalla,
                   child: Container(
-                    color: Colors.black.withValues(alpha: 0.5 * _slideController.value),
+                    color: Colors.black.withValues(
+                      alpha: 0.5 * _slideController.value,
+                    ),
                   ),
                 ),
               ),
             ),
-            
+
             // Panel deslizable
             Align(
               alignment: Alignment.bottomCenter,
@@ -126,31 +126,43 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> with SingleTicker
                     _slideController.value -= dy;
                   },
                   onVerticalDragEnd: (details) {
-                    if (_slideController.value < 0.75 || details.primaryVelocity! > 300) {
+                    if (_slideController.value < 0.75 ||
+                        details.primaryVelocity! > 300) {
                       _cerrarPantalla();
                     } else {
-                      _slideController.forward(); 
+                      _slideController.forward();
                     }
                   },
                   child: Container(
-                    height: screenHeight * 0.95, 
-                    padding: const EdgeInsets.only(bottom: 70), // Margen para protegerse de la navbar
+                    height: screenHeight * 0.95,
+                    padding: const EdgeInsets.only(
+                      bottom: 70,
+                    ), // Margen para protegerse de la navbar
                     decoration: BoxDecoration(
-                      color: isDark ? const Color(0xFF1A1A1A) : const Color(0xFFF8F9FA),
-                      borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+                      color: isDark
+                          ? const Color(0xFF1A1A1A)
+                          : const Color(0xFFF8F9FA),
+                      borderRadius: const BorderRadius.vertical(
+                        top: Radius.circular(32),
+                      ),
                       boxShadow: [
                         BoxShadow(
                           color: Colors.black.withValues(alpha: 0.4),
                           blurRadius: 25,
                           offset: const Offset(0, -5),
-                        )
+                        ),
                       ],
                     ),
                     child: Column(
                       children: [
                         // HEADER Y LÍNEA DE ARRASTRE
                         Padding(
-                          padding: const EdgeInsets.only(top: 12.0, bottom: 8.0, left: 16.0, right: 16.0),
+                          padding: const EdgeInsets.only(
+                            top: 12.0,
+                            bottom: 8.0,
+                            left: 16.0,
+                            right: 16.0,
+                          ),
                           child: Column(
                             children: [
                               Container(
@@ -182,7 +194,9 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> with SingleTicker
                                     child: IconButton(
                                       icon: const Icon(Icons.close_rounded),
                                       style: IconButton.styleFrom(
-                                        backgroundColor: Colors.grey.withValues(alpha: 0.1),
+                                        backgroundColor: Colors.grey.withValues(
+                                          alpha: 0.1,
+                                        ),
                                       ),
                                       onPressed: _cerrarPantalla,
                                     ),
@@ -205,10 +219,13 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> with SingleTicker
                                   indicatorColor: Colors.blueAccent,
                                   labelColor: Colors.blueAccent,
                                   unselectedLabelColor: Colors.grey,
-                                  labelStyle: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                                  labelStyle: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 13,
+                                  ),
                                   tabs: [
                                     Tab(text: 'REPORTES LOCALES'),
-                                    Tab(text: 'MIS REPORTES'),
+                                    Tab(text: 'HISTORIAL'),
                                   ],
                                 ),
                                 Expanded(
@@ -264,6 +281,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> with SingleTicker
                     'silvestres',
                   ], (val) => setState(() => _filtroEspecie = val));
                 }),
+                // Reemplaza el _buildFilterChip de Distancia por este:
                 _buildFilterChip(
                   _filtroDistancia == 999
                       ? 'Distancia'
@@ -272,13 +290,24 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> with SingleTicker
                   () {
                     _mostrarMenuOpciones(
                       'Distancia',
-                      ['3', '5', '10', '15', 'todos'],
+                      [
+                        '3 km',
+                        '5 km',
+                        '10 km',
+                        '15 km',
+                        'Todos',
+                      ], // Se añade 'km' a las opciones visuales
                       (val) {
-                        setState(
-                          () => _filtroDistancia = val == 'todos'
-                              ? 999.0
-                              : double.parse(val),
-                        );
+                        setState(() {
+                          if (val == 'Todos') {
+                            _filtroDistancia = 999.0;
+                          } else {
+                            // Se extrae solo el número quitando ' km' para el parseo
+                            _filtroDistancia = double.parse(
+                              val.replaceAll(' km', ''),
+                            );
+                          }
+                        });
                       },
                     );
                   },
@@ -359,13 +388,11 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> with SingleTicker
             .where(
               (r) =>
                   r.usuarioRescatistaId == currentUserId &&
-                  r.estado != 'Rescatado', 
+                  r.estado != 'Rescatado',
             )
             .toList();
         final misCierres = reportes
-            .where(
-              (r) => r.estado == 'Rescatado', 
-            )
+            .where((r) => r.estado == 'Rescatado')
             .toList();
 
         return SingleChildScrollView(
@@ -405,7 +432,8 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> with SingleTicker
         );
       },
       loading: () => const Center(child: CircularProgressIndicator()),
-      error: (e, _) => const Center(child: Text('Error al cargar tu historial')),
+      error: (e, _) =>
+          const Center(child: Text('Error al cargar tu historial')),
     );
   }
 
@@ -421,7 +449,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> with SingleTicker
       return const SizedBox.shrink();
     }
     final displayItems = showAll ? items : items.take(4).toList();
-    final bool canExpand = items.length > 4;
+    final bool canExpand = items.length > 2;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,

@@ -841,7 +841,7 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
                   ),
                   icon: const Icon(Icons.linear_scale_rounded),
                   label: const Text(
-                    'Asistente',
+                    'Iniciar Rescate',
                     style: TextStyle(fontSize: 15, color: Colors.white),
                   ),
                 ),

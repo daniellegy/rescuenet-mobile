@@ -155,6 +155,25 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
   Future<void> _enviarFormulario() async {
     if (_formKey.currentState?.validate() != true) {
       setState(() {});
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Row(
+              children: [
+                Icon(Icons.warning_amber_rounded, color: Colors.white),
+                SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    'Por favor, completa todos los campos obligatorios.',
+                  ),
+                ),
+              ],
+            ),
+            backgroundColor: Colors.redAccent,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
       return;
     }
 
