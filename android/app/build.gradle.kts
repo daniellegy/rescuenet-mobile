@@ -5,6 +5,16 @@ plugins {
     id("com.google.gms.google-services")
 }
 
+def dartEnvironmentVariables = [:]
+if (project.hasProperty('dart-defines')) {
+    dartEnvironmentVariables = dartEnvironmentVariables + project.property('dart-defines')
+        .split(',')
+        .collectEntries { entry ->
+            def pair = new String(entry.decodeBase64(), 'UTF-8').split('=', 2)
+            [(pair.first()): pair.last()]
+        }
+}
+
 android {
     namespace = "mx.buap.rescuenet.rescuenet_mobile"
     compileSdk = flutter.compileSdkVersion
