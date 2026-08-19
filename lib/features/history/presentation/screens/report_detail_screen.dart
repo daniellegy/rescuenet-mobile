@@ -16,6 +16,7 @@ import '../providers/history_provider.dart';
 import '../../../reports/presentation/providers/rescue_stepper_provider.dart';
 import '../../../reports/presentation/widgets/canal_chat_sheet.dart';
 import '../../../../core/services/location_service.dart';
+import '../widgets/report_detail_components.dart';
 
 class ReportDetailScreen extends ConsumerStatefulWidget {
   final ReportModel reporte;
@@ -28,23 +29,18 @@ class ReportDetailScreen extends ConsumerStatefulWidget {
 class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
   String _direccion = 'Buscando dirección aproximada...';
   bool _isLoading = false;
-  int _currentPhotoIndex = 0;
   bool _canalCerradoLocalmente = false;
   ReportModel? _reporteLocal;
   Position? _userPos;
 
+  // Actualizado a Switch Expression (Dart 3+)
   Color _obtenerColorPorEstado(String estado) {
-    switch (estado.toLowerCase()) {
-      case 'nuevo':
-        return const Color(0xFF0288D1);
-      case 'en_proceso':
-      case 'en proceso':
-        return const Color(0xFFF57C00);
-      case 'rescatado':
-        return const Color(0xFF388E3C);
-      default:
-        return Colors.grey;
-    }
+    return switch (estado.toLowerCase()) {
+      'nuevo' => const Color(0xFF0288D1),
+      'en_proceso' || 'en proceso' => const Color(0xFFF57C00),
+      'rescatado' => const Color(0xFF388E3C),
+      _ => Colors.grey,
+    };
   }
 
   @override
@@ -86,6 +82,7 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
     final double lat = widget.reporte.latitud;
     final double lng = widget.reporte.longitud;
     final Uri url = Uri.parse('https://maps.google.com/?q=$lat,$lng');
+
     try {
       if (await canLaunchUrl(url)) {
         await launchUrl(url, mode: LaunchMode.externalApplication);
@@ -107,16 +104,20 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
   Future<void> _intentarAceptar() async {
     Position? currentPos = _userPos;
 
-    // Fallback rápido si el caché inicial falló
     if (currentPos == null) {
       setState(() => _isLoading = true);
       try {
         currentPos = await ref
             .read(locationServiceProvider)
             .getCurrentPosition(requestPermission: false);
-        _userPos = currentPos;
+        if (mounted) {
+          setState(() => _userPos = currentPos);
+        }
       } catch (_) {}
-      setState(() => _isLoading = false);
+
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
 
     if (currentPos != null) {
@@ -127,7 +128,6 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
         widget.reporte.longitud,
       );
 
-      // Regla de negocio: Bloquear aceptación si estás a más de 100km (en otra ciudad)
       if (distance > 100000) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -142,7 +142,6 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
         return;
       }
     }
-
     _ejecutarAceptar();
   }
 
@@ -197,6 +196,7 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
         ],
       ),
     );
+
     if (confirmar == true) {
       setState(() => _isLoading = true);
       try {
@@ -343,52 +343,7 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            if (photos.isNotEmpty)
-              Stack(
-                alignment: Alignment.bottomCenter,
-                children: [
-                  SizedBox(
-                    height: 250,
-                    child: PageView.builder(
-                      itemCount: photos.length,
-                      onPageChanged: (index) =>
-                          setState(() => _currentPhotoIndex = index),
-                      itemBuilder: (context, index) => Image.network(
-                        photos[index],
-                        fit: BoxFit.cover,
-                        errorBuilder: (c, e, s) => const Center(
-                          child: Icon(
-                            Icons.broken_image,
-                            size: 50,
-                            color: Colors.grey,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                  if (photos.length > 1)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 12.0),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: List.generate(
-                          photos.length,
-                          (index) => Container(
-                            margin: const EdgeInsets.symmetric(horizontal: 4),
-                            width: 8,
-                            height: 8,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: _currentPhotoIndex == index
-                                  ? Colors.white
-                                  : Colors.white54,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                ],
-              ),
+            ReportImageCarousel(photos: photos), // Componente extraído
             Padding(
               padding: const EdgeInsets.all(20.0),
               child: Column(
@@ -461,33 +416,29 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
                               ),
                             ),
                             const Divider(),
-                            _buildPhaseRow(
-                              context,
-                              Icons.visibility,
-                              'Avistamiento',
-                              reporteActual.animalAvistado == true
+                            ReportPhaseRow(
+                              icon: Icons.visibility,
+                              label: 'Avistamiento',
+                              value: reporteActual.animalAvistado == true
                                   ? 'Voluntario en zona (Avistado)'
                                   : (reporteActual.animalAvistado == false
                                         ? 'No encontrado en área'
                                         : 'En camino / Pendiente'),
                             ),
-                            _buildPhaseRow(
-                              context,
-                              Icons.directions_car,
-                              'Traslado a',
-                              reporteActual.lugarTraslado ?? 'Pendiente',
+                            ReportPhaseRow(
+                              icon: Icons.directions_car,
+                              label: 'Traslado a',
+                              value: reporteActual.lugarTraslado ?? 'Pendiente',
                             ),
-                            _buildPhaseRow(
-                              context,
-                              Icons.house,
-                              'Destino Final',
-                              reporteActual.destinoFinal ?? 'Pendiente',
+                            ReportPhaseRow(
+                              icon: Icons.house,
+                              label: 'Destino Final',
+                              value: reporteActual.destinoFinal ?? 'Pendiente',
                             ),
-                            _buildPhaseRow(
-                              context,
-                              Icons.attach_money,
-                              'Costo',
-                              reporteActual.costoRescate != null
+                            ReportPhaseRow(
+                              icon: Icons.attach_money,
+                              label: 'Costo',
+                              value: reporteActual.costoRescate != null
                                   ? '\$${reporteActual.costoRescate} MXN'
                                   : 'Calculando al finalizar...',
                             ),
@@ -569,16 +520,14 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
                     ),
                   ),
                   const Divider(height: 32),
-                  _buildPersonRow(
-                    context: context,
+                  ReportPersonRow(
                     role: 'Reportado por',
                     name: reporteActual.nombreReportador ?? 'Ciudadano',
                     fotoUrl: reporteActual.fotoReportador,
                     userId: reporteActual.usuarioReportadorId,
                   ),
                   if (reporteActual.nombreRescatista != null)
-                    _buildPersonRow(
-                      context: context,
+                    ReportPersonRow(
                       role: reporteActual.estado == 'Rescatado'
                           ? 'Completado por'
                           : 'Rescatista',
@@ -588,41 +537,45 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
                       isRescatista: true,
                     ),
                   const Divider(height: 32),
-                  _buildDetailRow(
-                    Icons.warning_amber_rounded,
-                    'Nivel de Urgencia',
-                    reporteActual.urgencia.toUpperCase(),
+                  ReportDetailRow(
+                    icon: Icons.warning_amber_rounded,
+                    label: 'Nivel de Urgencia',
+                    value: reporteActual.urgencia.toUpperCase(),
                   ),
-                  _buildDetailRow(
-                    Icons.explore_outlined,
-                    'Referencias',
-                    reporteActual.referencias ?? 'Sin referencias',
+                  ReportDetailRow(
+                    icon: Icons.explore_outlined,
+                    label: 'Referencias',
+                    value: reporteActual.referencias ?? 'Sin referencias',
                   ),
-                  _buildDetailRow(
-                    Icons.palette,
-                    'Color',
-                    reporteActual.colorDominante,
+                  ReportDetailRow(
+                    icon: Icons.palette,
+                    label: 'Color',
+                    value: reporteActual.colorDominante,
                   ),
-                  _buildDetailRow(Icons.pets, 'Raza', reporteActual.razaAprox),
-                  _buildDetailRow(
-                    Icons.transgender,
-                    'Sexo',
-                    reporteActual.sexo,
+                  ReportDetailRow(
+                    icon: Icons.pets,
+                    label: 'Raza',
+                    value: reporteActual.razaAprox,
                   ),
-                  _buildDetailRow(
-                    Icons.cake,
-                    'Edad Aprox.',
-                    reporteActual.edadAprox,
+                  ReportDetailRow(
+                    icon: Icons.transgender,
+                    label: 'Sexo',
+                    value: reporteActual.sexo,
                   ),
-                  _buildDetailRow(
-                    Icons.straighten,
-                    'Tamaño',
-                    reporteActual.tamano,
+                  ReportDetailRow(
+                    icon: Icons.cake,
+                    label: 'Edad Aprox.',
+                    value: reporteActual.edadAprox,
                   ),
-                  _buildDetailRow(
-                    Icons.mood_bad,
-                    'Agresividad',
-                    '${reporteActual.agresividad}/10',
+                  ReportDetailRow(
+                    icon: Icons.straighten,
+                    label: 'Tamaño',
+                    value: reporteActual.tamano,
+                  ),
+                  ReportDetailRow(
+                    icon: Icons.mood_bad,
+                    label: 'Agresividad',
+                    value: '${reporteActual.agresividad}/10',
                   ),
                   const Divider(height: 32),
                   const Text(
@@ -681,9 +634,11 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
                             ],
                           ),
                         );
+
                         if (confirmar != true) {
                           return;
                         }
+
                         try {
                           await ref
                               .read(reportRepositoryProvider)
@@ -775,6 +730,7 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
     if (!esVoluntario) {
       return const SizedBox.shrink();
     }
+
     if (estaNuevo) {
       return SafeArea(
         child: Padding(
@@ -852,121 +808,5 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
       );
     }
     return const SizedBox.shrink();
-  }
-
-  Widget _buildDetailRow(IconData icon, String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12.0),
-      child: Row(
-        children: [
-          Icon(icon, size: 20, color: Colors.grey[600]),
-          const SizedBox(width: 12),
-          Text(
-            '$label: ',
-            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
-          ),
-          Expanded(child: Text(value, style: const TextStyle(fontSize: 15))),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildPersonRow({
-    required BuildContext context,
-    required String role,
-    required String name,
-    required String? fotoUrl,
-    required int? userId,
-    bool isRescatista = false,
-  }) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8.0),
-      child: InkWell(
-        onTap: () {
-          if (userId != null) {
-            context.push('/user-info', extra: userId);
-          }
-        },
-        borderRadius: BorderRadius.circular(8),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 4.0),
-          child: Row(
-            children: [
-              CircleAvatar(
-                radius: 16,
-                backgroundColor: isRescatista
-                    ? (isDark ? Colors.green.shade900 : Colors.green.shade100)
-                    : (isDark
-                          ? Colors.blueGrey.shade800
-                          : Colors.blueGrey.shade100),
-                backgroundImage: fotoUrl != null ? NetworkImage(fotoUrl) : null,
-                child: fotoUrl == null
-                    ? Icon(
-                        isRescatista
-                            ? Icons.volunteer_activism_rounded
-                            : Icons.person,
-                        size: 16,
-                        color: isRescatista
-                            ? (isDark
-                                  ? Colors.green.shade300
-                                  : Colors.green.shade800)
-                            : (isDark
-                                  ? Colors.blueGrey.shade300
-                                  : Colors.blueGrey.shade800),
-                      )
-                    : null,
-              ),
-              const SizedBox(width: 12),
-              Text(
-                '$role: ',
-                style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 15,
-                ),
-              ),
-              Expanded(
-                child: Text(
-                  name,
-                  style: TextStyle(
-                    fontSize: 15,
-                    color: isDark ? Colors.white70 : Colors.black87,
-                    decoration: TextDecoration.underline,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildPhaseRow(
-    BuildContext context,
-    IconData icon,
-    String label,
-    String value,
-  ) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8.0),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(
-            icon,
-            size: 18,
-            color: isDark ? Colors.blueGrey.shade500 : Colors.blueGrey.shade400,
-          ),
-          const SizedBox(width: 8),
-          Text(
-            '$label: ',
-            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-          ),
-          Expanded(child: Text(value, style: const TextStyle(fontSize: 14))),
-        ],
-      ),
-    );
   }
 }
