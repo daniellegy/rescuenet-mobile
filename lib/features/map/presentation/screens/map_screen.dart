@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:typed_data';
 import 'dart:ui' as ui;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -14,6 +15,8 @@ import '../../../reports/presentation/providers/my_active_rescue_provider.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../widgets/active_rescue_card.dart';
 import '../widgets/off_screen_markers.dart';
+import '../widgets/map_drawer.dart';
+import '../widgets/city_search_modal.dart';
 
 class MapScreen extends ConsumerStatefulWidget {
   const MapScreen({super.key});
@@ -38,10 +41,7 @@ class _MapScreenState extends ConsumerState<MapScreen>
 
   String _filtroUrgencia = 'todos';
   String _filtroEspecie = 'todos';
-  
-  // Distancia predeterminada a "Todas" (999 km)
   double _filtroDistancia = 999.0;
-  
   String _ciudadSeleccionadaLabel = 'Buscar Ciudad o Región...';
 
   late AnimationController _holdController;
@@ -49,7 +49,6 @@ class _MapScreenState extends ConsumerState<MapScreen>
 
   final Map<String, BitmapDescriptor> _customIcons = {};
   BitmapDescriptor? _userMarkerIcon;
-  
   Brightness? _lastBrightness;
 
   final String _mapStyleLight = '''
@@ -91,7 +90,6 @@ class _MapScreenState extends ConsumerState<MapScreen>
     _mapController?.dispose();
     _holdController.dispose();
     _intentTimer?.cancel();
-
     _myPosition.dispose();
     _myHeading.dispose();
     _seguirUsuario.dispose();
@@ -102,12 +100,17 @@ class _MapScreenState extends ConsumerState<MapScreen>
 
   void _actualizarEtiquetaCiudadSegunUbicacion(LatLng pos) {
     final distPuebla = Geolocator.distanceBetween(
-      pos.latitude, pos.longitude, 19.0414, -98.2063,
+      pos.latitude,
+      pos.longitude,
+      19.0414,
+      -98.2063,
     );
     final distMina = Geolocator.distanceBetween(
-      pos.latitude, pos.longitude, 17.9895, -94.5559,
+      pos.latitude,
+      pos.longitude,
+      17.9895,
+      -94.5559,
     );
-
     if (distPuebla < 50000) {
       setState(() => _ciudadSeleccionadaLabel = 'Puebla (Mi ubicación)');
     } else if (distMina < 50000) {
@@ -118,16 +121,16 @@ class _MapScreenState extends ConsumerState<MapScreen>
   }
 
   Future<void> _generarTodosLosIconos() async {
-    // AQUÍ VA EL CAMBIO 1: Nueva paleta de colores de intensidad máxima
     final colores = {
-      'alta': const Color(0xFFD50000), // Rojo Intenso (Material Red 700)
-      'media': const Color(0xFFFF6D00), // Naranja Más Intenso
-      'baja': const Color(0xFFFFD600), // Amarillo Brillante
+      'alta': const Color(0xFFD50000),
+      'media': const Color(0xFFFF6D00),
+      'baja': const Color(0xFFFFD600),
     };
+
     final emojis = {
       'perro': '🐶',
       'gato': '🐱',
-      'silvestre': '🦝', 
+      'silvestre': '🦊',
       'default': '🐾',
     };
 
@@ -137,6 +140,7 @@ class _MapScreenState extends ConsumerState<MapScreen>
         _customIcons['${col.key}_${em.key}'] = icon;
       }
     }
+
     _userMarkerIcon = await _crearUserMarkerCanvas();
     if (mounted) {
       setState(() {});
@@ -172,6 +176,7 @@ class _MapScreenState extends ConsumerState<MapScreen>
       size.toInt(),
       size.toInt(),
     );
+
     final ByteData? data = await img.toByteData(format: ui.ImageByteFormat.png);
     return BitmapDescriptor.fromBytes(data!.buffer.asUint8List());
   }
@@ -196,7 +201,7 @@ class _MapScreenState extends ConsumerState<MapScreen>
       radius,
       shadowPaint,
     );
-    
+
     canvas.drawCircle(const Offset(centerPoint, centerPoint), radius, paint);
 
     final Paint whitePaint = Paint()..color = Colors.white;
@@ -209,6 +214,7 @@ class _MapScreenState extends ConsumerState<MapScreen>
     final TextPainter textPainter = TextPainter(
       textDirection: TextDirection.ltr,
     );
+
     textPainter.text = TextSpan(
       text: emoji,
       style: const TextStyle(fontSize: 44),
@@ -266,6 +272,7 @@ class _MapScreenState extends ConsumerState<MapScreen>
 
   Future<void> _iniciarLiveTracking() async {
     final locationService = ref.read(locationServiceProvider);
+
     try {
       final initialPos = await locationService.getCurrentPosition();
       if (mounted) {
@@ -288,6 +295,7 @@ class _MapScreenState extends ConsumerState<MapScreen>
           }
         }
       });
+
       ref.invalidate(reportesActivosMapaProvider);
     } catch (e) {
       if (mounted) {
@@ -300,6 +308,7 @@ class _MapScreenState extends ConsumerState<MapScreen>
 
   Future<void> _takePhotoAndNavigate({LatLng? customPoint}) async {
     final targetPosition = customPoint ?? _myPosition.value;
+
     if (targetPosition == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Esperando ubicación GPS...')),
@@ -361,85 +370,6 @@ class _MapScreenState extends ConsumerState<MapScreen>
     );
     ref.invalidate(reportesActivosMapaProvider);
     ref.invalidate(miRescateActivoProvider);
-  }
-
-  void _mostrarBuscadorCiudades() {
-    final Map<String, Map<String, LatLng>> regionesPorCiudad = {
-      'Puebla': {
-        'Puebla Centro': const LatLng(19.0414, -98.2063),
-        'Cholula': const LatLng(19.0605, -98.3047),
-        'Atlixco': const LatLng(18.9042, -98.4384),
-      },
-      'Minatitlán': {
-        'Minatitlán Centro': const LatLng(17.9895, -94.5559),
-        'Cosoleacaque': const LatLng(17.9972, -94.6339),
-        'El Naranjito': const LatLng(18.0050, -94.5761),
-      },
-    };
-
-    showModalBottomSheet(
-      context: context,
-      useRootNavigator: true,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (ctx) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.only(bottom: 16.0),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Padding(
-                padding: EdgeInsets.all(16.0),
-                child: Text(
-                  'Buscar Ciudad o Región',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                ),
-              ),
-              Flexible(
-                child: SingleChildScrollView(
-                  child: Column(
-                    children: regionesPorCiudad.entries.map((ciudad) {
-                      return ExpansionTile(
-                        leading: const Icon(
-                          Icons.location_city,
-                          color: Colors.blueAccent,
-                        ),
-                        title: Text(
-                          ciudad.key,
-                          style: const TextStyle(fontWeight: FontWeight.bold),
-                        ),
-                        children: ciudad.value.entries.map((region) {
-                          return ListTile(
-                            contentPadding: const EdgeInsets.only(
-                              left: 40,
-                              right: 16,
-                            ),
-                            leading: const Icon(Icons.map, color: Colors.grey),
-                            title: Text(region.key),
-                            onTap: () {
-                              Navigator.pop(ctx);
-                              setState(() {
-                                _ciudadSeleccionadaLabel =
-                                    '${ciudad.key}, ${region.key}';
-                              });
-                              _mapController?.animateCamera(
-                                CameraUpdate.newLatLngZoom(region.value, 13),
-                              );
-                            },
-                          );
-                        }).toList(),
-                      );
-                    }).toList(),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
   }
 
   Widget _buildMenuChip<T>({
@@ -552,6 +482,7 @@ class _MapScreenState extends ConsumerState<MapScreen>
     final marcadores = reportes.map((reporte) {
       final urgRaw = reporte.urgencia.toString().toLowerCase();
       final espRaw = (reporte.especie ?? '').toString().toLowerCase();
+
       String urgKey = 'alta';
       if (urgRaw == 'media') {
         urgKey = 'media';
@@ -564,7 +495,10 @@ class _MapScreenState extends ConsumerState<MapScreen>
         espKey = 'perro';
       } else if (espRaw.contains('gato')) {
         espKey = 'gato';
-      } else if (espRaw.contains('silvestre') || espRaw.contains('mapache') || espRaw.contains('tlacuache') || espRaw.contains('ave')) {
+      } else if (espRaw.contains('silvestre') ||
+          espRaw.contains('mapache') ||
+          espRaw.contains('tlacuache') ||
+          espRaw.contains('ave')) {
         espKey = 'silvestre';
       }
 
@@ -576,7 +510,6 @@ class _MapScreenState extends ConsumerState<MapScreen>
         position: LatLng(reporte.latitud, reporte.longitud),
         icon: icon,
         anchor: const Offset(0.5, 0.5),
-        // AQUÍ VA EL CAMBIO 2: zIndex a 10 para los reportes (Siempre quedan encima)
         zIndex: 10,
         onTap: () {
           context.push('/report-detail', extra: reporte).then((_) {
@@ -594,8 +527,7 @@ class _MapScreenState extends ConsumerState<MapScreen>
           position: _myPosition.value!,
           icon: _userMarkerIcon!,
           anchor: const Offset(0.5, 0.5),
-          // AQUÍ VA EL CAMBIO 3: zIndex a 0 para tu foto de perfil (Queda por debajo de los reportes)
-          zIndex: 0, 
+          zIndex: 0,
           onTap: () {
             final userId = ref.read(authProvider).userId;
             if (userId != null) {
@@ -605,6 +537,7 @@ class _MapScreenState extends ConsumerState<MapScreen>
         ),
       );
     }
+
     return marcadores;
   }
 
@@ -619,7 +552,7 @@ class _MapScreenState extends ConsumerState<MapScreen>
     );
 
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    
+
     if (_lastBrightness != Theme.of(context).brightness) {
       _lastBrightness = Theme.of(context).brightness;
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -640,8 +573,10 @@ class _MapScreenState extends ConsumerState<MapScreen>
       final pasaUrgencia =
           _filtroUrgencia == 'todos' ||
           reporte.urgencia.toLowerCase() == _filtroUrgencia;
+
       final especieReporte = (reporte.especie ?? '').toString().toLowerCase();
       bool pasaEspecie = false;
+
       if (_filtroEspecie == 'todos') {
         pasaEspecie = true;
       } else if (_filtroEspecie == 'perros' &&
@@ -651,7 +586,9 @@ class _MapScreenState extends ConsumerState<MapScreen>
         pasaEspecie = true;
       } else if (_filtroEspecie == 'silvestres' &&
           (especieReporte.contains('silvestre') ||
-              especieReporte.contains('mapache') || especieReporte.contains('tlacuache') || especieReporte.contains('ave'))) {
+              especieReporte.contains('mapache') ||
+              especieReporte.contains('tlacuache') ||
+              especieReporte.contains('ave'))) {
         pasaEspecie = true;
       }
 
@@ -667,16 +604,17 @@ class _MapScreenState extends ConsumerState<MapScreen>
           pasaDistancia = false;
         }
       }
+
       return pasaUrgencia && pasaEspecie && pasaDistancia;
     }
 
     Color? colorUrgencia;
     if (_filtroUrgencia == 'alta') {
-      colorUrgencia = const Color(0xFFD50000); // Rojo intenso
+      colorUrgencia = const Color(0xFFD50000);
     } else if (_filtroUrgencia == 'media') {
-      colorUrgencia = const Color(0xFFFF6D00); // Naranja intenso
+      colorUrgencia = const Color(0xFFFF6D00);
     } else if (_filtroUrgencia == 'baja') {
-      colorUrgencia = const Color(0xFFFFD600); // Amarillo puro
+      colorUrgencia = const Color(0xFFFFD600);
     }
 
     final reportesFiltrados = reportesAsync.maybeWhen(
@@ -689,107 +627,7 @@ class _MapScreenState extends ConsumerState<MapScreen>
     return Scaffold(
       key: _scaffoldKey,
       extendBody: true,
-      drawer: Drawer(
-        child: SafeArea(
-          child: Column(
-            children: [
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  vertical: 32,
-                  horizontal: 20,
-                ),
-                width: double.infinity,
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    RichText(
-                      text: TextSpan(
-                        style:
-                            Theme.of(context).appBarTheme.titleTextStyle
-                                ?.copyWith(fontSize: 28) ??
-                            const TextStyle(
-                              fontSize: 28,
-                              fontWeight: FontWeight.bold,
-                            ),
-                        children: const [
-                          TextSpan(
-                            text: 'Rescue',
-                            style: TextStyle(color: Colors.red),
-                          ),
-                          TextSpan(
-                            text: 'Net',
-                            style: TextStyle(color: Colors.amber),
-                          ),
-                        ],
-                      ),
-                    ),
-                    Image.asset(
-                      'assets/splash/rescuenet-logo-sinfondo-grande.png',
-                      height: 50,
-                      fit: BoxFit.contain,
-                      errorBuilder: (context, error, stackTrace) =>
-                          const Icon(Icons.pets, color: Colors.red, size: 40),
-                    ),
-                  ],
-                ),
-              ),
-              ListTile(
-                leading: const Icon(Icons.pets),
-                title: const Text('Reportes Activos'),
-                onTap: () {
-                  Navigator.pop(context);
-                  context.push('/reports');
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.person),
-                title: const Text('Perfil'),
-                onTap: () {
-                  Navigator.pop(context);
-                  final userId = ref.read(authProvider).userId;
-                  if (userId != null) {
-                    context.push('/user-info', extra: userId);
-                  }
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.people),
-                title: const Text('Comunidad'),
-                onTap: () {
-                  Navigator.pop(context);
-                  context.push('/community');
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.history),
-                title: const Text('Historial'),
-                onTap: () {
-                  Navigator.pop(context);
-                  context.push('/reports', extra: {'initialIndex': 1});
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.business),
-                title: const Text('Contacto a Instituciones'),
-                onTap: () {
-                  Navigator.pop(context);
-                  context.push('/institutions');
-                },
-              ),
-              const Divider(),
-              ListTile(
-                leading: const Icon(Icons.settings),
-                title: const Text('Configuración'),
-                onTap: () {
-                  Navigator.pop(context);
-                  context.push('/settings');
-                },
-              ),
-            ],
-          ),
-        ),
-      ),
+      drawer: const MapDrawer(), // Extracción completa del menú lateral
       body: Stack(
         children: [
           Listener(
@@ -821,7 +659,7 @@ class _MapScreenState extends ConsumerState<MapScreen>
                   target: _initialPosition!,
                   zoom: 18,
                 );
-                controller.setMapStyle(
+                _mapController?.setMapStyle(
                   isDark ? _mapStyleDark : _mapStyleLight,
                 );
               },
@@ -920,7 +758,29 @@ class _MapScreenState extends ConsumerState<MapScreen>
                     const SizedBox(width: 8),
                     Expanded(
                       child: GestureDetector(
-                        onTap: _mostrarBuscadorCiudades,
+                        onTap: () {
+                          // Llamada limpia y directa al nuevo modal refactorizado
+                          showModalBottomSheet(
+                            context: context,
+                            useRootNavigator: true,
+                            isScrollControlled: true,
+                            shape: const RoundedRectangleBorder(
+                              borderRadius: BorderRadius.vertical(
+                                top: Radius.circular(20),
+                              ),
+                            ),
+                            builder: (ctx) => CitySearchModal(
+                              onCitySelected: (label, pos) {
+                                setState(() {
+                                  _ciudadSeleccionadaLabel = label;
+                                });
+                                _mapController?.animateCamera(
+                                  CameraUpdate.newLatLngZoom(pos, 13),
+                                );
+                              },
+                            ),
+                          );
+                        },
                         child: Container(
                           height: 50,
                           decoration: BoxDecoration(
@@ -995,7 +855,7 @@ class _MapScreenState extends ConsumerState<MapScreen>
                             child: Text(
                               'Alta',
                               style: TextStyle(
-                                color: Color(0xFFD50000), // Rojo
+                                color: Color(0xFFD50000),
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
@@ -1005,7 +865,7 @@ class _MapScreenState extends ConsumerState<MapScreen>
                             child: Text(
                               'Media',
                               style: TextStyle(
-                                color: Color(0xFFFF6D00), // Naranja
+                                color: Color(0xFFFF6D00),
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
@@ -1015,7 +875,7 @@ class _MapScreenState extends ConsumerState<MapScreen>
                             child: Text(
                               'Baja',
                               style: TextStyle(
-                                color: Color(0xFFFFD600), // Amarilla
+                                color: Color(0xFFFFD600),
                                 fontWeight: FontWeight.bold,
                               ),
                             ),

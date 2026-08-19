@@ -55,18 +55,25 @@ class _SearchRadarScreenState extends State<SearchRadarScreen> {
     super.dispose();
   }
 
-  // AQUÍ VA EL CAMBIO: Generador hiper-rápido de íconos nativos con Canvas
   Future<void> _generarIconosCanvas() async {
-    _targetIcon = await _createIconFromMaterial(widget.reporte.colorUrgencia, Icons.warning_rounded);
+    _targetIcon = await _createIconFromMaterial(
+      widget.reporte.colorUrgencia,
+      Icons.warning_rounded,
+    );
     _userIcon = await _createIconFromMaterial(Colors.red, Icons.person_pin);
-    if (mounted) setState(() {});
+    if (mounted) {
+      setState(() {});
+    }
   }
 
-  Future<BitmapDescriptor> _createIconFromMaterial(Color color, IconData iconData) async {
+  Future<BitmapDescriptor> _createIconFromMaterial(
+    Color color,
+    IconData iconData,
+  ) async {
     final ui.PictureRecorder pictureRecorder = ui.PictureRecorder();
     final Canvas canvas = Canvas(pictureRecorder);
     const double size = 100;
-    
+
     // Fondo semitransparente
     final Paint paint = Paint()..color = color.withValues(alpha: 0.2);
     // Borde sólido
@@ -76,7 +83,11 @@ class _SearchRadarScreenState extends State<SearchRadarScreen> {
       ..strokeWidth = 4;
 
     canvas.drawCircle(const Offset(size / 2, size / 2), size / 2 - 4, paint);
-    canvas.drawCircle(const Offset(size / 2, size / 2), size / 2 - 4, borderPaint);
+    canvas.drawCircle(
+      const Offset(size / 2, size / 2),
+      size / 2 - 4,
+      borderPaint,
+    );
 
     // Dibujamos el Material Icon exacto en el centro
     TextPainter textPainter = TextPainter(textDirection: TextDirection.ltr);
@@ -91,11 +102,14 @@ class _SearchRadarScreenState extends State<SearchRadarScreen> {
     );
     textPainter.layout();
     textPainter.paint(
-      canvas, 
-      Offset((size - textPainter.width) / 2, (size - textPainter.height) / 2)
+      canvas,
+      Offset((size - textPainter.width) / 2, (size - textPainter.height) / 2),
     );
 
-    final ui.Image img = await pictureRecorder.endRecording().toImage(size.toInt(), size.toInt());
+    final ui.Image img = await pictureRecorder.endRecording().toImage(
+      size.toInt(),
+      size.toInt(),
+    );
     final ByteData? data = await img.toByteData(format: ui.ImageByteFormat.png);
     return BitmapDescriptor.fromBytes(data!.buffer.asUint8List());
   }
@@ -104,31 +118,37 @@ class _SearchRadarScreenState extends State<SearchRadarScreen> {
     LocationPermission permission = await Geolocator.checkPermission();
     if (permission == LocationPermission.denied) {
       permission = await Geolocator.requestPermission();
-      if (permission == LocationPermission.denied) return;
+      if (permission == LocationPermission.denied) {
+        return;
+      }
     }
 
     final lastPosition = await Geolocator.getLastKnownPosition();
     if (lastPosition != null && mounted) {
       setState(() {
-        _currentPosition = LatLng(lastPosition.latitude, lastPosition.longitude);
+        _currentPosition = LatLng(
+          lastPosition.latitude,
+          lastPosition.longitude,
+        );
       });
       _calcularMetricas(lastPosition);
     }
 
-    _positionStreamSubscription = Geolocator.getPositionStream(
-      locationSettings: const LocationSettings(
-        accuracy: LocationAccuracy.high,
-        distanceFilter: 15,
-      ),
-    ).listen((Position position) {
-      if (mounted) {
-        final userLatLng = LatLng(position.latitude, position.longitude);
-        setState(() {
-          _currentPosition = userLatLng;
+    _positionStreamSubscription =
+        Geolocator.getPositionStream(
+          locationSettings: const LocationSettings(
+            accuracy: LocationAccuracy.high,
+            distanceFilter: 15,
+          ),
+        ).listen((Position position) {
+          if (mounted) {
+            final userLatLng = LatLng(position.latitude, position.longitude);
+            setState(() {
+              _currentPosition = userLatLng;
+            });
+            _calcularMetricas(position);
+          }
         });
-        _calcularMetricas(position);
-      }
-    });
   }
 
   void _calcularMetricas(Position posicionUsuario) {
@@ -147,7 +167,10 @@ class _SearchRadarScreenState extends State<SearchRadarScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final targetReport = LatLng(widget.reporte.latitud, widget.reporte.longitud);
+    final targetReport = LatLng(
+      widget.reporte.latitud,
+      widget.reporte.longitud,
+    );
 
     // AQUÍ VA EL CAMBIO: Ensamblaje nativo de Marcadores, Círculos y Polilíneas
     final Set<Marker> markers = {};
@@ -180,7 +203,10 @@ class _SearchRadarScreenState extends State<SearchRadarScreen> {
           points: [_currentPosition!, targetReport],
           color: Colors.blue.shade800,
           width: 4,
-          patterns: [PatternItem.dash(20), PatternItem.gap(10)], // Línea punteada profesional
+          patterns: [
+            PatternItem.dash(20),
+            PatternItem.gap(10),
+          ], // Línea punteada profesional
         ),
       );
     }
@@ -206,7 +232,10 @@ class _SearchRadarScreenState extends State<SearchRadarScreen> {
       body: Stack(
         children: [
           GoogleMap(
-            initialCameraPosition: CameraPosition(target: targetReport, zoom: 16.0),
+            initialCameraPosition: CameraPosition(
+              target: targetReport,
+              zoom: 16.0,
+            ),
             minMaxZoomPreference: const MinMaxZoomPreference(5.0, 19.0),
             markers: markers,
             circles: circles,
@@ -229,8 +258,11 @@ class _SearchRadarScreenState extends State<SearchRadarScreen> {
               foregroundColor: Colors.blueAccent,
               elevation: 4,
               onPressed: () {
-                if (_currentPosition != null && _mapController != null) {
-                  _mapController!.animateCamera(CameraUpdate.newLatLngZoom(_currentPosition!, 18));
+                if (_currentPosition != null) {
+                  // Cambio de ! a ?
+                  _mapController?.animateCamera(
+                    CameraUpdate.newLatLngZoom(_currentPosition!, 18),
+                  );
                 }
               },
               child: const Icon(Icons.my_location),
@@ -280,7 +312,8 @@ class _SearchRadarScreenState extends State<SearchRadarScreen> {
                                 const SizedBox(width: 14),
                                 const Expanded(
                                   child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
                                       Text(

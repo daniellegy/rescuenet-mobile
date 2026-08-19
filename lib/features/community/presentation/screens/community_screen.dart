@@ -10,7 +10,8 @@ class CommunityScreen extends ConsumerStatefulWidget {
   ConsumerState<CommunityScreen> createState() => _CommunityScreenState();
 }
 
-class _CommunityScreenState extends ConsumerState<CommunityScreen> with SingleTickerProviderStateMixin {
+class _CommunityScreenState extends ConsumerState<CommunityScreen>
+    with SingleTickerProviderStateMixin {
   late AnimationController _slideController;
   late Animation<Offset> _slideAnimation;
 
@@ -23,13 +24,10 @@ class _CommunityScreenState extends ConsumerState<CommunityScreen> with SingleTi
       vsync: this,
       duration: const Duration(milliseconds: 350),
     );
-    _slideAnimation = Tween<Offset>(
-      begin: const Offset(0, 1),
-      end: Offset.zero,
-    ).animate(CurvedAnimation(
-      parent: _slideController,
-      curve: Curves.easeOutCubic,
-    ));
+    _slideAnimation = Tween<Offset>(begin: const Offset(0, 1), end: Offset.zero)
+        .animate(
+          CurvedAnimation(parent: _slideController, curve: Curves.easeOutCubic),
+        );
 
     _slideController.forward();
   }
@@ -48,8 +46,10 @@ class _CommunityScreenState extends ConsumerState<CommunityScreen> with SingleTi
 
   Future<void> _abrirEnGoogleMaps(String titulo, String ubicacion) async {
     final query = Uri.encodeComponent('$titulo, $ubicacion');
-    final url = Uri.parse('https://www.google.com/maps/search/?api=1&query=$query');
-    
+    final url = Uri.parse(
+      'https://www.google.com/maps/search/?api=1&query=$query',
+    );
+
     if (await canLaunchUrl(url)) {
       await launchUrl(url, mode: LaunchMode.externalApplication);
     } else {
@@ -154,8 +154,8 @@ class _CommunityScreenState extends ConsumerState<CommunityScreen> with SingleTi
         if (!didPop) _cerrarPantalla();
       },
       child: Scaffold(
-        backgroundColor: Colors.transparent, 
-        
+        backgroundColor: Colors.transparent,
+
         body: Stack(
           children: [
             // Fondo oscuro protector, sin cortes
@@ -165,17 +165,19 @@ class _CommunityScreenState extends ConsumerState<CommunityScreen> with SingleTi
                 builder: (context, child) => GestureDetector(
                   onTap: _cerrarPantalla,
                   child: Container(
-                    color: Colors.black.withValues(alpha: 0.5 * _slideController.value),
+                    color: Colors.black.withValues(
+                      alpha: 0.5 * _slideController.value,
+                    ),
                   ),
                 ),
               ),
             ),
-            
+
             // Modal Cristal, ahora abarca hasta abajo libremente
             Positioned(
-              top: topOffset, 
-              left: 0, 
-              right: 0, 
+              top: topOffset,
+              left: 0,
+              right: 0,
               bottom: 0, // Se estira hasta abajo para no cortar
               child: Align(
                 alignment: Alignment.bottomCenter,
@@ -187,7 +189,8 @@ class _CommunityScreenState extends ConsumerState<CommunityScreen> with SingleTi
                       _slideController.value -= dy;
                     },
                     onVerticalDragEnd: (details) {
-                      if (_slideController.value < 0.75 || details.primaryVelocity! > 300) {
+                      if (_slideController.value < 0.75 ||
+                          details.primaryVelocity! > 300) {
                         _cerrarPantalla();
                       } else {
                         _slideController.forward();
@@ -195,20 +198,29 @@ class _CommunityScreenState extends ConsumerState<CommunityScreen> with SingleTi
                     },
                     child: Container(
                       decoration: BoxDecoration(
-                        color: isDark ? const Color(0xFF1A1A1A) : const Color(0xFFF8F9FA),
-                        borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+                        color: isDark
+                            ? const Color(0xFF1A1A1A)
+                            : const Color(0xFFF8F9FA),
+                        borderRadius: const BorderRadius.vertical(
+                          top: Radius.circular(32),
+                        ),
                         boxShadow: [
                           BoxShadow(
                             color: Colors.black.withValues(alpha: 0.4),
                             blurRadius: 25,
                             offset: const Offset(0, -5),
-                          )
+                          ),
                         ],
                       ),
                       child: Column(
                         children: [
                           Padding(
-                            padding: const EdgeInsets.only(top: 12.0, bottom: 0.0, left: 16.0, right: 16.0),
+                            padding: const EdgeInsets.only(
+                              top: 12.0,
+                              bottom: 0.0,
+                              left: 16.0,
+                              right: 16.0,
+                            ),
                             child: Column(
                               children: [
                                 Container(
@@ -240,7 +252,8 @@ class _CommunityScreenState extends ConsumerState<CommunityScreen> with SingleTi
                                       child: IconButton(
                                         icon: const Icon(Icons.close_rounded),
                                         style: IconButton.styleFrom(
-                                          backgroundColor: Colors.grey.withValues(alpha: 0.1),
+                                          backgroundColor: Colors.grey
+                                              .withValues(alpha: 0.1),
                                         ),
                                         onPressed: _cerrarPantalla,
                                       ),
@@ -250,37 +263,50 @@ class _CommunityScreenState extends ConsumerState<CommunityScreen> with SingleTi
                               ],
                             ),
                           ),
-                          
+
                           Expanded(
                             child: SingleChildScrollView(
                               physics: const BouncingScrollPhysics(),
-                              // AQUÍ VA EL CAMBIO: El padding bottom lo lleva el SCROLL para protegerse de la Navbar, 
+                              // AQUÍ VA EL CAMBIO: El padding bottom lo lleva el SCROLL para protegerse de la Navbar,
                               // pero el contenedor en sí no está cortado.
-                              padding: EdgeInsets.only(bottom: 90 + MediaQuery.of(context).padding.bottom, top: 10),
+                              padding: EdgeInsets.only(
+                                bottom:
+                                    90 + MediaQuery.of(context).padding.bottom,
+                                top: 10,
+                              ),
                               child: Column(
                                 children: [
-                                  if (_seccionExpandida == null || _seccionExpandida == 'veterinarias')
+                                  if (_seccionExpandida == null ||
+                                      _seccionExpandida == 'veterinarias')
                                     _buildCommunitySection(
-                                      'Veterinarias Cercanas', 
-                                      veterinarias, 
-                                      isDark, 
-                                      _seccionExpandida == 'veterinarias', 
+                                      'Veterinarias Cercanas',
+                                      veterinarias,
+                                      isDark,
+                                      _seccionExpandida == 'veterinarias',
                                       () {
                                         setState(() {
-                                          _seccionExpandida = _seccionExpandida == 'veterinarias' ? null : 'veterinarias';
+                                          _seccionExpandida =
+                                              _seccionExpandida ==
+                                                  'veterinarias'
+                                              ? null
+                                              : 'veterinarias';
                                         });
                                       },
                                     ),
-                                    
-                                  if (_seccionExpandida == null || _seccionExpandida == 'refugios')
+
+                                  if (_seccionExpandida == null ||
+                                      _seccionExpandida == 'refugios')
                                     _buildCommunitySection(
-                                      'Refugios y Fundaciones', 
-                                      refugios, 
-                                      isDark, 
-                                      _seccionExpandida == 'refugios', 
+                                      'Refugios y Fundaciones',
+                                      refugios,
+                                      isDark,
+                                      _seccionExpandida == 'refugios',
                                       () {
                                         setState(() {
-                                          _seccionExpandida = _seccionExpandida == 'refugios' ? null : 'refugios';
+                                          _seccionExpandida =
+                                              _seccionExpandida == 'refugios'
+                                              ? null
+                                              : 'refugios';
                                         });
                                       },
                                     ),
@@ -308,8 +334,10 @@ class _CommunityScreenState extends ConsumerState<CommunityScreen> with SingleTi
     bool showAll,
     VoidCallback onToggle,
   ) {
-    if (items.isEmpty) return const SizedBox.shrink();
-    
+    if (items.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
     final displayItems = showAll ? items : items.take(3).toList();
     final bool canExpand = items.length > 3 || showAll;
 
@@ -337,7 +365,10 @@ class _CommunityScreenState extends ConsumerState<CommunityScreen> with SingleTi
                   onPressed: onToggle,
                   child: Text(
                     showAll ? 'Ocultar listado' : 'Ver directorio',
-                    style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.blueAccent),
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: Colors.blueAccent,
+                    ),
                   ),
                 ),
             ],
@@ -348,11 +379,12 @@ class _CommunityScreenState extends ConsumerState<CommunityScreen> with SingleTi
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
             itemCount: displayItems.length,
-            itemBuilder: (context, index) => _buildTacticalListCard(displayItems[index], isDark),
+            itemBuilder: (context, index) =>
+                _buildTacticalListCard(displayItems[index], isDark),
           )
         else
           SizedBox(
-            height: 155, 
+            height: 155,
             child: ListView.builder(
               scrollDirection: Axis.horizontal,
               physics: const BouncingScrollPhysics(),
@@ -363,7 +395,10 @@ class _CommunityScreenState extends ConsumerState<CommunityScreen> with SingleTi
                     left: 20.0,
                     right: index == displayItems.length - 1 ? 20.0 : 0,
                   ),
-                  child: _buildTacticalCarouselCard(displayItems[index], isDark),
+                  child: _buildTacticalCarouselCard(
+                    displayItems[index],
+                    isDark,
+                  ),
                 );
               },
             ),
@@ -395,19 +430,28 @@ class _CommunityScreenState extends ConsumerState<CommunityScreen> with SingleTi
             height: 60,
             decoration: BoxDecoration(
               color: Colors.blueAccent.withValues(alpha: 0.05),
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(16),
+              ),
             ),
             child: Stack(
               children: [
                 Center(
-                  child: Icon(item['icon'] as IconData, size: 36, color: Colors.blueAccent),
+                  child: Icon(
+                    item['icon'] as IconData,
+                    size: 36,
+                    color: Colors.blueAccent,
+                  ),
                 ),
                 if (item['badge'] != null)
                   Positioned(
                     top: 8,
                     right: 8,
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
                       decoration: BoxDecoration(
                         color: Colors.blueAccent.withValues(alpha: 0.9),
                         borderRadius: BorderRadius.circular(12),
@@ -432,20 +476,31 @@ class _CommunityScreenState extends ConsumerState<CommunityScreen> with SingleTi
               children: [
                 Text(
                   item['title'] as String,
-                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 13,
+                  ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 6),
                 Row(
                   children: [
-                    const Icon(Icons.star_rounded, size: 12, color: Colors.amber),
+                    const Icon(
+                      Icons.star_rounded,
+                      size: 12,
+                      color: Colors.amber,
+                    ),
                     const SizedBox(width: 4),
                     Flexible(
                       child: Text(
                         '${item['rating']} (${item['reviews']})',
                         overflow: TextOverflow.ellipsis,
-                        style: TextStyle(fontSize: 11, color: Colors.grey.shade500, fontWeight: FontWeight.bold),
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: Colors.grey.shade500,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ),
                   ],
@@ -453,12 +508,19 @@ class _CommunityScreenState extends ConsumerState<CommunityScreen> with SingleTi
                 const SizedBox(height: 4),
                 Row(
                   children: [
-                    Icon(Icons.location_on_rounded, size: 12, color: Colors.grey.shade500),
+                    Icon(
+                      Icons.location_on_rounded,
+                      size: 12,
+                      color: Colors.grey.shade500,
+                    ),
                     const SizedBox(width: 4),
                     Expanded(
                       child: Text(
                         item['location'] as String,
-                        style: TextStyle(fontSize: 11, color: Colors.grey.shade500),
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: Colors.grey.shade500,
+                        ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -493,7 +555,11 @@ class _CommunityScreenState extends ConsumerState<CommunityScreen> with SingleTi
                 color: Colors.blueAccent.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: Icon(item['icon'] as IconData, size: 32, color: Colors.blueAccent),
+              child: Icon(
+                item['icon'] as IconData,
+                size: 32,
+                color: Colors.blueAccent,
+              ),
             ),
             const SizedBox(width: 16),
             Expanded(
@@ -502,20 +568,31 @@ class _CommunityScreenState extends ConsumerState<CommunityScreen> with SingleTi
                 children: [
                   Text(
                     item['title'] as String,
-                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 15,
+                    ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 6),
                   Row(
                     children: [
-                      const Icon(Icons.star_rounded, size: 14, color: Colors.amber),
+                      const Icon(
+                        Icons.star_rounded,
+                        size: 14,
+                        color: Colors.amber,
+                      ),
                       const SizedBox(width: 4),
                       Flexible(
                         child: Text(
                           '${item['rating']} (${item['reviews']} opiniones)',
                           overflow: TextOverflow.ellipsis,
-                          style: TextStyle(fontSize: 12, color: Colors.grey.shade600, fontWeight: FontWeight.w600),
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey.shade600,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
                       ),
                     ],
@@ -523,12 +600,19 @@ class _CommunityScreenState extends ConsumerState<CommunityScreen> with SingleTi
                   const SizedBox(height: 4),
                   Row(
                     children: [
-                      Icon(Icons.location_on_rounded, size: 14, color: Colors.grey.shade500),
+                      Icon(
+                        Icons.location_on_rounded,
+                        size: 14,
+                        color: Colors.grey.shade500,
+                      ),
                       const SizedBox(width: 4),
                       Expanded(
                         child: Text(
                           item['location'] as String,
-                          style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey.shade600,
+                          ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
@@ -538,14 +622,21 @@ class _CommunityScreenState extends ConsumerState<CommunityScreen> with SingleTi
                 ],
               ),
             ),
-            
+
             IconButton(
-              icon: const Icon(Icons.map_rounded, color: Colors.blueAccent, size: 28),
+              icon: const Icon(
+                Icons.map_rounded,
+                color: Colors.blueAccent,
+                size: 28,
+              ),
               style: IconButton.styleFrom(
                 backgroundColor: Colors.blueAccent.withValues(alpha: 0.1),
               ),
               onPressed: () {
-                _abrirEnGoogleMaps(item['title'] as String, item['location'] as String);
+                _abrirEnGoogleMaps(
+                  item['title'] as String,
+                  item['location'] as String,
+                );
               },
             ),
           ],

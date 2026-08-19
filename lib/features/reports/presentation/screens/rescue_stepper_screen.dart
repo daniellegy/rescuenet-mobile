@@ -331,7 +331,9 @@ class _RescueStepperScreenState extends ConsumerState<RescueStepperScreen> {
     return PopScope(
       canPop: false,
       onPopInvokedWithResult: (didPop, result) async {
-        if (didPop) return;
+        if (didPop) {
+          return;
+        }
         final confirm = await showDialog<bool>(
           context: context,
           builder: (ctx) => AlertDialog(

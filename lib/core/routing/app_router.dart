@@ -9,7 +9,6 @@ import '../../features/auth/presentation/screens/register_screen.dart';
 import '../../features/map/presentation/screens/map_screen.dart';
 import '../../features/lost_dogs/presentation/screens/lost_dogs_screen.dart';
 import '../../features/reports/presentation/screens/create_report_screen.dart';
-import '../../features/history/presentation/screens/history_screen.dart';
 import '../../features/history/presentation/screens/report_detail_screen.dart';
 import '../../features/history/domain/models/report_model.dart';
 import '../../features/settings/presentation/screens/settings_screen.dart';
@@ -21,8 +20,6 @@ import '../../features/community/presentation/screens/community_screen.dart';
 import '../../features/reports/presentation/screens/reports_screen.dart';
 import '../../features/community/presentation/screens/institutions_screen.dart';
 
-// AQUÍ VA EL CAMBIO 1: Creamos una clase de ruta 100% transparente
-// PageRouteBuilder con 'opaque: false' es la clave de oro para que Google Maps no muera.
 class TransparentRoute<T> extends Page<T> {
   final Widget child;
 
@@ -32,7 +29,7 @@ class TransparentRoute<T> extends Page<T> {
   Route<T> createRoute(BuildContext context) {
     return PageRouteBuilder<T>(
       settings: this,
-      opaque: false, // 🔴 ESTO ES LO QUE MANTIENE VIVO AL MAPA DE FONDO
+      opaque: false, // CLAVE PARA MANTENER VIVO EL MAPA
       barrierColor: Colors.transparent,
       pageBuilder: (context, animation, secondaryAnimation) => child,
     );
@@ -68,7 +65,6 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/register',
         builder: (context, state) => const RegisterScreen(),
       ),
-
       ShellRoute(
         builder: (context, state, child) => MainLayout(child: child),
         routes: [
@@ -76,10 +72,6 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: '/lost-dogs',
             builder: (context, state) => const LostDogsScreen(),
-          ),
-          GoRoute(
-            path: '/history',
-            builder: (context, state) => const HistoryScreen(),
           ),
           GoRoute(
             path: '/user-info',
@@ -94,33 +86,25 @@ final routerProvider = Provider<GoRouter>((ref) {
           ),
           GoRoute(
             path: '/community',
-            pageBuilder: (context, state) => const TransparentRoute(
-              child: CommunityScreen(),
-            ),
+            pageBuilder: (context, state) =>
+                const TransparentRoute(child: CommunityScreen()),
           ),
-          // >>> CAMBIO 2: /reports se movió aquí adentro del ShellRoute
-          // (antes estaba como GoRoute suelto fuera del ShellRoute, por eso
-          // no compartía MainLayout/MapBottomNavBar con /map y /community).
           GoRoute(
             path: '/reports',
             pageBuilder: (context, state) {
               int initialIndex = 0;
-
               if (state.extra != null) {
                 final extraParams = state.extra as Map<String, dynamic>?;
                 initialIndex = extraParams?['initialIndex'] as int? ?? 0;
               }
-
               return TransparentRoute(
                 key: state.pageKey,
                 child: ReportsScreen(initialIndex: initialIndex),
               );
             },
           ),
-          // <<< FIN CAMBIO 2
         ],
       ),
-
       GoRoute(
         path: '/report-detail',
         builder: (context, state) {

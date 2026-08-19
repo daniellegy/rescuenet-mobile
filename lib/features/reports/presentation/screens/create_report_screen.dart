@@ -277,7 +277,7 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
             onPressed: () {
               Navigator.pop(ctx);
               context.pop();
-              context.push('/active-reports');
+              context.push('/reports');
             },
             style: FilledButton.styleFrom(backgroundColor: Colors.orange),
             child: const Text('Ver emergencias'),
@@ -324,7 +324,9 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
     return PopScope(
       canPop: false,
       onPopInvokedWithResult: (didPop, result) async {
-        if (didPop) return;
+        if (didPop) {
+          return;
+        }
 
         final confirm = await showDialog<bool>(
           context: context,

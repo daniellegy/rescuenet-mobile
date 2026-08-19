@@ -80,7 +80,8 @@ class _LocationSelectorScreenState extends State<LocationSelectorScreen> {
             myLocationButtonEnabled: false,
             onMapCreated: (GoogleMapController controller) {
               _mapController = controller;
-              _mapController!.setMapStyle(_mapStyle);
+              // Cambio de ! a ?
+              _mapController?.setMapStyle(_mapStyle);
             },
             // Leemos el movimiento en tiempo real a 60 FPS
             onCameraMove: (CameraPosition position) {
@@ -88,10 +89,12 @@ class _LocationSelectorScreenState extends State<LocationSelectorScreen> {
               _currentLng = position.target.longitude;
             },
           ),
-          
+
           // PIN CENTRAL FIJO: Exactamente la misma lógica, hiper eficiente.
           const Padding(
-            padding: EdgeInsets.only(bottom: 40.0), // Ajuste visual para que la "punta" apunte al centro
+            padding: EdgeInsets.only(
+              bottom: 40.0,
+            ), // Ajuste visual para que la "punta" apunte al centro
             child: Icon(Icons.location_on, size: 50.0, color: Colors.red),
           ),
 
@@ -108,7 +111,7 @@ class _LocationSelectorScreenState extends State<LocationSelectorScreen> {
                     blurRadius: 8,
                     offset: const Offset(0, 4),
                   ),
-                ]
+                ],
               ),
               child: const Text(
                 'Mueve el mapa para ajustar el PIN',

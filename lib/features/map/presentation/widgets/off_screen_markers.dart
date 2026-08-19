@@ -244,7 +244,8 @@ class _OffScreenMarkersState extends State<OffScreenMarkers> {
                         screenAngle, // Rota exactamente hacia la orilla de la pantalla
                     child: GestureDetector(
                       onTap: () {
-                        widget.mapController!.animateCamera(
+                        // Cambio de ! a ?
+                        widget.mapController?.animateCamera(
                           CameraUpdate.newLatLngZoom(pos, 17.5),
                         );
                       },
