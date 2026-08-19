@@ -7,677 +7,11 @@ import '../../../auth/presentation/providers/auth_provider.dart';
 import '../providers/settings_provider.dart';
 import '../providers/map_limit_provider.dart';
 import '../../../../core/theme/theme_provider.dart';
-import '../../../map/presentation/providers/map_markers_provider.dart';
-import '../../../history/presentation/providers/history_provider.dart';
-import '../../../reports/presentation/providers/my_active_rescue_provider.dart';
-import '../../../reports/presentation/providers/active_reports_provider.dart';
-import '../../../../core/services/camera_service.dart';
+import '../widgets/role_selection_sheet.dart';
+import '../widgets/settings_dialogs.dart';
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
-
-  void _mostrarOpcionesDeFoto(BuildContext parentContext, WidgetRef ref) {
-    showModalBottomSheet(
-      context: parentContext,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (modalContext) {
-        return SafeArea(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Padding(
-                padding: EdgeInsets.all(16.0),
-                child: Text(
-                  'Actualizar foto de perfil',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                ),
-              ),
-              ListTile(
-                leading: const Icon(Icons.camera_alt, color: Colors.blue),
-                title: const Text('Tomar fotografía'),
-                onTap: () async {
-                  Navigator.pop(modalContext);
-                  await _procesarSubidaFoto(
-                    parentContext,
-                    ref,
-                    fromGallery: false,
-                  );
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.photo_library, color: Colors.green),
-                title: const Text('Elegir de la galería'),
-                onTap: () async {
-                  Navigator.pop(modalContext);
-                  await _procesarSubidaFoto(
-                    parentContext,
-                    ref,
-                    fromGallery: true,
-                  );
-                },
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  Future<void> _procesarSubidaFoto(
-    BuildContext context,
-    WidgetRef ref, {
-    required bool fromGallery,
-  }) async {
-    try {
-      final cameraService = ref.read(cameraServiceProvider);
-      final pickedFile = await cameraService.takePicture(
-        fromGallery: fromGallery,
-      );
-
-      if (pickedFile != null && context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Subiendo foto...'),
-            duration: Duration(seconds: 2),
-          ),
-        );
-
-        await ref
-            .read(userProfileProvider.notifier)
-            .actualizarFotoPerfil(pickedFile.path);
-
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Foto actualizada exitosamente'),
-              backgroundColor: Colors.green,
-            ),
-          );
-        }
-      }
-    } catch (e) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(e.toString().replaceAll('Exception: ', '')),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    }
-  }
-
-  void _mostrarModalRoles(
-    BuildContext parentContext,
-    WidgetRef ref,
-    int rolActualId,
-    String? curpActual,
-  ) {
-    showModalBottomSheet(
-      context: parentContext,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      builder: (modalContext) {
-        return SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(
-              vertical: 24.0,
-              horizontal: 16.0,
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Text(
-                  'Selecciona tu Rol de Usuario',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.brown,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  'Rol actual: ${rolActualId == 2 ? "Voluntario" : "Reportante"}',
-                  style: const TextStyle(color: Colors.grey, fontSize: 13),
-                ),
-                const SizedBox(height: 20),
-                _buildOpcionRol(
-                  parentContext: parentContext,
-                  modalContext: modalContext,
-                  ref: ref,
-                  titulo: 'Reportante',
-                  subtitulo: 'Solo quiero reportar casos',
-                  isSelected: rolActualId == 1,
-                  rolTarget: 1,
-                  rolActual: rolActualId,
-                  curpActual: curpActual,
-                ),
-                const Divider(),
-                _buildOpcionRol(
-                  parentContext: parentContext,
-                  modalContext: modalContext,
-                  ref: ref,
-                  titulo: 'Voluntario',
-                  subtitulo: 'Quiero rescatar y recibir alertas',
-                  isSelected: rolActualId == 2,
-                  rolTarget: 2,
-                  rolActual: rolActualId,
-                  curpActual: curpActual,
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildOpcionRol({
-    required BuildContext parentContext,
-    required BuildContext modalContext,
-    required WidgetRef ref,
-    required String titulo,
-    required String subtitulo,
-    required bool isSelected,
-    required int rolTarget,
-    required int rolActual,
-    required String? curpActual,
-  }) {
-    return ListTile(
-      title: Text(
-        titulo,
-        style: TextStyle(
-          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-        ),
-      ),
-      subtitle: Text(subtitulo),
-      trailing: isSelected
-          ? const Icon(Icons.check_circle, color: Colors.green)
-          : const Icon(Icons.circle_outlined),
-      onTap: () async {
-        Navigator.pop(modalContext);
-
-        if (rolTarget == rolActual) {
-          return;
-        }
-
-        if (rolActual == 1) {
-          final historial = ref.read(misReportesProvider).value ?? [];
-          final tieneActivos = historial.any(
-            (r) => r.estado != 'Rescatado' && r.estado != 'Falsa_Alarma',
-          );
-          if (tieneActivos) {
-            ScaffoldMessenger.of(parentContext).showSnackBar(
-              const SnackBar(
-                content: Text(
-                  'No puedes cambiar a Voluntario porque tienes reportes de emergencia activos. Ciérralos primero.',
-                ),
-                backgroundColor: Colors.redAccent,
-              ),
-            );
-            return;
-          }
-        } else if (rolActual == 2) {
-          final miRescate = ref.read(miRescateActivoProvider).value;
-          if (miRescate != null) {
-            ScaffoldMessenger.of(parentContext).showSnackBar(
-              const SnackBar(
-                content: Text(
-                  'No puedes cambiar a Reportante porque tienes un rescate en proceso. Finalízalo o abórtalo primero.',
-                ),
-                backgroundColor: Colors.redAccent,
-              ),
-            );
-            return;
-          }
-        }
-
-        String? tokenFCM;
-        if (rolTarget == 2) {
-          final acepto = await _mostrarManifiestoVoluntario(parentContext);
-          if (!acepto) {
-            return;
-          }
-
-          try {
-            final messaging = FirebaseMessaging.instance;
-            NotificationSettings settings = await messaging
-                .getNotificationSettings();
-
-            if (settings.authorizationStatus !=
-                AuthorizationStatus.authorized) {
-              settings = await messaging.requestPermission(
-                alert: true,
-                badge: true,
-                sound: true,
-              );
-            }
-            if (settings.authorizationStatus ==
-                AuthorizationStatus.authorized) {
-              tokenFCM = await messaging.getToken();
-            }
-          } catch (e) {
-            debugPrint('Error solicitando permisos FCM en cambio de rol: $e');
-          }
-        }
-
-        if (!parentContext.mounted) {
-          return;
-        }
-
-        if (rolTarget == 2 &&
-            (curpActual == null || curpActual.trim().isEmpty)) {
-          _mostrarDialogoRegistroCurp(parentContext, ref, tokenFCM);
-        } else {
-          _procesarCambioDeRol(
-            parentContext,
-            ref,
-            rolTarget,
-            titulo,
-            null,
-            tokenFCM,
-          );
-        }
-      },
-    );
-  }
-
-  void _mostrarDialogoRegistroCurp(
-    BuildContext parentContext,
-    WidgetRef ref,
-    String? tokenFCM,
-  ) {
-    final TextEditingController curpController = TextEditingController();
-    final curpRegex = RegExp(r'^[A-Z]{4}\d{6}[HM][A-Z]{5}[A-Z\d]\d$');
-
-    showDialog(
-      context: parentContext,
-      barrierDismissible: false,
-      builder: (dialogContext) {
-        return AlertDialog(
-          title: const Text('Completar Registro'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text(
-                'Para proteger la identidad de nuestra red de rescate, ser Voluntario requiere que nos proporciones tu CURP.',
-                style: TextStyle(fontSize: 14),
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: curpController,
-                textCapitalization: TextCapitalization.characters,
-                maxLength: 18,
-                decoration: const InputDecoration(
-                  labelText: 'Ingresa tu CURP',
-                  border: OutlineInputBorder(),
-                  counterText: "",
-                  prefixIcon: Icon(Icons.badge),
-                ),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext),
-              child: const Text(
-                'Cancelar',
-                style: TextStyle(color: Colors.grey),
-              ),
-            ),
-            FilledButton(
-              onPressed: () {
-                final curpIngresada = curpController.text.trim().toUpperCase();
-                if (!curpRegex.hasMatch(curpIngresada)) {
-                  ScaffoldMessenger.of(dialogContext).showSnackBar(
-                    const SnackBar(
-                      content: Text('El formato del CURP es inválido.'),
-                      backgroundColor: Colors.red,
-                    ),
-                  );
-                  return;
-                }
-
-                Navigator.pop(dialogContext);
-                _procesarCambioDeRol(
-                  parentContext,
-                  ref,
-                  2,
-                  'Voluntario',
-                  curpIngresada,
-                  tokenFCM,
-                );
-              },
-              style: FilledButton.styleFrom(backgroundColor: Colors.redAccent),
-              child: const Text('Confirmar Rol'),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  Future<void> _procesarCambioDeRol(
-    BuildContext parentContext,
-    WidgetRef ref,
-    int rolTarget,
-    String titulo,
-    String? nuevaCurp,
-    String? tokenFCM,
-  ) async {
-    try {
-      await ref
-          .read(userProfileProvider.notifier)
-          .actualizarCampo(
-            role: rolTarget,
-            curp: nuevaCurp,
-            fcmToken: tokenFCM,
-          );
-
-      ref.read(authProvider.notifier).updateLocalRole(rolTarget);
-
-      if (parentContext.mounted) {
-        ScaffoldMessenger.of(parentContext).showSnackBar(
-          SnackBar(
-            content: Text('Cambiado a $titulo exitosamente.'),
-            backgroundColor: Colors.green,
-          ),
-        );
-      }
-    } catch (e) {
-      if (parentContext.mounted) {
-        ScaffoldMessenger.of(parentContext).showSnackBar(
-          SnackBar(content: Text(e.toString()), backgroundColor: Colors.red),
-        );
-      }
-    }
-  }
-
-  void _mostrarDialogoDato(
-    BuildContext parentContext,
-    WidgetRef ref,
-    String titulo,
-    String valorActual,
-    String campoBaseDatos,
-  ) {
-    final TextEditingController controller = TextEditingController(
-      text: valorActual,
-    );
-
-    showDialog(
-      context: parentContext,
-      builder: (dialogContext) {
-        return AlertDialog(
-          title: Text('Actualizar $titulo'),
-          content: TextField(
-            controller: controller,
-            keyboardType: campoBaseDatos == 'telefono'
-                ? TextInputType.phone
-                : TextInputType.emailAddress,
-            decoration: InputDecoration(
-              hintText: 'Ingresa tu nuevo $titulo',
-              border: const OutlineInputBorder(),
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext),
-              child: const Text(
-                'Cancelar',
-                style: TextStyle(color: Colors.grey),
-              ),
-            ),
-            FilledButton(
-              onPressed: () async {
-                final nuevoValor = controller.text.trim();
-
-                if (campoBaseDatos == 'email') {
-                  final emailRegex = RegExp(
-                    r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$',
-                  );
-                  if (!emailRegex.hasMatch(nuevoValor)) {
-                    ScaffoldMessenger.of(dialogContext).showSnackBar(
-                      const SnackBar(
-                        content: Text('Formato de correo inválido'),
-                        backgroundColor: Colors.red,
-                      ),
-                    );
-                    return;
-                  }
-                } else if (campoBaseDatos == 'telefono') {
-                  final phoneRegex = RegExp(r'^\d{10}$');
-                  if (!phoneRegex.hasMatch(nuevoValor)) {
-                    ScaffoldMessenger.of(dialogContext).showSnackBar(
-                      const SnackBar(
-                        content: Text('El teléfono debe tener 10 dígitos'),
-                        backgroundColor: Colors.red,
-                      ),
-                    );
-                    return;
-                  }
-                }
-
-                if (nuevoValor.isNotEmpty && nuevoValor != valorActual) {
-                  Navigator.pop(dialogContext);
-                  try {
-                    if (campoBaseDatos == 'telefono') {
-                      await ref
-                          .read(userProfileProvider.notifier)
-                          .actualizarCampo(telefono: nuevoValor);
-                    } else if (campoBaseDatos == 'email') {
-                      await ref
-                          .read(userProfileProvider.notifier)
-                          .actualizarCampo(email: nuevoValor);
-                    }
-                    if (parentContext.mounted) {
-                      ScaffoldMessenger.of(parentContext).showSnackBar(
-                        const SnackBar(
-                          content: Text('Dato actualizado exitosamente'),
-                          backgroundColor: Colors.green,
-                        ),
-                      );
-                    }
-                  } catch (e) {
-                    if (parentContext.mounted) {
-                      ScaffoldMessenger.of(parentContext).showSnackBar(
-                        SnackBar(
-                          content: Text(e.toString()),
-                          backgroundColor: Colors.red,
-                        ),
-                      );
-                    }
-                  }
-                }
-              },
-              style: FilledButton.styleFrom(backgroundColor: Colors.redAccent),
-              child: const Text('Guardar'),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  void _mostrarDialogoRadio(
-    BuildContext parentContext,
-    WidgetRef ref,
-    int radioActual,
-  ) {
-    int radioSeleccionado = radioActual;
-
-    showDialog(
-      context: parentContext,
-      builder: (dialogContext) {
-        return StatefulBuilder(
-          builder: (context, setState) {
-            return AlertDialog(
-              title: const Text('Radio de Alertas (km)'),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    'Recibir notificaciones de nuevas emergencias a un máximo de $radioSeleccionado km a la redonda.',
-                    style: const TextStyle(fontSize: 14),
-                  ),
-                  const SizedBox(height: 16),
-                  Slider(
-                    value: radioSeleccionado.toDouble(),
-                    min: 5,
-                    max: 100,
-                    divisions: 19,
-                    label: '$radioSeleccionado km',
-                    activeColor: Colors.purple,
-                    onChanged: (val) =>
-                        setState(() => radioSeleccionado = val.toInt()),
-                  ),
-                ],
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(dialogContext),
-                  child: const Text('Cancelar'),
-                ),
-                FilledButton(
-                  onPressed: () async {
-                    Navigator.pop(dialogContext);
-                    if (radioSeleccionado != radioActual) {
-                      try {
-                        await ref
-                            .read(userProfileProvider.notifier)
-                            .actualizarCampo(
-                              radioNotificaciones: radioSeleccionado,
-                            );
-                        // Eliminamos la recarga del mapa aquí, solo actualiza ajustes backend
-                        if (parentContext.mounted) {
-                          ScaffoldMessenger.of(parentContext).showSnackBar(
-                            const SnackBar(
-                              content: Text('Radio actualizado exitosamente'),
-                              backgroundColor: Colors.green,
-                            ),
-                          );
-                        }
-                      } catch (e) {
-                        if (parentContext.mounted) {
-                          ScaffoldMessenger.of(parentContext).showSnackBar(
-                            SnackBar(
-                              content: Text(e.toString()),
-                              backgroundColor: Colors.red,
-                            ),
-                          );
-                        }
-                      }
-                    }
-                  },
-                  child: const Text('Guardar'),
-                ),
-              ],
-            );
-          },
-        );
-      },
-    );
-  }
-
-  void _mostrarDialogoLimiteMapa(
-    BuildContext parentContext,
-    WidgetRef ref,
-    int limiteActual,
-  ) {
-    int limiteSeleccionado = limiteActual;
-
-    showDialog(
-      context: parentContext,
-      builder: (dialogContext) {
-        return StatefulBuilder(
-          builder: (context, setState) {
-            return AlertDialog(
-              title: const Text('Límite de Emergencias'),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    'Mostrar un máximo de $limiteSeleccionado emergencias activas en el mapa y en listas para no saturar la pantalla.',
-                    style: const TextStyle(fontSize: 14),
-                  ),
-                  const SizedBox(height: 16),
-                  Slider(
-                    value: limiteSeleccionado.toDouble(),
-                    min: 5,
-                    max: 50,
-                    divisions: 9,
-                    label: '$limiteSeleccionado',
-                    activeColor: Colors.redAccent,
-                    onChanged: (val) {
-                      setState(() {
-                        limiteSeleccionado = val.toInt();
-                      });
-                    },
-                  ),
-                ],
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(dialogContext),
-                  child: const Text('Cancelar'),
-                ),
-                FilledButton(
-                  onPressed: () async {
-                    Navigator.pop(dialogContext);
-                    if (limiteSeleccionado != limiteActual) {
-                      await ref
-                          .read(mapLimitProvider.notifier)
-                          .updateLimit(limiteSeleccionado);
-                      ref.invalidate(reportesActivosMapaProvider);
-                      ref.invalidate(activeReportsProvider);
-                      if (parentContext.mounted) {
-                        ScaffoldMessenger.of(parentContext).showSnackBar(
-                          const SnackBar(
-                            content: Text('Límite actualizado exitosamente'),
-                            backgroundColor: Colors.green,
-                          ),
-                        );
-                      }
-                    }
-                  },
-                  child: const Text('Guardar'),
-                ),
-              ],
-            );
-          },
-        );
-      },
-    );
-  }
-
-  Future<bool> _mostrarManifiestoVoluntario(BuildContext context) async {
-    return await showDialog<bool>(
-          context: context,
-          barrierDismissible: false,
-          builder: (dialogContext) => AlertDialog(
-            title: const Text(
-              'Manifiesto de Voluntario',
-              style: TextStyle(fontSize: 18),
-            ),
-            content: const Text(
-              'Declaro que los gastos derivados corren por mi cuenta u originados por financiamiento colectivo ajeno a la app.',
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(dialogContext, false),
-                child: const Text('Cancelar'),
-              ),
-              FilledButton(
-                onPressed: () => Navigator.pop(dialogContext, true),
-                child: const Text('Acepto la responsabilidad'),
-              ),
-            ],
-          ),
-        ) ??
-        false;
-  }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -696,11 +30,9 @@ class SettingsScreen extends ConsumerWidget {
           final email = datos['email'] ?? 'Sin registrar';
           final curp = datos['curp'];
           final String? fotoUrl = datos['foto_perfil'];
-
           final int rolActualId = datos['role'] ?? 1;
           final int radioNotificaciones = datos['radio_notificaciones'] ?? 30;
           final String? tokenFCMActual = datos['fcm_token'];
-
           final bool notificacionesActivas =
               tokenFCMActual != null && tokenFCMActual.trim().isNotEmpty;
 
@@ -742,7 +74,17 @@ class SettingsScreen extends ConsumerWidget {
                       bottom: 0,
                       right: 0,
                       child: GestureDetector(
-                        onTap: () => _mostrarOpcionesDeFoto(context, ref),
+                        onTap: () {
+                          showModalBottomSheet(
+                            context: context,
+                            shape: const RoundedRectangleBorder(
+                              borderRadius: BorderRadius.vertical(
+                                top: Radius.circular(20),
+                              ),
+                            ),
+                            builder: (_) => const ProfilePhotoSheet(),
+                          );
+                        },
                         child: Container(
                           padding: const EdgeInsets.all(8),
                           decoration: const BoxDecoration(
@@ -809,8 +151,20 @@ class SettingsScreen extends ConsumerWidget {
                 title: const Text('Rol en la Plataforma'),
                 subtitle: Text(rolActualId == 2 ? 'Voluntario' : 'Reportante'),
                 trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-                onTap: () =>
-                    _mostrarModalRoles(context, ref, rolActualId, curp),
+                onTap: () {
+                  showModalBottomSheet(
+                    context: context,
+                    shape: const RoundedRectangleBorder(
+                      borderRadius: BorderRadius.vertical(
+                        top: Radius.circular(24),
+                      ),
+                    ),
+                    builder: (_) => RoleSelectionSheet(
+                      rolActualId: rolActualId,
+                      curpActual: curp,
+                    ),
+                  );
+                },
               ),
               const Divider(height: 1),
               ListTile(
@@ -825,8 +179,16 @@ class SettingsScreen extends ConsumerWidget {
                   size: 18,
                   color: Colors.redAccent,
                 ),
-                onTap: () =>
-                    _mostrarDialogoDato(context, ref, 'Correo', email, 'email'),
+                onTap: () {
+                  showDialog(
+                    context: context,
+                    builder: (_) => EditDataDialog(
+                      titulo: 'Correo',
+                      valorActual: email,
+                      campoBaseDatos: 'email',
+                    ),
+                  );
+                },
               ),
               const Divider(height: 1),
               ListTile(
@@ -838,13 +200,16 @@ class SettingsScreen extends ConsumerWidget {
                   size: 18,
                   color: Colors.redAccent,
                 ),
-                onTap: () => _mostrarDialogoDato(
-                  context,
-                  ref,
-                  'Teléfono',
-                  telefono,
-                  'telefono',
-                ),
+                onTap: () {
+                  showDialog(
+                    context: context,
+                    builder: (_) => EditDataDialog(
+                      titulo: 'Teléfono',
+                      valorActual: telefono,
+                      campoBaseDatos: 'telefono',
+                    ),
+                  );
+                },
               ),
               if (rolActualId == 2 &&
                   curp != null &&
@@ -951,8 +316,13 @@ class SettingsScreen extends ConsumerWidget {
                   size: 18,
                   color: Colors.redAccent,
                 ),
-                onTap: () =>
-                    _mostrarDialogoRadio(context, ref, radioNotificaciones),
+                onTap: () {
+                  showDialog(
+                    context: context,
+                    builder: (_) =>
+                        RadiusSliderDialog(radioActual: radioNotificaciones),
+                  );
+                },
               ),
               const Divider(height: 1),
               ListTile(
@@ -964,7 +334,13 @@ class SettingsScreen extends ConsumerWidget {
                   size: 18,
                   color: Colors.redAccent,
                 ),
-                onTap: () => _mostrarDialogoLimiteMapa(context, ref, mapLimit),
+                onTap: () {
+                  showDialog(
+                    context: context,
+                    builder: (_) =>
+                        MapLimitSliderDialog(limiteActual: mapLimit),
+                  );
+                },
               ),
               const Divider(height: 40),
               ListTile(
@@ -984,65 +360,7 @@ class SettingsScreen extends ConsumerWidget {
                   showDialog(
                     context: context,
                     barrierDismissible: false,
-                    builder: (dialogContext) {
-                      return AlertDialog(
-                        title: const Row(
-                          children: [
-                            Icon(Icons.logout_rounded, color: Colors.red),
-                            SizedBox(width: 8),
-                            Text('¿Cerrar Sesión?'),
-                          ],
-                        ),
-                        content: const Text(
-                          'Estás a punto de salir de tu cuenta en RescueNet. '
-                          'Para volver a reportar emergencias o rastrear rescates en tiempo real '
-                          'necesitarás ingresar tus credenciales nuevamente.',
-                        ),
-                        actions: [
-                          TextButton(
-                            onPressed: () => Navigator.pop(dialogContext),
-                            child: const Text(
-                              'Cancelar',
-                              style: TextStyle(color: Colors.grey),
-                            ),
-                          ),
-                          FilledButton(
-                            style: FilledButton.styleFrom(
-                              backgroundColor: Colors.red,
-                              foregroundColor: Colors.white,
-                            ),
-                            onPressed: () async {
-                              Navigator.pop(dialogContext);
-                              try {
-                                await ref.read(authProvider.notifier).logout();
-                                if (context.mounted) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                      content: Text(
-                                        'Has cerrado sesión correctamente.',
-                                      ),
-                                      backgroundColor: Colors.black87,
-                                    ),
-                                  );
-                                }
-                              } catch (e) {
-                                if (context.mounted) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Text(
-                                        'Error al cerrar sesión: $e',
-                                      ),
-                                      backgroundColor: Colors.red,
-                                    ),
-                                  );
-                                }
-                              }
-                            },
-                            child: const Text('Cerrar Sesión'),
-                          ),
-                        ],
-                      );
-                    },
+                    builder: (_) => const LogoutDialog(),
                   );
                 },
               ),
@@ -1066,72 +384,7 @@ class SettingsScreen extends ConsumerWidget {
                   showDialog(
                     context: context,
                     barrierDismissible: false,
-                    builder: (dialogContext) {
-                      return AlertDialog(
-                        title: const Row(
-                          children: [
-                            Icon(
-                              Icons.warning_amber_rounded,
-                              color: Colors.red,
-                            ),
-                            SizedBox(width: 8),
-                            Text('¿Eliminar cuenta?'),
-                          ],
-                        ),
-                        content: const Text(
-                          'Esta acción es irreversible. Se borrarán tus datos personales, el historial '
-                          'de alertas que has emitido y tus registros de rescates '
-                          'de los servidores de RescueNet',
-                        ),
-                        actions: [
-                          TextButton(
-                            onPressed: () => Navigator.pop(dialogContext),
-                            child: const Text(
-                              'Cancelar',
-                              style: TextStyle(color: Colors.grey),
-                            ),
-                          ),
-                          FilledButton(
-                            style: FilledButton.styleFrom(
-                              backgroundColor: Colors.red,
-                              foregroundColor: Colors.white,
-                            ),
-                            onPressed: () async {
-                              Navigator.pop(dialogContext);
-                              try {
-                                await ref
-                                    .read(authProvider.notifier)
-                                    .eliminarCuentaEnServidor();
-                                await ref.read(authProvider.notifier).logout();
-
-                                if (context.mounted) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                      content: Text(
-                                        'Tu cuenta ha sido eliminada correctamente.',
-                                      ),
-                                      backgroundColor: Colors.black87,
-                                    ),
-                                  );
-                                }
-                              } catch (e) {
-                                if (context.mounted) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Text(
-                                        'Error al eliminar cuenta: $e',
-                                      ),
-                                      backgroundColor: Colors.red,
-                                    ),
-                                  );
-                                }
-                              }
-                            },
-                            child: const Text('Eliminar cuenta'),
-                          ),
-                        ],
-                      );
-                    },
+                    builder: (_) => const DeleteAccountDialog(),
                   );
                 },
               ),
