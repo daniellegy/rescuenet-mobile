@@ -1,5 +1,5 @@
 import 'package:dio/dio.dart';
-import 'package:flutter/foundation.dart'; // Importante para detectar si es Debug o Release
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
@@ -9,6 +9,8 @@ class DioClient {
   final Dio _dio;
   final _storage = const FlutterSecureStorage();
   String? _inMemoryToken;
+  bool _isRefreshing =
+      false; // Flag para evitar llamadas concurrentes de cierre de sesión
   final VoidCallback? onUnauthorized;
 
   DioClient({this.onUnauthorized})
@@ -24,7 +26,6 @@ class DioClient {
         ),
       ) {
     // PRÁCTICA SENIOR: Los logs solo se inyectan si estás depurando.
-    // Esto evita fugas de tokens, contraseñas y datos sensibles en producción.
     if (kDebugMode) {
       _dio.interceptors.add(
         LogInterceptor(
@@ -41,10 +42,10 @@ class DioClient {
     _dio.interceptors.add(
       InterceptorsWrapper(
         onRequest: (options, handler) async {
-          // No inyectamos token en rutas públicas
           if (!options.path.contains('/login') &&
               !options.path.contains('/register')) {
             _inMemoryToken ??= await _storage.read(key: 'jwt_token');
+
             if (_inMemoryToken != null) {
               options.headers['Authorization'] = 'Bearer $_inMemoryToken';
             }
@@ -52,15 +53,21 @@ class DioClient {
           return handler.next(options);
         },
         onError: (DioException e, handler) async {
-          // Si el token expira o es inválido, matamos la sesión inmediatamente
           if (e.response?.statusCode == 401) {
             _inMemoryToken = null;
             await _storage.delete(key: 'jwt_token');
 
-            // Refactorización: Uso de invocación segura para null-aware
-            onUnauthorized?.call();
+            // Solo disparamos la alerta de sesión expirada una vez
+            if (!_isRefreshing) {
+              _isRefreshing = true;
+              onUnauthorized?.call();
+
+              // Liberamos el flag después de un breve periodo para permitir futuros logins
+              Future.delayed(const Duration(seconds: 2), () {
+                _isRefreshing = false;
+              });
+            }
           }
-          // Propagamos el error para que AppException.fromDioException lo procese en los repositorios
           return handler.next(e);
         },
       ),

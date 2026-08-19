@@ -37,17 +37,36 @@ class AuthNotifier extends Notifier<AuthState> {
     if (parts.length != 3) {
       throw const FormatException('Token JWT inválido');
     }
-    final normalizedPayload = base64Url.normalize(parts[1]);
+
+    String normalizedPayload = base64Url.normalize(parts[1]);
+
+    // Inyección manual del padding estricto para evitar crashes de Dart
+    switch (normalizedPayload.length % 4) {
+      case 0:
+        break;
+      case 2:
+        normalizedPayload += '==';
+        break;
+      case 3:
+        normalizedPayload += '=';
+        break;
+      default:
+        throw Exception('String base64url inválido');
+    }
+
     final decodedPayload = utf8.decode(base64Url.decode(normalizedPayload));
     final payload = jsonDecode(decodedPayload);
+
     if (payload is! Map) {
       throw const FormatException('El payload del token no es un objeto JSON');
     }
+
     return Map<String, dynamic>.from(payload);
   }
 
   Future<void> restoreSession() async {
     final token = await _storage.read(key: 'jwt_token');
+
     if (token == null || token.isEmpty) {
       state = AuthState(isLogged: false, role: AppRole.ninguno, userId: null);
       return;
@@ -56,8 +75,9 @@ class AuthNotifier extends Notifier<AuthState> {
     try {
       final payload = _decodeJwtPayload(token);
       final usuario = payload['usuario'];
+
       if (usuario is! Map) {
-        throw const FormatException('Sin datos de usuario');
+        throw const FormatException('Sin datos de usuario en el JWT');
       }
 
       final userId = usuario['id'];
@@ -66,14 +86,19 @@ class AuthNotifier extends Notifier<AuthState> {
 
       if (exp is int) {
         final expirationDate = DateTime.fromMillisecondsSinceEpoch(exp * 1000);
-        if (expirationDate.isBefore(DateTime.now())) {
+
+        // Buffer de seguridad de 1 minuto: si expira en los próximos 60 segundos,
+        // lo forzamos a cerrar sesión para evitar que el request muera en tránsito.
+        if (expirationDate
+            .subtract(const Duration(minutes: 1))
+            .isBefore(DateTime.now())) {
           await logout();
           return;
         }
       }
 
       if (userId is! int || rolId is! int) {
-        throw const FormatException('Id o rol inválidos');
+        throw const FormatException('Id o rol inválidos en el JWT');
       }
 
       state = AuthState(
@@ -82,6 +107,7 @@ class AuthNotifier extends Notifier<AuthState> {
         userId: userId,
       );
     } catch (_) {
+      // Cualquier fallo en la lectura o expiración limpia la sesión local preventivamente
       await _storage.delete(key: 'jwt_token');
       state = AuthState(isLogged: false, role: AppRole.ninguno, userId: null);
     }
@@ -142,6 +168,7 @@ class AuthNotifier extends Notifier<AuthState> {
     if (token == null || token.isEmpty) {
       throw Exception('No hay una sesión activa.');
     }
+
     final repository = ref.read(authRepositoryProvider);
     await repository.eliminarCuenta(token);
   }
