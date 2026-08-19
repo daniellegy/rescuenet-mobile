@@ -16,7 +16,7 @@
     </queries>
     
     <application
-        android:label="rescuenet_mobile"
+        android:label="RescueNet"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         

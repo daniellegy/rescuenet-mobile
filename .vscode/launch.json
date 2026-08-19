@@ -31,7 +31,7 @@
             "toolArgs": [
                 "--dart-define-from-file",
                 ".env"
-            ]
+            ] 
         }
     ]
 }
