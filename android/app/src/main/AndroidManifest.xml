@@ -20,6 +20,7 @@
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         
+        <!-- ESTA ES TU ACTIVIDAD PRINCIPAL (Tu App) -->
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -38,6 +39,12 @@
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
         </activity>
+
+        <!-- ESTA ES LA ACTIVIDAD DE LA LIBRERÍA DE RECORTE (Totalmente separada) -->
+        <activity
+            android:name="com.yalantis.ucrop.UCropActivity"
+            android:screenOrientation="portrait"
+            android:theme="@style/Theme.AppCompat.Light.NoActionBar"/>
         
         <meta-data
             android:name="flutterEmbedding"

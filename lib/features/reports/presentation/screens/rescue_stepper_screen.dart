@@ -360,6 +360,13 @@ class _RescueStepperScreenState extends ConsumerState<RescueStepperScreen> {
       child: Scaffold(
         appBar: AppBar(
           title: const Text('Asistente de Rescate'),
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back_ios_new_rounded),
+            onPressed: () {
+              // Redirigimos explícitamente a los detalles de la emergencia
+              context.pushReplacement('/report-detail', extra: widget.reporte);
+            },
+          ),
           actions: [
             if (widget.reporte.canalComunicacionHabilitado &&
                 widget.reporte.canalComunicacionEstado == 'activo' &&

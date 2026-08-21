@@ -141,10 +141,9 @@ class UserInfoScreen extends ConsumerWidget {
                         reportesCreados.toString(),
                         Icons.campaign_rounded,
                         Colors.blue,
-                        () => context.push(
-                          '/reports',
-                          extra: {'initialIndex': 1},
-                        ),
+                        // Solución: Usar .go para navegar correctamente al ShellRoute
+                        () =>
+                            context.go('/reports', extra: {'initialIndex': 1}),
                       ),
                       if (esVoluntario) ...[
                         const SizedBox(width: 16),
@@ -153,7 +152,8 @@ class UserInfoScreen extends ConsumerWidget {
                           rescatesRealizados.toString(),
                           Icons.volunteer_activism,
                           Colors.green,
-                          () => context.push(
+                          // Solución: Usar .go para navegar correctamente al ShellRoute
+                          () => context.go(
                             '/reports',
                             extra: {'initialIndex': 1},
                           ),
