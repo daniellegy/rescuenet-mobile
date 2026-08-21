@@ -21,8 +21,8 @@ class ProfilePhotoSheet extends ConsumerWidget {
       final cameraService = ref.read(cameraServiceProvider);
       final pickedFile = await cameraService.takePicture(
         fromGallery: fromGallery,
+        cropImage: true, // <-- Implementación del recorte
       );
-
       if (pickedFile != null && context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -33,7 +33,6 @@ class ProfilePhotoSheet extends ConsumerWidget {
         await ref
             .read(userProfileProvider.notifier)
             .actualizarFotoPerfil(pickedFile.path);
-
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
