@@ -120,27 +120,37 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
       }
     }
 
-    if (currentPos != null) {
-      final distance = Geolocator.distanceBetween(
-        currentPos.latitude,
-        currentPos.longitude,
-        widget.reporte.latitud,
-        widget.reporte.longitud,
-      );
-
-      if (distance > 100000) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text(
-                'Estás muy lejos de esta ciudad para aceptar el rescate.',
-              ),
-              backgroundColor: Colors.red,
-            ),
-          );
-        }
-        return;
+    if (currentPos == null) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('No se pudo obtener tu ubicación para aceptar.'),
+            backgroundColor: Colors.red,
+          ),
+        );
       }
+      return;
+    }
+
+    final distance = Geolocator.distanceBetween(
+      currentPos.latitude,
+      currentPos.longitude,
+      widget.reporte.latitud,
+      widget.reporte.longitud,
+    );
+
+    if (distance > 100000) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Estás muy lejos de esta ciudad para aceptar el rescate.',
+            ),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+      return;
     }
     _ejecutarAceptar();
   }

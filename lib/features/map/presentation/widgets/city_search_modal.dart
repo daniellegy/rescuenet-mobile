@@ -15,10 +15,12 @@ class CitySearchModal extends StatelessWidget {
         'Cholula': const LatLng(19.0605, -98.3047),
         'Atlixco': const LatLng(18.9042, -98.4384),
       },
-      'Minatitlán': {
-        'Minatitlán Centro': const LatLng(17.9895, -94.5559),
-        'Cosoleacaque': const LatLng(17.9972, -94.6339),
-        'El Naranjito': const LatLng(18.0050, -94.5761),
+      'Veracruz': {
+        'Veracruz Centro': const LatLng(19.1738, -96.1342),
+        'Boca del Río': const LatLng(19.1064, -96.1065),
+        'Minatitlán': const LatLng(17.9868, -94.5478),
+        'Cosoleacaque': const LatLng(17.9955, -94.6374),
+        'El Naranjito': const LatLng(18.0012, -94.6041),
       },
     };
 

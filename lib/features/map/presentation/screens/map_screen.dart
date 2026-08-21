@@ -111,10 +111,18 @@ class _MapScreenState extends ConsumerState<MapScreen>
       17.9895,
       -94.5559,
     );
+    final distVeracruz = Geolocator.distanceBetween(
+      pos.latitude,
+      pos.longitude,
+      19.3250,
+      -96.1275
+    );
     if (distPuebla < 50000) {
       setState(() => _ciudadSeleccionadaLabel = 'Puebla (Mi ubicación)');
     } else if (distMina < 50000) {
       setState(() => _ciudadSeleccionadaLabel = 'Minatitlán (Mi ubicación)');
+    } else if (distVeracruz < 50000) {
+      setState(() => _ciudadSeleccionadaLabel = 'Veracruz (Mi ubicación)');
     } else {
       setState(() => _ciudadSeleccionadaLabel = 'Ubicación actual');
     }
@@ -545,6 +553,7 @@ class _MapScreenState extends ConsumerState<MapScreen>
   Widget build(BuildContext context) {
     final reportesAsync = ref.watch(reportesActivosMapaProvider);
     final miRescateAsync = ref.watch(miRescateActivoProvider);
+    final explorePos = ref.watch(mapExplorationCenterProvider);
 
     final bool hasActiveRescue = miRescateAsync.maybeWhen(
       data: (rescate) => rescate != null,
@@ -593,10 +602,13 @@ class _MapScreenState extends ConsumerState<MapScreen>
       }
 
       bool pasaDistancia = true;
-      if (_filtroDistancia != 999 && _myPosition.value != null) {
+      
+      final centerPoint = explorePos ?? _myPosition.value;
+
+      if (_filtroDistancia != 999 && centerPoint != null) {
         final dist = Geolocator.distanceBetween(
-          _myPosition.value!.latitude,
-          _myPosition.value!.longitude,
+          centerPoint.latitude,
+          centerPoint.longitude,
           reporte.latitud,
           reporte.longitud,
         );
@@ -781,6 +793,7 @@ class _MapScreenState extends ConsumerState<MapScreen>
                                 setState(() {
                                   _ciudadSeleccionadaLabel = label;
                                 });
+                                ref.read(mapExplorationCenterProvider.notifier).updatePosition(pos);
                                 _mapController?.animateCamera(
                                   CameraUpdate.newLatLngZoom(pos, 13),
                                 );
@@ -996,6 +1009,7 @@ class _MapScreenState extends ConsumerState<MapScreen>
                       elevation: 4,
                       onPressed: () {
                         _seguirUsuario.value = true;
+                        ref.read(mapExplorationCenterProvider.notifier).updatePosition(null);
                         if (_myPosition.value != null) {
                           _actualizarEtiquetaCiudadSegunUbicacion(
                             _myPosition.value!,
