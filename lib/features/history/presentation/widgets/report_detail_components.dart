@@ -1,11 +1,47 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+// NUEVA FUNCIÓN COMPARTIDA PARA EXPANDIR IMÁGENES
+void _mostrarImagenExpandida(BuildContext context, String url) {
+  showDialog(
+    context: context,
+    builder: (ctx) => Dialog(
+      backgroundColor: Colors.transparent,
+      insetPadding: EdgeInsets.zero,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          InteractiveViewer(
+            maxScale: 4.0,
+            child: Image.network(
+              url,
+              fit: BoxFit.contain,
+              width: double.infinity,
+              height: double.infinity,
+            ),
+          ),
+          Positioned(
+            top: 40,
+            left: 20,
+            child: IconButton(
+              icon: const Icon(
+                Icons.arrow_back_ios_new_rounded,
+                color: Colors.white,
+                size: 28,
+              ),
+              onPressed: () => Navigator.pop(ctx),
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
 /// Carrusel interactivo para mostrar la evidencia fotográfica
 class ReportImageCarousel extends StatefulWidget {
   final List<String> photos;
   const ReportImageCarousel({super.key, required this.photos});
-
   @override
   State<ReportImageCarousel> createState() => _ReportImageCarouselState();
 }
@@ -18,7 +54,6 @@ class _ReportImageCarouselState extends State<ReportImageCarousel> {
     if (widget.photos.isEmpty) {
       return const SizedBox.shrink();
     }
-
     return Stack(
       alignment: Alignment.bottomCenter,
       children: [
@@ -29,11 +64,15 @@ class _ReportImageCarouselState extends State<ReportImageCarousel> {
             onPageChanged: (index) {
               setState(() => _currentPhotoIndex = index);
             },
-            itemBuilder: (context, index) => Image.network(
-              widget.photos[index],
-              fit: BoxFit.cover,
-              errorBuilder: (c, e, s) => const Center(
-                child: Icon(Icons.broken_image, size: 50, color: Colors.grey),
+            itemBuilder: (context, index) => GestureDetector(
+              onTap: () =>
+                  _mostrarImagenExpandida(context, widget.photos[index]),
+              child: Image.network(
+                widget.photos[index],
+                fit: BoxFit.cover,
+                errorBuilder: (c, e, s) => const Center(
+                  child: Icon(Icons.broken_image, size: 50, color: Colors.grey),
+                ),
               ),
             ),
           ),
@@ -69,14 +108,12 @@ class ReportDetailRow extends StatelessWidget {
   final IconData icon;
   final String label;
   final String value;
-
   const ReportDetailRow({
     super.key,
     required this.icon,
     required this.label,
     required this.value,
   });
-
   @override
   Widget build(BuildContext context) {
     return Padding(
@@ -116,7 +153,6 @@ class ReportPersonRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-
     return Padding(
       padding: const EdgeInsets.only(bottom: 8.0),
       child: InkWell(
@@ -137,7 +173,6 @@ class ReportPersonRow extends StatelessWidget {
                     : (isDark
                           ? Colors.blueGrey.shade800
                           : Colors.blueGrey.shade100),
-                // Solución: Agregamos el operador "!" a fotoUrl dentro de NetworkImage
                 backgroundImage: fotoUrl != null
                     ? NetworkImage(fotoUrl!)
                     : null,
@@ -188,14 +223,12 @@ class ReportPhaseRow extends StatelessWidget {
   final IconData icon;
   final String label;
   final String value;
-
   const ReportPhaseRow({
     super.key,
     required this.icon,
     required this.label,
     required this.value,
   });
-
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
