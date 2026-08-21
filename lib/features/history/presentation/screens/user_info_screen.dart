@@ -4,6 +4,43 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/network/dio_client.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 
+// FUNCIÓN PARA EXPANDIR IMÁGENES
+void _mostrarImagenExpandida(BuildContext context, String url) {
+  showDialog(
+    context: context,
+    builder: (ctx) => Dialog(
+      backgroundColor: Colors.transparent,
+      insetPadding: EdgeInsets.zero,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          InteractiveViewer(
+            maxScale: 4.0,
+            child: Image.network(
+              url,
+              fit: BoxFit.contain,
+              width: double.infinity,
+              height: double.infinity,
+            ),
+          ),
+          Positioned(
+            top: 40,
+            left: 20,
+            child: IconButton(
+              icon: const Icon(
+                Icons.arrow_back_ios_new_rounded,
+                color: Colors.white,
+                size: 28,
+              ),
+              onPressed: () => Navigator.pop(ctx),
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
 final userStatsProvider = FutureProvider.autoDispose
     .family<Map<String, dynamic>, int>((ref, userId) async {
       final dio = ref.watch(dioProvider).instance;
@@ -48,13 +85,18 @@ class UserInfoScreen extends ConsumerWidget {
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 const SizedBox(height: 20),
-                CircleAvatar(
-                  radius: 60,
-                  backgroundColor: Colors.grey.shade200,
-                  backgroundImage: foto != null ? NetworkImage(foto) : null,
-                  child: foto == null
-                      ? const Icon(Icons.person, size: 60, color: Colors.grey)
+                GestureDetector(
+                  onTap: foto != null
+                      ? () => _mostrarImagenExpandida(context, foto)
                       : null,
+                  child: CircleAvatar(
+                    radius: 60,
+                    backgroundColor: Colors.grey.shade200,
+                    backgroundImage: foto != null ? NetworkImage(foto) : null,
+                    child: foto == null
+                        ? const Icon(Icons.person, size: 60, color: Colors.grey)
+                        : null,
+                  ),
                 ),
                 const SizedBox(height: 16),
                 Text(
@@ -99,6 +141,10 @@ class UserInfoScreen extends ConsumerWidget {
                         reportesCreados.toString(),
                         Icons.campaign_rounded,
                         Colors.blue,
+                        () => context.push(
+                          '/reports',
+                          extra: {'initialIndex': 1},
+                        ),
                       ),
                       if (esVoluntario) ...[
                         const SizedBox(width: 16),
@@ -107,6 +153,10 @@ class UserInfoScreen extends ConsumerWidget {
                           rescatesRealizados.toString(),
                           Icons.volunteer_activism,
                           Colors.green,
+                          () => context.push(
+                            '/reports',
+                            extra: {'initialIndex': 1},
+                          ),
                         ),
                       ],
                     ],
@@ -128,33 +178,38 @@ class UserInfoScreen extends ConsumerWidget {
     String count,
     IconData icon,
     Color color,
+    VoidCallback onTap,
   ) {
     return Expanded(
       child: Card(
         elevation: 4,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 12),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(icon, size: 40, color: color),
-              const SizedBox(height: 12),
-              Text(
-                count,
-                style: TextStyle(
-                  fontSize: 28,
-                  fontWeight: FontWeight.bold,
-                  color: color,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(16),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 12),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(icon, size: 40, color: color),
+                const SizedBox(height: 12),
+                Text(
+                  count,
+                  style: TextStyle(
+                    fontSize: 28,
+                    fontWeight: FontWeight.bold,
+                    color: color,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                label,
-                textAlign: TextAlign.center,
-                style: const TextStyle(fontSize: 14, color: Colors.blueGrey),
-              ),
-            ],
+                const SizedBox(height: 4),
+                Text(
+                  label,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(fontSize: 14, color: Colors.blueGrey),
+                ),
+              ],
+            ),
           ),
         ),
       ),
