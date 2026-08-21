@@ -215,8 +215,14 @@ class InstitutionsScreen extends StatelessWidget {
       appBar: AppBar(
         title: const Text('Contacto a Instituciones'),
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => context.go('/map'),
+          icon: const Icon(Icons.arrow_back_ios_new_rounded),
+          onPressed: () {
+            if (context.canPop()) {
+              context.pop();
+            } else {
+              context.go('/map');
+            }
+          },
         ),
       ),
       body: ListView(

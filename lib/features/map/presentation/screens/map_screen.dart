@@ -15,7 +15,7 @@ import '../../../reports/presentation/providers/my_active_rescue_provider.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../widgets/active_rescue_card.dart';
 import '../widgets/off_screen_markers.dart';
-import '../widgets/map_drawer.dart';
+import '../widgets/main_menu_sheet.dart';
 import '../widgets/city_search_modal.dart';
 
 class MapScreen extends ConsumerStatefulWidget {
@@ -626,8 +626,7 @@ class _MapScreenState extends ConsumerState<MapScreen>
 
     return Scaffold(
       key: _scaffoldKey,
-      extendBody: true,
-      drawer: const MapDrawer(), // Extracción completa del menú lateral
+      extendBody: true, // Extracción completa del menú lateral
       body: Stack(
         children: [
           Listener(
@@ -750,11 +749,19 @@ class _MapScreenState extends ConsumerState<MapScreen>
               children: [
                 Row(
                   children: [
-                    _buildSquareButton(
-                      Icons.menu_rounded,
-                      () => _scaffoldKey.currentState?.openDrawer(),
-                      isDark,
-                    ),
+                    _buildSquareButton(Icons.menu_rounded, () {
+                      showModalBottomSheet(
+                        context: context,
+                        isScrollControlled: true,
+                        useRootNavigator: true,
+                        shape: const RoundedRectangleBorder(
+                          borderRadius: BorderRadius.vertical(
+                            top: Radius.circular(20),
+                          ),
+                        ),
+                        builder: (ctx) => const MainMenuSheet(),
+                      );
+                    }, isDark),
                     const SizedBox(width: 8),
                     Expanded(
                       child: GestureDetector(
