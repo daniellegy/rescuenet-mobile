@@ -87,5 +87,13 @@
         <string>UIInterfaceOrientationLandscapeLeft</string>
         <string>UIInterfaceOrientationLandscapeRight</string>
     </array>
+    <key>NSMicrophoneUsageDescription</key>
+    <string>RescueNet requiere acceso al micrófono para funciones integradas de captura de medios de la cámara.</string>
+    <key>UIBackgroundModes</key>
+    <array>
+        <string>fetch</string>
+        <string>remote-notification</string>
+        <string>location</string>
+    </array>
 </dict>
 </plist>
