@@ -235,6 +235,20 @@ class _CommunityScreenState extends ConsumerState<CommunityScreen>
                                 Stack(
                                   alignment: Alignment.center,
                                   children: [
+                                    Align(
+                                      alignment: Alignment.centerLeft,
+                                      child: IconButton(
+                                        icon: const Icon(
+                                          Icons.arrow_back_ios_new_rounded,
+                                          size: 20,
+                                        ),
+                                        style: IconButton.styleFrom(
+                                          backgroundColor: Colors.grey
+                                              .withValues(alpha: 0.1),
+                                        ),
+                                        onPressed: _cerrarPantalla,
+                                      ),
+                                    ),
                                     const Align(
                                       alignment: Alignment.center,
                                       child: Text(
@@ -245,17 +259,6 @@ class _CommunityScreenState extends ConsumerState<CommunityScreen>
                                           fontWeight: FontWeight.w900,
                                           letterSpacing: 1.5,
                                         ),
-                                      ),
-                                    ),
-                                    Align(
-                                      alignment: Alignment.centerRight,
-                                      child: IconButton(
-                                        icon: const Icon(Icons.close_rounded),
-                                        style: IconButton.styleFrom(
-                                          backgroundColor: Colors.grey
-                                              .withValues(alpha: 0.1),
-                                        ),
-                                        onPressed: _cerrarPantalla,
                                       ),
                                     ),
                                   ],
