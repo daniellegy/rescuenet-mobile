@@ -55,6 +55,7 @@ dependencies:
   
   # AQUÍ VA EL CAMBIO: Plugin oficial de Google Maps
   google_maps_flutter: ^2.5.3
+  image_cropper: ^12.2.1
 
 dev_dependencies:
   flutter_test:
