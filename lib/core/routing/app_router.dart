@@ -22,7 +22,6 @@ import '../../features/community/presentation/screens/institutions_screen.dart';
 
 class TransparentRoute<T> extends Page<T> {
   final Widget child;
-
   const TransparentRoute({required this.child, super.key});
 
   @override
@@ -74,13 +73,6 @@ final routerProvider = Provider<GoRouter>((ref) {
             builder: (context, state) => const LostDogsScreen(),
           ),
           GoRoute(
-            path: '/user-info',
-            builder: (context, state) {
-              final userId = state.extra as int;
-              return UserInfoScreen(userId: userId);
-            },
-          ),
-          GoRoute(
             path: '/inbox',
             builder: (context, state) => const InboxScreen(),
           ),
@@ -104,6 +96,15 @@ final routerProvider = Provider<GoRouter>((ref) {
             },
           ),
         ],
+      ),
+      // Moviendo /user-info fuera del ShellRoute soluciona el BUG de keyReservation
+      // y garantiza la flecha nativa hacia atrás
+      GoRoute(
+        path: '/user-info',
+        builder: (context, state) {
+          final userId = state.extra as int;
+          return UserInfoScreen(userId: userId);
+        },
       ),
       GoRoute(
         path: '/report-detail',
