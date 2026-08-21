@@ -17,7 +17,7 @@ class ActiveRescueCard extends ConsumerWidget {
 
     return GestureDetector(
       onTap: () {
-        context.push('/report-stepper', extra: rescate).then((_) {
+        context.push('/rescue-stepper', extra: rescate).then((_) {
           ref.invalidate(reportesActivosMapaProvider);
           ref.invalidate(miRescateActivoProvider);
         });
