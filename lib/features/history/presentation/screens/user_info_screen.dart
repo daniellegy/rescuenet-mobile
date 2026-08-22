@@ -153,6 +153,7 @@ class UserInfoScreen extends ConsumerWidget {
                         isPrivate: perfilPrivado,
                         targetUserId: userId,
                         userName: nombre,
+                        targetTabIndex: 0, // Índice 0: Reportados
                       ),
                       if (esVoluntario) ...[
                         const SizedBox(width: 16),
@@ -166,6 +167,7 @@ class UserInfoScreen extends ConsumerWidget {
                           isPrivate: perfilPrivado,
                           targetUserId: userId,
                           userName: nombre,
+                          targetTabIndex: 1, // Índice 1: Rescatados
                         ),
                       ],
                     ],
@@ -192,6 +194,7 @@ class UserInfoScreen extends ConsumerWidget {
     required bool isPrivate,
     required int targetUserId,
     required String userName,
+    required int targetTabIndex, // Añadido para controlar la redirección
   }) {
     return Expanded(
       child: Card(
@@ -200,11 +203,8 @@ class UserInfoScreen extends ConsumerWidget {
         child: InkWell(
           onTap: () {
             if (isMyProfile) {
-              // SOLUCIÓN AL BUG ACTUAL:
-              // 1. Regresamos a la base del mapa de forma segura para purgar la ruta actual.
+              // Para el propio perfil siempre abrimos el Historial global
               context.go('/map');
-
-              // 2. En cuanto el mapa se instancie de fondo, abrimos el modal de reportes encima.
               WidgetsBinding.instance.addPostFrameCallback((_) {
                 if (context.mounted) {
                   context.push('/reports', extra: {'initialIndex': 1});
@@ -220,9 +220,14 @@ class UserInfoScreen extends ConsumerWidget {
                   ),
                 );
               } else {
+                // Pasamos targetTabIndex a la nueva pantalla
                 context.push(
                   '/public-user-reports',
-                  extra: {'userId': targetUserId, 'userName': userName},
+                  extra: {
+                    'userId': targetUserId,
+                    'userName': userName,
+                    'initialIndex': targetTabIndex,
+                  },
                 );
               }
             }
