@@ -115,7 +115,7 @@ class _MapScreenState extends ConsumerState<MapScreen>
       pos.latitude,
       pos.longitude,
       19.3250,
-      -96.1275
+      -96.1275,
     );
     if (distPuebla < 50000) {
       setState(() => _ciudadSeleccionadaLabel = 'Puebla (Mi ubicación)');
@@ -196,36 +196,36 @@ class _MapScreenState extends ConsumerState<MapScreen>
     final ui.PictureRecorder pictureRecorder = ui.PictureRecorder();
     final Canvas canvas = Canvas(pictureRecorder);
     final Paint paint = Paint()..color = color;
-    const double size = 110;
-    const double radius = 45;
+
+    // --- CAMBIOS DE TAMAÑO ---
+    const double size = 150; // Aumentado (antes 110)
+    const double radius = 60; // Aumentado (antes 45)
     const double centerPoint = size / 2;
 
     final Paint shadowPaint = Paint()
       ..color = Colors.black.withValues(alpha: 0.3)
-      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 5);
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6);
 
     canvas.drawCircle(
-      const Offset(centerPoint, centerPoint + 4),
+      const Offset(centerPoint, centerPoint + 6), // Sombra más difuminada
       radius,
       shadowPaint,
     );
-
     canvas.drawCircle(const Offset(centerPoint, centerPoint), radius, paint);
 
     final Paint whitePaint = Paint()..color = Colors.white;
     canvas.drawCircle(
       const Offset(centerPoint, centerPoint),
-      radius - 8,
+      radius - 10, // Grosor del borde de color ajustado (antes 8)
       whitePaint,
     );
 
     final TextPainter textPainter = TextPainter(
       textDirection: TextDirection.ltr,
     );
-
     textPainter.text = TextSpan(
       text: emoji,
-      style: const TextStyle(fontSize: 44),
+      style: const TextStyle(fontSize: 58), // Emoji más grande (antes 44)
     );
     textPainter.layout();
     textPainter.paint(
@@ -602,7 +602,7 @@ class _MapScreenState extends ConsumerState<MapScreen>
       }
 
       bool pasaDistancia = true;
-      
+
       final centerPoint = explorePos ?? _myPosition.value;
 
       if (_filtroDistancia != 999 && centerPoint != null) {
@@ -793,7 +793,9 @@ class _MapScreenState extends ConsumerState<MapScreen>
                                 setState(() {
                                   _ciudadSeleccionadaLabel = label;
                                 });
-                                ref.read(mapExplorationCenterProvider.notifier).updatePosition(pos);
+                                ref
+                                    .read(mapExplorationCenterProvider.notifier)
+                                    .updatePosition(pos);
                                 _mapController?.animateCamera(
                                   CameraUpdate.newLatLngZoom(pos, 13),
                                 );
@@ -1009,7 +1011,9 @@ class _MapScreenState extends ConsumerState<MapScreen>
                       elevation: 4,
                       onPressed: () {
                         _seguirUsuario.value = true;
-                        ref.read(mapExplorationCenterProvider.notifier).updatePosition(null);
+                        ref
+                            .read(mapExplorationCenterProvider.notifier)
+                            .updatePosition(null);
                         if (_myPosition.value != null) {
                           _actualizarEtiquetaCiudadSegunUbicacion(
                             _myPosition.value!,

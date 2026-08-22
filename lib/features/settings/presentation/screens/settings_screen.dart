@@ -254,8 +254,11 @@ class SettingsScreen extends ConsumerWidget {
                   ),
                   subtitle: Text(
                     curp,
-                    style: const TextStyle(
-                      color: Colors.black87,
+                    style: TextStyle(
+                      // <-- SE QUITÓ EL 'const'
+                      color: isDark
+                          ? Colors.white
+                          : Colors.black87, // <-- CONDICIÓN DE MODO OSCURO
                       fontWeight: FontWeight.bold,
                     ),
                   ),
