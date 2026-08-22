@@ -1,6 +1,5 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-
 import '../../../../core/network/dio_client.dart';
 import '../../../../core/errors/app_exception.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
@@ -9,7 +8,9 @@ class UserProfileNotifier extends AsyncNotifier<Map<String, dynamic>> {
   @override
   Future<Map<String, dynamic>> build() async {
     final authState = ref.watch(authProvider);
-    if (!authState.isLogged) return {};
+    if (!authState.isLogged) {
+      return {};
+    }
 
     final dio = ref.read(dioProvider).instance;
     try {
@@ -29,17 +30,33 @@ class UserProfileNotifier extends AsyncNotifier<Map<String, dynamic>> {
     String? curp,
     int? radioNotificaciones,
     String? fcmToken,
+    bool? perfilPrivado,
   }) async {
     final dio = ref.read(dioProvider).instance;
     try {
       final Map<String, dynamic> datosAActualizar = {};
-      if (telefono != null) datosAActualizar['telefono'] = telefono;
-      if (email != null) datosAActualizar['email'] = email;
-      if (role != null) datosAActualizar['role'] = role;
-      if (curp != null) datosAActualizar['curp'] = curp;
-      if (radioNotificaciones != null)
+
+      if (telefono != null) {
+        datosAActualizar['telefono'] = telefono;
+      }
+      if (email != null) {
+        datosAActualizar['email'] = email;
+      }
+      if (role != null) {
+        datosAActualizar['role'] = role;
+      }
+      if (curp != null) {
+        datosAActualizar['curp'] = curp;
+      }
+      if (radioNotificaciones != null) {
         datosAActualizar['radio_notificaciones'] = radioNotificaciones;
-      if (fcmToken != null) datosAActualizar['fcm_token'] = fcmToken;
+      }
+      if (fcmToken != null) {
+        datosAActualizar['fcm_token'] = fcmToken;
+      }
+      if (perfilPrivado != null) {
+        datosAActualizar['perfil_privado'] = perfilPrivado;
+      }
 
       final response = await dio.put('/auth/perfil', data: datosAActualizar);
       final datosActualizados =
@@ -52,7 +69,6 @@ class UserProfileNotifier extends AsyncNotifier<Map<String, dynamic>> {
     }
   }
 
-  // NUEVO: Método para subir foto de perfil
   Future<void> actualizarFotoPerfil(String imagePath) async {
     final dio = ref.read(dioProvider).instance;
     try {
@@ -62,7 +78,6 @@ class UserProfileNotifier extends AsyncNotifier<Map<String, dynamic>> {
       final response = await dio.put('/auth/perfil/foto', data: formData);
       final nuevaUrl = response.data['foto_perfil'];
 
-      // Actualizamos el estado local agregando la nueva URL
       if (state.hasValue && state.value != null) {
         final currentData = Map<String, dynamic>.from(state.value!);
         currentData['foto_perfil'] = nuevaUrl;

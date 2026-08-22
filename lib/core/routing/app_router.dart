@@ -19,6 +19,7 @@ import '../../features/messages/presentation/screens/inbox_screen.dart';
 import '../../features/community/presentation/screens/community_screen.dart';
 import '../../features/reports/presentation/screens/reports_screen.dart';
 import '../../features/community/presentation/screens/institutions_screen.dart';
+import '../../features/history/presentation/screens/public_user_reports_screen.dart';
 
 class TransparentRoute<T> extends Page<T> {
   final Widget child;
@@ -104,6 +105,15 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state) {
           final userId = state.extra as int;
           return UserInfoScreen(userId: userId);
+        },
+      ),
+      GoRoute(
+        path: '/public-user-reports',
+        builder: (context, state) {
+          final extra = state.extra as Map<String, dynamic>;
+          final userId = extra['userId'] as int;
+          final userName = extra['userName'] as String;
+          return PublicUserReportsScreen(userId: userId, userName: userName);
         },
       ),
       GoRoute(

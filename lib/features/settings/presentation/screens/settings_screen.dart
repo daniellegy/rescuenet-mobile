@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:go_router/go_router.dart';
-
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../providers/settings_provider.dart';
 import '../providers/map_limit_provider.dart';
@@ -35,6 +34,8 @@ class SettingsScreen extends ConsumerWidget {
           final String? tokenFCMActual = datos['fcm_token'];
           final bool notificacionesActivas =
               tokenFCMActual != null && tokenFCMActual.trim().isNotEmpty;
+          final bool perfilPrivado =
+              datos['perfil_privado'] ?? false; // Valor desde BD
 
           return ListView(
             padding: const EdgeInsets.only(
@@ -114,7 +115,7 @@ class SettingsScreen extends ConsumerWidget {
               ),
               const SizedBox(height: 32),
               const Text(
-                'Apariencia',
+                'Privacidad y Apariencia',
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
@@ -123,11 +124,41 @@ class SettingsScreen extends ConsumerWidget {
               ),
               const SizedBox(height: 8),
               SwitchListTile(
+                secondary: const Icon(
+                  Icons.lock_outline,
+                  color: Colors.blueGrey,
+                ),
+                title: const Text('Perfil Privado'),
+                subtitle: const Text(
+                  'Ocultar mis reportes e historial a la comunidad',
+                ),
+                value: perfilPrivado,
+                activeThumbColor:
+                    Colors.redAccent, // Actualizado según la buena práctica
+                onChanged: (bool value) async {
+                  try {
+                    await ref
+                        .read(userProfileProvider.notifier)
+                        .actualizarCampo(perfilPrivado: value);
+                  } catch (e) {
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('Error al cambiar privacidad: $e'),
+                          backgroundColor: Colors.red,
+                        ),
+                      );
+                    }
+                  }
+                },
+              ),
+              const Divider(height: 1),
+              SwitchListTile(
                 secondary: const Icon(Icons.dark_mode, color: Colors.indigo),
                 title: const Text('Modo Oscuro'),
                 subtitle: const Text('Cambiar la apariencia de la aplicación'),
                 value: isDark,
-                activeThumbColor: Colors.redAccent,
+                activeThumbColor: Colors.redAccent, // Actualizado
                 onChanged: (bool value) {
                   ref.read(themeProvider.notifier).toggleTheme(value);
                 },
@@ -255,7 +286,7 @@ class SettingsScreen extends ConsumerWidget {
                   notificacionesActivas ? 'Activadas' : 'Desactivadas',
                 ),
                 value: notificacionesActivas,
-                activeThumbColor: Colors.redAccent,
+                activeThumbColor: Colors.redAccent, // Actualizado
                 onChanged: (bool value) async {
                   if (value) {
                     try {
@@ -266,7 +297,6 @@ class SettingsScreen extends ConsumerWidget {
                             badge: true,
                             sound: true,
                           );
-
                       if (settings.authorizationStatus ==
                           AuthorizationStatus.authorized) {
                         final token = await messaging.getToken();
@@ -280,7 +310,7 @@ class SettingsScreen extends ConsumerWidget {
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(
                               content: Text(
-                                'Permiso denegado. Actívalo manualmente en la configuración de tu dispositivo (Ajustes > Aplicaciones).',
+                                'Permiso denegado. Actívalo manualmente en la configuración de tu dispositivo.',
                               ),
                               backgroundColor: Colors.orange,
                               duration: Duration(seconds: 4),
@@ -299,9 +329,7 @@ class SettingsScreen extends ConsumerWidget {
                           .read(userProfileProvider.notifier)
                           .actualizarCampo(fcmToken: 'CLEAR');
                     } catch (e) {
-                      debugPrint(
-                        'Error al desactivar notificaciones desde switch: $e',
-                      );
+                      debugPrint('Error al desactivar notificaciones: $e');
                     }
                   }
                 },
