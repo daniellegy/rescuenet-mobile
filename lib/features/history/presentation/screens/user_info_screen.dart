@@ -32,7 +32,9 @@ void _mostrarImagenExpandida(BuildContext context, String url) {
                 color: Colors.white,
                 size: 28,
               ),
-              onPressed: () => Navigator.pop(ctx),
+              onPressed: () {
+                Navigator.pop(ctx);
+              },
             ),
           ),
         ],
@@ -65,7 +67,9 @@ class UserInfoScreen extends ConsumerWidget {
             IconButton(
               icon: const Icon(Icons.settings),
               tooltip: 'Configuración',
-              onPressed: () => context.push('/settings'),
+              onPressed: () {
+                context.push('/settings');
+              },
             ),
         ],
       ),
@@ -78,6 +82,7 @@ class UserInfoScreen extends ConsumerWidget {
               int.tryParse(datos['reportes_creados'].toString()) ?? 0;
           final rescatesRealizados =
               int.tryParse(datos['rescates_realizados'].toString()) ?? 0;
+          final bool perfilPrivado = datos['perfil_privado'] ?? false;
 
           return Padding(
             padding: const EdgeInsets.all(24.0),
@@ -86,9 +91,11 @@ class UserInfoScreen extends ConsumerWidget {
               children: [
                 const SizedBox(height: 20),
                 GestureDetector(
-                  onTap: foto != null
-                      ? () => _mostrarImagenExpandida(context, foto)
-                      : null,
+                  onTap: () {
+                    if (foto != null) {
+                      _mostrarImagenExpandida(context, foto);
+                    }
+                  },
                   child: CircleAvatar(
                     radius: 60,
                     backgroundColor: Colors.grey.shade200,
@@ -137,26 +144,28 @@ class UserInfoScreen extends ConsumerWidget {
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       _buildStatCard(
-                        'Reportes Emitidos',
-                        reportesCreados.toString(),
-                        Icons.campaign_rounded,
-                        Colors.blue,
-                        () => context.pushReplacement(
-                          '/reports',
-                          extra: {'initialIndex': 1},
-                        ),
+                        context: context,
+                        label: 'Reportes Emitidos',
+                        count: reportesCreados.toString(),
+                        icon: Icons.campaign_rounded,
+                        color: Colors.blue,
+                        isMyProfile: isMyProfile,
+                        isPrivate: perfilPrivado,
+                        targetUserId: userId,
+                        userName: nombre,
                       ),
                       if (esVoluntario) ...[
                         const SizedBox(width: 16),
                         _buildStatCard(
-                          'Rescates Concluidos',
-                          rescatesRealizados.toString(),
-                          Icons.volunteer_activism,
-                          Colors.green,
-                          () => context.pushReplacement(
-                            '/reports',
-                            extra: {'initialIndex': 1},
-                          ),
+                          context: context,
+                          label: 'Rescates Concluidos',
+                          count: rescatesRealizados.toString(),
+                          icon: Icons.volunteer_activism,
+                          color: Colors.green,
+                          isMyProfile: isMyProfile,
+                          isPrivate: perfilPrivado,
+                          targetUserId: userId,
+                          userName: nombre,
                         ),
                       ],
                     ],
@@ -173,19 +182,43 @@ class UserInfoScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildStatCard(
-    String label,
-    String count,
-    IconData icon,
-    Color color,
-    VoidCallback onTap,
-  ) {
+  Widget _buildStatCard({
+    required BuildContext context,
+    required String label,
+    required String count,
+    required IconData icon,
+    required Color color,
+    required bool isMyProfile,
+    required bool isPrivate,
+    required int targetUserId,
+    required String userName,
+  }) {
     return Expanded(
       child: Card(
         elevation: 4,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         child: InkWell(
-          onTap: onTap,
+          onTap: () {
+            if (isMyProfile) {
+              // Uso de .push normal para evitar colisión de TransparentRoute keys
+              context.push('/reports', extra: {'initialIndex': 1});
+            } else {
+              if (isPrivate) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('La información de este usuario es privada.'),
+                    backgroundColor: Colors.orange,
+                    behavior: SnackBarBehavior.floating,
+                  ),
+                );
+              } else {
+                context.push(
+                  '/public-user-reports',
+                  extra: {'userId': targetUserId, 'userName': userName},
+                );
+              }
+            }
+          },
           borderRadius: BorderRadius.circular(16),
           child: Padding(
             padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 12),
