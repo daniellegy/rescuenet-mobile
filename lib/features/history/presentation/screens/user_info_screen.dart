@@ -200,8 +200,16 @@ class UserInfoScreen extends ConsumerWidget {
         child: InkWell(
           onTap: () {
             if (isMyProfile) {
-              // Uso de .push normal para evitar colisión de TransparentRoute keys
-              context.push('/reports', extra: {'initialIndex': 1});
+              // SOLUCIÓN AL BUG ACTUAL:
+              // 1. Regresamos a la base del mapa de forma segura para purgar la ruta actual.
+              context.go('/map');
+
+              // 2. En cuanto el mapa se instancie de fondo, abrimos el modal de reportes encima.
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (context.mounted) {
+                  context.push('/reports', extra: {'initialIndex': 1});
+                }
+              });
             } else {
               if (isPrivate) {
                 ScaffoldMessenger.of(context).showSnackBar(
