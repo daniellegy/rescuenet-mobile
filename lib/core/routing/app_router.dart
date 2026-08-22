@@ -113,7 +113,14 @@ final routerProvider = Provider<GoRouter>((ref) {
           final extra = state.extra as Map<String, dynamic>;
           final userId = extra['userId'] as int;
           final userName = extra['userName'] as String;
-          return PublicUserReportsScreen(userId: userId, userName: userName);
+          // Recuperamos el índice provisto, de lo contrario por defecto 0.
+          final initialIndex = extra['initialIndex'] as int? ?? 0;
+
+          return PublicUserReportsScreen(
+            userId: userId,
+            userName: userName,
+            initialIndex: initialIndex,
+          );
         },
       ),
       GoRoute(
