@@ -12,45 +12,41 @@ import '../../../reports/presentation/providers/active_reports_provider.dart';
 class ProfilePhotoSheet extends ConsumerWidget {
   const ProfilePhotoSheet({super.key});
 
-  Future<void> _procesarSubidaFoto(
-    BuildContext context,
-    WidgetRef ref, {
+Future<void> _procesarSubidaFoto({
+    required ScaffoldMessengerState messenger,
+    required dynamic cameraService, // Reemplaza dynamic con el tipo de tu servicio si lo prefieres
+    required dynamic userProfileNotifier, // Reemplaza dynamic con el tipo de tu notifier
     required bool fromGallery,
   }) async {
     try {
-      final cameraService = ref.read(cameraServiceProvider);
       final pickedFile = await cameraService.takePicture(
         fromGallery: fromGallery,
-        cropImage: true, // <-- Implementación del recorte
+        cropImage: true, 
       );
-      if (pickedFile != null && context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
+      if (pickedFile != null) {
+        messenger.showSnackBar(
           const SnackBar(
             content: Text('Subiendo foto...'),
             duration: Duration(seconds: 2),
           ),
         );
-        await ref
-            .read(userProfileProvider.notifier)
-            .actualizarFotoPerfil(pickedFile.path);
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Foto actualizada exitosamente'),
-              backgroundColor: Colors.green,
-            ),
-          );
-        }
-      }
-    } catch (e) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(e.toString().replaceAll('Exception: ', '')),
-            backgroundColor: Colors.red,
+        
+        await userProfileNotifier.actualizarFotoPerfil(pickedFile.path);
+        
+        messenger.showSnackBar(
+          const SnackBar(
+            content: Text('Foto actualizada exitosamente'),
+            backgroundColor: Colors.green,
           ),
         );
       }
+    } catch (e) {
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(e.toString().replaceAll('Exception: ', '')),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
   }
 
@@ -71,16 +67,36 @@ class ProfilePhotoSheet extends ConsumerWidget {
             leading: const Icon(Icons.camera_alt, color: Colors.blue),
             title: const Text('Tomar fotografía'),
             onTap: () async {
+              final messenger = ScaffoldMessenger.of(context);
+              final cameraService = ref.read(cameraServiceProvider);
+              final userProfileNotifier = ref.read(userProfileProvider.notifier);
+
               Navigator.pop(context);
-              await _procesarSubidaFoto(context, ref, fromGallery: false);
+
+              await _procesarSubidaFoto(
+                messenger: messenger,
+                cameraService: cameraService,
+                userProfileNotifier: userProfileNotifier,
+                fromGallery: false,
+              );
             },
           ),
           ListTile(
             leading: const Icon(Icons.photo_library, color: Colors.green),
             title: const Text('Elegir de la galería'),
             onTap: () async {
+              final messenger = ScaffoldMessenger.of(context);
+              final cameraService = ref.read(cameraServiceProvider);
+              final userProfileNotifier = ref.read(userProfileProvider.notifier);
+
               Navigator.pop(context);
-              await _procesarSubidaFoto(context, ref, fromGallery: true);
+
+              await _procesarSubidaFoto(
+                messenger: messenger,
+                cameraService: cameraService,
+                userProfileNotifier: userProfileNotifier,
+                fromGallery: true,
+              );
             },
           ),
         ],
