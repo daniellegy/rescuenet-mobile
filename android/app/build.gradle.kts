@@ -1,6 +1,7 @@
 import java.util.Properties
 import java.io.FileInputStream
 
+
 plugins {
     id("com.android.application")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
@@ -49,7 +50,19 @@ android {
         versionCode = flutter.versionCode
         versionName = flutter.versionName
 
-        manifestPlaceholders["googleMapsApiKey"] = System.getenv("ANDROID_GOOGLE_MAPS_API_KEY") ?: ""
+        // 1. Buscamos primero en Codemagic
+        val envMapKey = System.getenv("ANDROID_GOOGLE_MAPS_API_KEY")
+
+        // 2. Cargamos el archivo local.properties usando los imports
+        val localProps = Properties()
+        val localPropsFile = rootProject.file("local.properties")
+        if (localPropsFile.exists()) {
+            localProps.load(FileInputStream(localPropsFile))
+        }
+        val localMapKey = localProps.getProperty("MAPS_API_KEY")
+
+        // 3. Asignamos la llave al Manifest
+        manifestPlaceholders["googleMapsApiKey"] = envMapKey ?: localMapKey ?: ""
     }
 
     signingConfigs {
