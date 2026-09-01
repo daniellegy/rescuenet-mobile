@@ -49,7 +49,7 @@ android {
         versionCode = flutter.versionCode
         versionName = flutter.versionName
 
-        manifestPlaceholders["googleMapsApiKey"] = dartEnvironmentVariables["ANDROID_GOOGLE_MAPS_API_KEY"] ?: ""
+        manifestPlaceholders["googleMapsApiKey"] = System.getenv("ANDROID_GOOGLE_MAPS_API_KEY") ?: ""
     }
 
     signingConfigs {
