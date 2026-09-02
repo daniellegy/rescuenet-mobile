@@ -868,25 +868,45 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
                         },
                       ),
                       const SizedBox(height: 32),
-                      Card(
-                        elevation: 0,
-                        color: Colors.blue.shade50,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          side: BorderSide(color: Colors.blue.shade200),
+                      
+                      Theme(
+                        data: ThemeData(
+                          brightness: Brightness.light, 
+                          textTheme: const TextTheme(
+                            bodyLarge: TextStyle(color: Colors.black),
+                            bodyMedium: TextStyle(color: Colors.black),
+                            titleMedium: TextStyle(color: Colors.black), 
+                            bodySmall: TextStyle(color: Colors.black),  
+                          ),
                         ),
-                        child: SwitchListTile(
-                          value: state.activarCanal,
-                          onChanged: (val) => notifier.toggleActivarCanal(val),
-                          title: const Text(
-                            '¿Deseas activar el canal de comunicación?',
-                            style: TextStyle(fontWeight: FontWeight.bold),
+                        child: Card(
+                          elevation: 0,
+                          color: Colors.blue.shade50,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            side: BorderSide(color: Colors.blue.shade200),
                           ),
-                          subtitle: const Text(
-                            'Podrás chatear con el voluntario que tome tu caso. El canal se cerrará automáticamente cuando el caso se resuelva.',
-                            style: TextStyle(fontSize: 12),
+                          child: SwitchListTile(
+                            value: state.activarCanal,
+                            onChanged: (val) => notifier.toggleActivarCanal(val),
+                            title: const Text(
+                              '¿Deseas activar el canal de comunicación?',
+                              style: TextStyle(
+                                fontFamily: 'Inter', 
+                                fontWeight: FontWeight.bold,
+                                color: Colors.black, 
+                              ),
+                            ),
+                            subtitle: const Text(
+                              'Podrás chatear con el voluntario que tome tu caso. El canal se cerrará automáticamente cuando el caso se resuelva.',
+                              style: TextStyle(
+                                fontFamily: 'Inter', 
+                                fontSize: 12,
+                                color: Colors.black87, 
+                              ),
+                            ),
+                            activeThumbColor: Colors.blue.shade700,
                           ),
-                          activeThumbColor: Colors.blue.shade700,
                         ),
                       ),
                       const SizedBox(height: 16),

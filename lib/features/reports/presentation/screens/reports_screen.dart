@@ -184,7 +184,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen>
                                   unselectedLabelColor: Colors.grey,
                                   labelStyle: TextStyle(
                                     fontWeight: FontWeight.bold,
-                                    fontSize: 13,
+                                    fontSize: 12.5,
                                   ),
                                   tabs: [
                                     Tab(text: 'REPORTES LOCALES'),

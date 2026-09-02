@@ -99,17 +99,12 @@ class _RescueNetAppState extends ConsumerState<RescueNetApp> {
   }
 
   TextTheme _buildTextTheme(TextTheme baseTheme) {
-    final dmSansTheme = GoogleFonts.dmSansTextTheme(baseTheme);
-    return dmSansTheme.copyWith(
-      displayLarge: GoogleFonts.dmSerifDisplay(textStyle: dmSansTheme.displayLarge),
-      displayMedium: GoogleFonts.dmSerifDisplay(textStyle: dmSansTheme.displayMedium),
-      displaySmall: GoogleFonts.dmSerifDisplay(textStyle: dmSansTheme.displaySmall),
-      headlineLarge: GoogleFonts.dmSerifDisplay(textStyle: dmSansTheme.headlineLarge),
-      headlineMedium: GoogleFonts.dmSerifDisplay(textStyle: dmSansTheme.headlineMedium),
-      headlineSmall: GoogleFonts.dmSerifDisplay(textStyle: dmSansTheme.headlineSmall),
-      titleLarge: GoogleFonts.dmSerifDisplay(textStyle: dmSansTheme.titleLarge),
-      titleMedium: GoogleFonts.dmSerifDisplay(textStyle: dmSansTheme.titleMedium),
-      titleSmall: GoogleFonts.dmSerifDisplay(textStyle: dmSansTheme.titleSmall),
+    return baseTheme.apply(
+      fontFamily: 'Inter',
+    ).copyWith(
+      bodyLarge: baseTheme.bodyLarge?.copyWith(fontSize: 14),
+      bodyMedium: baseTheme.bodyMedium?.copyWith(fontSize: 14),
+      bodySmall: baseTheme.bodySmall?.copyWith(fontSize: 12),
     );
   }
 
