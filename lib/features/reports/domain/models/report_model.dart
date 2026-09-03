@@ -22,9 +22,9 @@ class ReportModel {
   final int? usuarioReportadorId;
   final int? usuarioRescatistaId;
   final String? nombreReportador;
-  final String? fotoReportador; // NUEVO
+  final String? fotoReportador;
   final String? nombreRescatista;
-  final String? fotoRescatista; // NUEVO
+  final String? fotoRescatista;
 
   final bool? animalAvistado;
   final String? lugarTraslado;

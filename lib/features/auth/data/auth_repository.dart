@@ -52,7 +52,6 @@ class AuthRepository {
 
   Future<void> eliminarCuenta(String token) async {
     try {
-      // Nota: El interceptor ya maneja la inyección del token, pero lo enviamos explícito por seguridad de tu diseño previo
       await _dio.delete(
         '/auth/perfil',
         options: Options(headers: {'Authorization': 'Bearer $token'}),

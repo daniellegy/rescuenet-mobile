@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
-// NUEVA FUNCIÓN COMPARTIDA PARA EXPANDIR IMÁGENES
 void _mostrarImagenExpandida(BuildContext context, String url) {
   showDialog(
     context: context,
@@ -38,7 +37,7 @@ void _mostrarImagenExpandida(BuildContext context, String url) {
   );
 }
 
-/// Carrusel interactivo para mostrar la evidencia fotográfica
+// Carrusel interactivo para mostrar la evidencia fotográfica
 class ReportImageCarousel extends StatefulWidget {
   final List<String> photos;
   const ReportImageCarousel({super.key, required this.photos});
@@ -103,7 +102,7 @@ class _ReportImageCarouselState extends State<ReportImageCarousel> {
   }
 }
 
-/// Fila para detalles estáticos (Raza, Color, Tamaño, etc.)
+// Fila para detalles estáticos (Raza, Color, Tamaño, etc.)
 class ReportDetailRow extends StatelessWidget {
   final IconData icon;
   final String label;

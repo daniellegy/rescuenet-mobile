@@ -64,7 +64,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               children: [
                 const SizedBox(height: 60),
 
-                // 1. Logo implementado en reemplazo del Icon
+                // Logo implementado en reemplazo del Icon
                 Image.asset(
                   'assets/splash/rescuenet-logo-sinfondo-grande.png',
                   height:
@@ -73,7 +73,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 ),
                 const SizedBox(height: 24),
 
-                // 2. RichText para separar los colores de "Rescue" y "Net"
+                // RichText para separar los colores de "Rescue" y "Net"
                 RichText(
                   textAlign: TextAlign.center,
                   text: const TextSpan(
@@ -85,9 +85,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       ),
                       TextSpan(
                         text: 'Net',
-                        style: TextStyle(
-                          color: Colors.deepOrange,
-                        ), // Naranja fuerte
+                        style: TextStyle(color: Colors.deepOrange),
                       ),
                     ],
                   ),

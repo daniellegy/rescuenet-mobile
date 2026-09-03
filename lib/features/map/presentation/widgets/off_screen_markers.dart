@@ -83,9 +83,7 @@ class _OffScreenMarkersState extends State<OffScreenMarkers> {
             final height = constraints.maxHeight;
             final center = Offset(width / 2, height / 2);
 
-            // ==========================================
-            // GEOMETRÍA DEL PERÍMETRO DE COLISIÓN
-            // ==========================================
+            // Geomtería de la pantalla y márgenes para evitar superposición con la barra inferior y el FAB
             final minX = 24.0;
             final maxX = width - 24.0;
             final minY =
@@ -107,7 +105,6 @@ class _OffScreenMarkersState extends State<OffScreenMarkers> {
                   return const SizedBox.shrink();
                 }
 
-                // Cálculo del rumbo (bearing) verdadero (True North)
                 final centerLat = camera.target.latitude;
                 final centerLng = camera.target.longitude;
 
@@ -125,7 +122,7 @@ class _OffScreenMarkersState extends State<OffScreenMarkers> {
 
                 final bearingOriginal = math.atan2(y, x);
 
-                // NUEVO: Ajustamos el bearing restando la rotación actual de la cámara del mapa
+                // Ajustamos el bearing restando la rotación actual de la cámara del mapa
                 final cameraBearingRad = camera.bearing * (math.pi / 180.0);
                 final screenAngle = bearingOriginal - cameraBearingRad;
 
@@ -139,7 +136,6 @@ class _OffScreenMarkersState extends State<OffScreenMarkers> {
 
                 double minT = double.infinity;
 
-                // Función auxiliar que busca la intersección del rayo con los segmentos del polígono
                 void checkLine(double x1, double y1, double x2, double y2) {
                   double tCandidate = double.infinity;
 
@@ -199,19 +195,19 @@ class _OffScreenMarkersState extends State<OffScreenMarkers> {
                   maxYBottom,
                   centerFabRight,
                   maxYCenter,
-                ); // Muro der FAB
+                ); // Muro der fab
                 checkLine(
                   centerFabRight,
                   maxYCenter,
                   centerFabLeft,
                   maxYCenter,
-                ); // Techo FAB
+                ); // Techo fab
                 checkLine(
                   centerFabLeft,
                   maxYCenter,
                   centerFabLeft,
                   maxYBottom,
-                ); // Muro izq FAB
+                ); // Muro izq fab
                 checkLine(
                   centerFabLeft,
                   maxYBottom,

@@ -67,9 +67,6 @@ class _CommunityScreenState extends ConsumerState<CommunityScreen>
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final screenHeight = MediaQuery.sizeOf(context).height;
-
-    // AQUÍ VA EL CAMBIO: Eliminamos cálculos rígidos de altura del modal
-    // Solo necesitamos saber el offset superior seguro.
     final double topOffset = MediaQuery.of(context).padding.top + 20;
 
     final veterinarias = [
@@ -182,7 +179,7 @@ class _CommunityScreenState extends ConsumerState<CommunityScreen>
               top: topOffset,
               left: 0,
               right: 0,
-              bottom: 0, // Se estira hasta abajo para no cortar
+              bottom: 0,
               child: Align(
                 alignment: Alignment.bottomCenter,
                 child: SlideTransition(
@@ -274,7 +271,7 @@ class _CommunityScreenState extends ConsumerState<CommunityScreen>
                           Expanded(
                             child: SingleChildScrollView(
                               physics: const BouncingScrollPhysics(),
-                              // AQUÍ VA EL CAMBIO: El padding bottom lo lleva el SCROLL para protegerse de la Navbar,
+                              // El padding bottom lo lleva el SCROLL para protegerse de la Navbar,
                               // pero el contenedor en sí no está cortado.
                               padding: EdgeInsets.only(
                                 bottom:

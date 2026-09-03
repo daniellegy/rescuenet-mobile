@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:typed_data';
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
-// AQUÍ VA EL CAMBIO: Importamos Google Maps y quitamos flutter_map, latlong2 y dotenv
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:geolocator/geolocator.dart';
 import '../../../reports/domain/models/report_model.dart';
@@ -16,7 +15,7 @@ class SearchRadarScreen extends StatefulWidget {
 }
 
 class _SearchRadarScreenState extends State<SearchRadarScreen> {
-  // AQUÍ VA EL CAMBIO: Controlador nativo de Google Maps
+  // Controlador nativo de Google Maps
   GoogleMapController? _mapController;
   LatLng? _currentPosition;
   double _distanciaEnMetros = 0.0;
@@ -172,7 +171,6 @@ class _SearchRadarScreenState extends State<SearchRadarScreen> {
       widget.reporte.longitud,
     );
 
-    // AQUÍ VA EL CAMBIO: Ensamblaje nativo de Marcadores, Círculos y Polilíneas
     final Set<Marker> markers = {};
     if (_targetIcon != null) {
       markers.add(
@@ -203,10 +201,7 @@ class _SearchRadarScreenState extends State<SearchRadarScreen> {
           points: [_currentPosition!, targetReport],
           color: Colors.blue.shade800,
           width: 4,
-          patterns: [
-            PatternItem.dash(20),
-            PatternItem.gap(10),
-          ], // Línea punteada profesional
+          patterns: [PatternItem.dash(20), PatternItem.gap(10)],
         ),
       );
     }

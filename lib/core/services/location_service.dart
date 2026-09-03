@@ -2,8 +2,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 class LocationService {
-  /// Obtiene la ubicación del usuario optimizando el tiempo de respuesta.
-  /// [requestPermission] define si se debe mostrar el diálogo de permisos al usuario (ideal apagarlo para providers de fondo).
+  // Obtiene la ubicación del usuario optimizando el tiempo de respuesta.
   Future<Position> getCurrentPosition({bool requestPermission = true}) async {
     bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
     if (!serviceEnabled) {
@@ -25,7 +24,7 @@ class LocationService {
       throw Exception('Permisos denegados permanentemente.');
     }
 
-    // 1. OPTIMIZACIÓN DE VELOCIDAD: Buscamos la última ubicación en caché
+    // Buscamos la última ubicación en caché
     Position? position = await Geolocator.getLastKnownPosition();
     if (position != null) {
       // Si la ubicación tiene menos de 5 minutos de antigüedad, la retornamos instantáneamente
@@ -34,12 +33,11 @@ class LocationService {
       }
     }
 
-    // 2. Si no hay caché válida, encendemos el hardware GPS pero con un Timeout estricto de 4 segundos
+    // Si no hay caché válida, encendemos el hardware GPS pero con un Timeout estricto de 4 segundos
     try {
       return await Geolocator.getCurrentPosition(
         locationSettings: const LocationSettings(
-          accuracy: LocationAccuracy
-              .medium, // 'medium' es mucho más rápido y perfecto para distancias de kilómetros
+          accuracy: LocationAccuracy.medium,
           timeLimit: Duration(seconds: 4),
         ),
       );

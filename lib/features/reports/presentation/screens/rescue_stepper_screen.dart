@@ -363,7 +363,7 @@ class _RescueStepperScreenState extends ConsumerState<RescueStepperScreen> {
           leading: IconButton(
             icon: const Icon(Icons.arrow_back_ios_new_rounded),
             onPressed: () {
-              // Redirigimos explícitamente a los detalles de la emergencia
+              // Redirigimos a los detalles de la emergencia
               context.pushReplacement('/report-detail', extra: widget.reporte);
             },
           ),

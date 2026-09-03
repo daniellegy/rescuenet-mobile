@@ -116,7 +116,6 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen>
                     ),
                     child: Column(
                       children: [
-                        // HEADER Y LÍNEA DE ARRASTRE
                         Padding(
                           padding: const EdgeInsets.only(
                             top: 12.0,
@@ -170,7 +169,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen>
                             ],
                           ),
                         ),
-                        // CONTENIDO Y PESTAÑAS
+                        // Contenido de las pestañas
                         Expanded(
                           child: DefaultTabController(
                             key: ValueKey(widget.initialIndex),

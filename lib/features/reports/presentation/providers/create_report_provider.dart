@@ -119,7 +119,7 @@ class CreateReportNotifier extends Notifier<CreateReportState> {
     required String imagePath,
     required String caracteristicas,
     required String referencias,
-    String? razaPersonalizada, // NUEVO PARÁMETRO
+    String? razaPersonalizada,
   }) async {
     if (state.especie == null ||
         state.razaSeleccionada == null ||
@@ -134,7 +134,7 @@ class CreateReportNotifier extends Notifier<CreateReportState> {
     try {
       final repository = ref.read(reportRepositoryProvider);
 
-      // LÓGICA: Si es "Otro" y escribieron algo, guardamos el texto manual
+      // Si es otro y escribieron algo guardamos el texto manual
       final razaFinal =
           (state.razaSeleccionada == 'Otro' &&
               razaPersonalizada != null &&

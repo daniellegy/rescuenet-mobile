@@ -5,7 +5,11 @@ class SectionHeader extends StatelessWidget {
   final String title;
   final VoidCallback onSeeMore;
 
-  const SectionHeader({super.key, required this.title, required this.onSeeMore});
+  const SectionHeader({
+    super.key,
+    required this.title,
+    required this.onSeeMore,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -37,7 +41,6 @@ class SectionHeader extends StatelessWidget {
   }
 }
 
-// 2. LA TARJETA INDIVIDUAL (ListingCard)
 class ListingCard extends StatelessWidget {
   final String imageUrl;
   final String title;
@@ -55,7 +58,7 @@ class ListingCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    
+
     return Container(
       width: 160, // Ancho fijo para las tarjetas del carrusel
       margin: const EdgeInsets.only(left: 20),
@@ -73,19 +76,25 @@ class ListingCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // MEDIA (Imagen + Favorito + Badge)
+          // Imagen + Favorito + Badge
           Stack(
             children: [
               ClipRRect(
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(16),
+                ),
                 child: Image.network(
                   imageUrl,
                   height: 120,
                   width: double.infinity,
                   fit: BoxFit.cover,
                   errorBuilder: (_, __, ___) => Container(
-                    height: 120, color: Colors.grey.shade300,
-                    child: const Icon(Icons.image_not_supported, color: Colors.grey),
+                    height: 120,
+                    color: Colors.grey.shade300,
+                    child: const Icon(
+                      Icons.image_not_supported,
+                      color: Colors.grey,
+                    ),
                   ),
                 ),
               ),
@@ -99,7 +108,11 @@ class ListingCard extends StatelessWidget {
                     color: Colors.black.withValues(alpha: 0.3),
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(Icons.favorite_border, color: Colors.white, size: 18),
+                  child: const Icon(
+                    Icons.favorite_border,
+                    color: Colors.white,
+                    size: 18,
+                  ),
                 ),
               ),
               // Badge Opcional (Ej. "Urgente", "Destacado")
@@ -108,20 +121,27 @@ class ListingCard extends StatelessWidget {
                   top: 8,
                   left: 8,
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
                     decoration: BoxDecoration(
                       color: Colors.blueAccent,
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Text(
                       badge!,
-                      style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
                 ),
             ],
           ),
-          // DETALLES (Título + Subtítulo/Rating/Precio)
+          // Título + Subtítulo/Rating/Precio
           Padding(
             padding: const EdgeInsets.all(12.0),
             child: Column(
@@ -156,7 +176,7 @@ class ListingCard extends StatelessWidget {
   }
 }
 
-// 3. EL CARRUSEL (ListingCarousel)
+// El carrusel
 class ListingCarousel extends StatelessWidget {
   final List<Map<String, dynamic>> items;
 
@@ -174,7 +194,9 @@ class ListingCarousel extends StatelessWidget {
           final item = items[index];
           // Añadimos un margen derecho al último elemento para que no quede pegado al borde de la pantalla
           return Padding(
-            padding: EdgeInsets.only(right: index == items.length - 1 ? 20.0 : 0),
+            padding: EdgeInsets.only(
+              right: index == items.length - 1 ? 20.0 : 0,
+            ),
             child: ListingCard(
               imageUrl: item['image'],
               title: item['title'],
@@ -188,7 +210,6 @@ class ListingCarousel extends StatelessWidget {
   }
 }
 
-// 4. LA SECCIÓN COMPLETA (Header + Carrusel)
 class ListingSection extends StatelessWidget {
   final String title;
   final List<Map<String, dynamic>> items;
@@ -203,7 +224,7 @@ class ListingSection extends StatelessWidget {
         SectionHeader(
           title: title,
           onSeeMore: () {
-            // TODO: Navegar a lista completa en el futuro
+            // Navegar a lista completa en el futuro
           },
         ),
         ListingCarousel(items: items),

@@ -21,44 +21,51 @@ class MapBottomNavBar extends ConsumerWidget {
       return isDark ? Colors.grey.shade400 : Colors.grey.shade700;
     }
 
-    // AQUÍ VA LA MAGIA MAESTRA: Navegación de Instancia Única
+    // Navegación de Instancia Única
     void _manejarNavegacion(String targetPath) {
-      if (currentLocation == targetPath) return; // Si ya estás ahí, ignóralo
+      if (currentLocation == targetPath) return;
 
-      // Lista de pantallas que funcionan como "Modales Transparentes" sobre el mapa
-      final bool currentlyInModal = currentLocation == '/reports' || 
-                                    currentLocation == '/community' || 
-                                    currentLocation == '/user-info';
-                                    
-      final bool targetIsModal = targetPath == '/reports' || 
-                                 targetPath == '/community' || 
-                                 targetPath == '/user-info';
+      final bool currentlyInModal =
+          currentLocation == '/reports' ||
+          currentLocation == '/community' ||
+          currentLocation == '/user-info';
+
+      final bool targetIsModal =
+          targetPath == '/reports' ||
+          targetPath == '/community' ||
+          targetPath == '/user-info';
 
       if (targetPath == '/map') {
         if (currentlyInModal) {
           // Destruye el modal suavemente y regresa al cascarón del mapa
-          context.pop(); 
+          context.pop();
         } else {
           context.go('/map');
         }
       } else if (targetIsModal) {
         if (currentlyInModal) {
-          // Si cambias entre modales (Ej. de Reportes a Perfil), REEMPLAZA para no apilarlos al infinito
-          context.pushReplacement(targetPath, extra: targetPath == '/user-info' ? ref.read(authProvider).userId : null);
+          // Si cambias entre modales reemplaza para no apilarlos uno tras otro
+          context.pushReplacement(
+            targetPath,
+            extra: targetPath == '/user-info'
+                ? ref.read(authProvider).userId
+                : null,
+          );
         } else {
-          // Si vienes del mapa limpio, APILA el modal por primera vez
-          context.push(targetPath, extra: targetPath == '/user-info' ? ref.read(authProvider).userId : null);
+          // Si vienes del mapa limpio apila el modal por primera vez
+          context.push(
+            targetPath,
+            extra: targetPath == '/user-info'
+                ? ref.read(authProvider).userId
+                : null,
+          );
         }
       } else {
         context.push(targetPath);
       }
     }
 
-    Widget buildNavItem(
-      String label,
-      IconData iconData,
-      String path,
-    ) {
+    Widget buildNavItem(String label, IconData iconData, String path) {
       final color = getColor(path);
       return Expanded(
         child: GestureDetector(
@@ -107,7 +114,7 @@ class MapBottomNavBar extends ConsumerWidget {
           children: [
             buildNavItem('Mapa', Icons.map_rounded, '/map'),
             buildNavItem('Reportes', Icons.pets_rounded, '/reports'),
-            const SizedBox(width: 56), // Espacio para la cámara flotante
+            const SizedBox(width: 56), // Espacio para el boton de camara
             buildNavItem('Comunidad', Icons.people_alt_outlined, '/community'),
             buildNavItem('Yo', Icons.person_outline_rounded, '/user-info'),
           ],

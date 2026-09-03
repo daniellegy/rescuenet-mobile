@@ -17,12 +17,12 @@ class LocationSelectorScreen extends StatefulWidget {
 }
 
 class _LocationSelectorScreenState extends State<LocationSelectorScreen> {
-  // AQUÍ VA EL CAMBIO: Usamos el controlador nativo de Google Maps
+  // Usamos el controlador nativo de Google Maps
   GoogleMapController? _mapController;
   late double _currentLat;
   late double _currentLng;
 
-  // Mantenemos el mapa limpio de comercios (POIs) igual que en la pantalla principal
+  // Mantenemos el mapa limpio
   final String _mapStyle = '''
   [
     {
@@ -59,14 +59,13 @@ class _LocationSelectorScreenState extends State<LocationSelectorScreen> {
       body: Stack(
         alignment: Alignment.center,
         children: [
-          // AQUÍ VA EL CAMBIO: GoogleMap reemplaza a FlutterMap
           GoogleMap(
             initialCameraPosition: CameraPosition(
               target: LatLng(_currentLat, _currentLng),
               zoom: 18.0,
             ),
             minMaxZoomPreference: const MinMaxZoomPreference(5.5, 22.0),
-            // Restringimos la cámara a los límites de México (Aprox)
+            // Restringimos la cámara a los límites de México aprox
             cameraTargetBounds: CameraTargetBounds(
               LatLngBounds(
                 southwest: const LatLng(10.0, -120.0),
@@ -80,21 +79,16 @@ class _LocationSelectorScreenState extends State<LocationSelectorScreen> {
             myLocationButtonEnabled: false,
             onMapCreated: (GoogleMapController controller) {
               _mapController = controller;
-              // Cambio de ! a ?
               _mapController?.setMapStyle(_mapStyle);
             },
-            // Leemos el movimiento en tiempo real a 60 FPS
             onCameraMove: (CameraPosition position) {
               _currentLat = position.target.latitude;
               _currentLng = position.target.longitude;
             },
           ),
 
-          // PIN CENTRAL FIJO: Exactamente la misma lógica, hiper eficiente.
           const Padding(
-            padding: EdgeInsets.only(
-              bottom: 40.0,
-            ), // Ajuste visual para que la "punta" apunte al centro
+            padding: EdgeInsets.only(bottom: 40.0),
             child: Icon(Icons.location_on, size: 50.0, color: Colors.red),
           ),
 
@@ -127,7 +121,7 @@ class _LocationSelectorScreenState extends State<LocationSelectorScreen> {
       floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () {
-          // Retornamos las coordenadas exactas de donde quedó apuntando el mapa
+          // Retornamos las coordenadas de donde quedó apuntando el mapa
           Navigator.pop(context, {'lat': _currentLat, 'lng': _currentLng});
         },
         backgroundColor: const Color(0xFFD32F2F),

@@ -13,10 +13,8 @@ class ProfilePhotoSheet extends ConsumerWidget {
 
   Future<void> _procesarSubidaFoto({
     required ScaffoldMessengerState messenger,
-    required dynamic
-    cameraService, // Reemplaza dynamic con el tipo de tu servicio si lo prefieres
-    required dynamic
-    userProfileNotifier, // Reemplaza dynamic con el tipo de tu notifier
+    required dynamic cameraService,
+    required dynamic userProfileNotifier,
     required bool fromGallery,
   }) async {
     try {

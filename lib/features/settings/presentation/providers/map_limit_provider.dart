@@ -7,7 +7,7 @@ class MapLimitNotifier extends Notifier<int> {
   @override
   int build() {
     _loadLimit();
-    return 20; // Límite pertinente por defecto
+    return 20; // Límite de zoom del mapa
   }
 
   Future<void> _loadLimit() async {

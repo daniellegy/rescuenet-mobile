@@ -25,7 +25,7 @@ class DioClient {
           },
         ),
       ) {
-    // PRÁCTICA SENIOR: Los logs solo se inyectan si estás depurando.
+    // Los logs solo se inyectan si estás depurando
     if (kDebugMode) {
       _dio.interceptors.add(
         LogInterceptor(

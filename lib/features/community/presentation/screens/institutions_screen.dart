@@ -229,7 +229,7 @@ class InstitutionsScreen extends StatelessWidget {
         padding: const EdgeInsets.all(16),
         physics: const BouncingScrollPhysics(),
         children: [
-          // SECCIÓN 1: Rescate y Fauna Silvestre
+          // Rescate y Fauna Silvestre
           _buildSectionGroup(
             context,
             title: 'Rescate de Emergencia y Fauna Silvestre',
@@ -261,7 +261,7 @@ class InstitutionsScreen extends StatelessWidget {
             ],
           ),
 
-          // SECCIÓN 2: Autoridades Municipales
+          // Autoridades Municipales
           _buildSectionGroup(
             context,
             title: 'Autoridades Municipales',
@@ -311,7 +311,7 @@ class InstitutionsScreen extends StatelessWidget {
             ],
           ),
 
-          // SECCIÓN 3: Denuncias Penales
+          // Denuncias Penales
           _buildSectionGroup(
             context,
             title: 'Denuncias por Maltrato Animal (Penal)',

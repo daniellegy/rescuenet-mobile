@@ -7,13 +7,13 @@ import '../providers/public_user_reports_provider.dart';
 class PublicUserReportsScreen extends ConsumerWidget {
   final int userId;
   final String userName;
-  final int initialIndex; // NUEVO PARÁMETRO
+  final int initialIndex;
 
   const PublicUserReportsScreen({
     super.key,
     required this.userId,
     required this.userName,
-    this.initialIndex = 0, // Valor por defecto en caso de no proveerse
+    this.initialIndex = 0,
   });
 
   @override
@@ -43,7 +43,7 @@ class PublicUserReportsScreen extends ConsumerWidget {
               .toList();
 
           return DefaultTabController(
-            initialIndex: initialIndex, // APLICAMOS EL ÍNDICE AQUÍ
+            initialIndex: initialIndex,
             length: 2,
             child: Column(
               children: [

@@ -16,15 +16,11 @@ class CanalMensajeModel {
   });
 
   factory CanalMensajeModel.fromJson(Map<String, dynamic> json) {
-    // Manejo de zona horaria:
-    // NeonDB guarda en UTC pero como "timestamp without timezone".
-    // Forzamos a Flutter a interpretarlo como UTC añadiendo una 'Z'
-    // y luego lo pasamos a la hora local del dispositivo.
+    // Pasamos a la hora local del dispositivo
     DateTime parsearFechaLocal(String? fechaStr) {
       if (fechaStr == null) return DateTime.now();
       String fechaCorregida = fechaStr;
 
-      // Si el backend no le puso la Z de UTC, se la agregamos
       if (!fechaCorregida.endsWith('Z')) {
         fechaCorregida += 'Z';
       }
@@ -44,7 +40,7 @@ class CanalMensajeModel {
   }
 
   String get horaFormateada {
-    // Formateo amigable a 12 horas (AM/PM) que es el estándar visual
+    // Formateo de am y pm
     int hora = creadoEl.hour;
     final minuto = creadoEl.minute.toString().padLeft(2, '0');
     final periodo = hora >= 12 ? 'PM' : 'AM';

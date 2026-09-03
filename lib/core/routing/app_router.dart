@@ -29,7 +29,7 @@ class TransparentRoute<T> extends Page<T> {
   Route<T> createRoute(BuildContext context) {
     return PageRouteBuilder<T>(
       settings: this,
-      opaque: false, // CLAVE PARA MANTENER VIVO EL MAPA
+      opaque: false,
       barrierColor: Colors.transparent,
       pageBuilder: (context, animation, secondaryAnimation) => child,
     );
@@ -98,8 +98,6 @@ final routerProvider = Provider<GoRouter>((ref) {
           ),
         ],
       ),
-      // Moviendo /user-info fuera del ShellRoute soluciona el BUG de keyReservation
-      // y garantiza la flecha nativa hacia atrás
       GoRoute(
         path: '/user-info',
         builder: (context, state) {

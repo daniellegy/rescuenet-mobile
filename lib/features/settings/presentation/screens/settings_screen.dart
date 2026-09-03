@@ -34,8 +34,7 @@ class SettingsScreen extends ConsumerWidget {
           final String? tokenFCMActual = datos['fcm_token'];
           final bool notificacionesActivas =
               tokenFCMActual != null && tokenFCMActual.trim().isNotEmpty;
-          final bool perfilPrivado =
-              datos['perfil_privado'] ?? false; // Valor desde BD
+          final bool perfilPrivado = datos['perfil_privado'] ?? false;
 
           return ListView(
             padding: const EdgeInsets.only(
@@ -133,8 +132,7 @@ class SettingsScreen extends ConsumerWidget {
                   'Ocultar mis reportes e historial a la comunidad',
                 ),
                 value: perfilPrivado,
-                activeThumbColor:
-                    Colors.redAccent, // Actualizado según la buena práctica
+                activeThumbColor: Colors.redAccent,
                 onChanged: (bool value) async {
                   try {
                     await ref
@@ -158,7 +156,7 @@ class SettingsScreen extends ConsumerWidget {
                 title: const Text('Modo Oscuro'),
                 subtitle: const Text('Cambiar la apariencia de la aplicación'),
                 value: isDark,
-                activeThumbColor: Colors.redAccent, // Actualizado
+                activeThumbColor: Colors.redAccent,
                 onChanged: (bool value) {
                   ref.read(themeProvider.notifier).toggleTheme(value);
                 },
@@ -255,10 +253,7 @@ class SettingsScreen extends ConsumerWidget {
                   subtitle: Text(
                     curp,
                     style: TextStyle(
-                      // <-- SE QUITÓ EL 'const'
-                      color: isDark
-                          ? Colors.white
-                          : Colors.black87, // <-- CONDICIÓN DE MODO OSCURO
+                      color: isDark ? Colors.white : Colors.black87,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
@@ -289,7 +284,7 @@ class SettingsScreen extends ConsumerWidget {
                   notificacionesActivas ? 'Activadas' : 'Desactivadas',
                 ),
                 value: notificacionesActivas,
-                activeThumbColor: Colors.redAccent, // Actualizado
+                activeThumbColor: Colors.redAccent,
                 onChanged: (bool value) async {
                   if (value) {
                     try {

@@ -22,7 +22,7 @@ final activeReportsProvider = FutureProvider.autoDispose<List<ReportModel>>((
     lat = position.latitude;
     lng = position.longitude;
   } catch (_) {
-    // Falla silenciosa, si no hay GPS se enviará al backend nulo y usará la última conocida en DB
+    // Si no hay GPS se enviará falla al backend nulo y usará la última conocida en DB
   }
 
   String url = '/reportes/activos?limit=$limit';

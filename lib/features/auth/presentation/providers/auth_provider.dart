@@ -88,7 +88,7 @@ class AuthNotifier extends Notifier<AuthState> {
         final expirationDate = DateTime.fromMillisecondsSinceEpoch(exp * 1000);
 
         // Buffer de seguridad de 1 minuto: si expira en los próximos 60 segundos,
-        // lo forzamos a cerrar sesión para evitar que el request muera en tránsito.
+        // lo forzamos a cerrar sesión para evitar que el request muera en tránsito
         if (expirationDate
             .subtract(const Duration(minutes: 1))
             .isBefore(DateTime.now())) {

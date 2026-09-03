@@ -4,7 +4,6 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/network/dio_client.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 
-// FUNCIÓN PARA EXPANDIR IMÁGENES
 void _mostrarImagenExpandida(BuildContext context, String url) {
   showDialog(
     context: context,

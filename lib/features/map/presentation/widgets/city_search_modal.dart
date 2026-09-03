@@ -8,7 +8,7 @@ class CitySearchModal extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Diccionario de ciudades extraído del componente principal
+    // Diccionario de ciudades
     final Map<String, Map<String, LatLng>> regionesPorCiudad = {
       'Puebla': {
         'Puebla Centro': const LatLng(19.0414, -98.2063),

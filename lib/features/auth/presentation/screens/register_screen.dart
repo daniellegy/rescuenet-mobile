@@ -24,7 +24,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   bool _isPasswordVisible = false;
   bool _isConfirmPasswordVisible = false;
 
-  // RASTREADOR DE INTERACCIÓN: Mantiene el campo de rol neutral hasta que se toque
+  // Mantiene el campo de rol neutral hasta que se toque
   bool _roleInteracted = false;
 
   final _phoneMaskFormatter = MaskTextInputFormatter(
@@ -60,13 +60,13 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   bool get _isCurpValid =>
       _curpRegex.hasMatch(_curpController.text.trim().toUpperCase());
 
-  // MÉTODO ACTUALIZADO: Maneja la neutralidad y sincroniza el color del texto
+  // Maneja la neutralidad y sincroniza el color del texto
   InputDecoration _buildInputDecoration({
     required String labelText,
     required IconData prefixIcon,
     required bool isValid,
     required bool isEmpty,
-    bool isNeutral = false, // <- NUEVO PARÁMETRO
+    bool isNeutral = false,
     String? hintText,
     Widget? suffixIcon,
   }) {
@@ -148,7 +148,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   }
 
   Future<void> _ejecutarRegistro() async {
-    // Si la validación falla, lanzamos el aviso y salimos temprano (Early Return)
+    // Si la validación falla, lanzamos el aviso y salimos temprano
     if (_formKey.currentState?.validate() != true) {
       setState(() {});
       if (mounted) {
@@ -386,7 +386,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                     prefixIcon: Icons.volunteer_activism,
                     isValid: true,
                     isEmpty: false,
-                    isNeutral: !_roleInteracted, // SE APLICA LA NEUTRALIDAD
+                    isNeutral:
+                        !_roleInteracted, // Se alica la neutralidad hasta que el usuario interactúe
                   ),
                   items: const [
                     DropdownMenuItem(
@@ -401,7 +402,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                   onChanged: (String? newValue) {
                     if (newValue != null) {
                       setState(() {
-                        _roleInteracted = true; // REGISTRA LA INTERACCIÓN
+                        _roleInteracted = true; // Registra la interaccion
                         _selectedRole = newValue;
                         if (_selectedRole != 'Voluntario') {
                           _curpController.clear();

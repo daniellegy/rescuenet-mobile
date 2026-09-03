@@ -33,7 +33,6 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
   ReportModel? _reporteLocal;
   Position? _userPos;
 
-  // Actualizado a Switch Expression (Dart 3+)
   Color _obtenerColorPorEstado(String estado) {
     return switch (estado.toLowerCase()) {
       'nuevo' => const Color(0xFF0288D1),

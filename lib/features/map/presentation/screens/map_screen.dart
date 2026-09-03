@@ -197,9 +197,8 @@ class _MapScreenState extends ConsumerState<MapScreen>
     final Canvas canvas = Canvas(pictureRecorder);
     final Paint paint = Paint()..color = color;
 
-    // --- CAMBIOS DE TAMAÑO ---
-    const double size = 150; // Aumentado (antes 110)
-    const double radius = 60; // Aumentado (antes 45)
+    const double size = 150;
+    const double radius = 60;
     const double centerPoint = size / 2;
 
     final Paint shadowPaint = Paint()
@@ -207,7 +206,7 @@ class _MapScreenState extends ConsumerState<MapScreen>
       ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6);
 
     canvas.drawCircle(
-      const Offset(centerPoint, centerPoint + 6), // Sombra más difuminada
+      const Offset(centerPoint, centerPoint + 6),
       radius,
       shadowPaint,
     );
@@ -216,7 +215,7 @@ class _MapScreenState extends ConsumerState<MapScreen>
     final Paint whitePaint = Paint()..color = Colors.white;
     canvas.drawCircle(
       const Offset(centerPoint, centerPoint),
-      radius - 10, // Grosor del borde de color ajustado (antes 8)
+      radius - 10,
       whitePaint,
     );
 
@@ -225,7 +224,7 @@ class _MapScreenState extends ConsumerState<MapScreen>
     );
     textPainter.text = TextSpan(
       text: emoji,
-      style: const TextStyle(fontSize: 58), // Emoji más grande (antes 44)
+      style: const TextStyle(fontSize: 58),
     );
     textPainter.layout();
     textPainter.paint(
@@ -778,7 +777,6 @@ class _MapScreenState extends ConsumerState<MapScreen>
                     Expanded(
                       child: GestureDetector(
                         onTap: () {
-                          // Llamada limpia y directa al nuevo modal refactorizado
                           showModalBottomSheet(
                             context: context,
                             useRootNavigator: true,

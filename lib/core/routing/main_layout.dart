@@ -7,7 +7,7 @@ import 'package:rescuenet_mobile/features/map/presentation/widgets/map_bottom_na
 import 'package:rescuenet_mobile/core/services/camera_service.dart';
 import 'package:rescuenet_mobile/core/services/location_service.dart';
 
-// NUEVO: Clase personalizada para controlar la ubicación exacta y animación del botón
+// Clase personalizada para controlar la ubicación exacta y animación del botón
 class SinkingFabLocation extends FloatingActionButtonLocation {
   const SinkingFabLocation();
 
@@ -27,7 +27,6 @@ class SinkingFabLocation extends FloatingActionButtonLocation {
 
     // Si aparece un SnackBar, calculamos el hundimiento
     if (snackBarHeight > 0.0) {
-      // El FAB bajará suavemente al mismo ritmo que el SnackBar sube.
       // Se limita el hundimiento para que quede estéticamente anclado al menú inferior sin desaparecer
       double maxSink = fabHeight / 1.3;
       double sinkAmount = math.min(snackBarHeight, maxSink);
@@ -46,12 +45,9 @@ class MainLayout extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return Scaffold(
-      // SOLUCIÓN 1: Esto evita que la aparición del teclado empuje el botón principal hacia arriba estorbando el chat.
-      // (Las vistas hijas como los chats aún seguirán ajustándose correctamente al teclado de manera individual)
       resizeToAvoidBottomInset: false,
       extendBody: true,
       body: child,
-      // SOLUCIÓN 2: Asignamos nuestra lógica de ubicación dinámica personalizada
       floatingActionButtonLocation: const SinkingFabLocation(),
       floatingActionButton: FloatingActionButton(
         onPressed: () async {

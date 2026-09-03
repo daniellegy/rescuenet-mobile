@@ -237,7 +237,7 @@ class _CanalChatSheetState extends ConsumerState<CanalChatSheet> {
       builder: (context, scrollSheetController) {
         return Scaffold(
           backgroundColor: Colors
-              .transparent, // Scaffold maneja el teclado de manera nativa sin estirar DraggableSheet
+              .transparent, // Scaffold maneja el teclado de manera nativa sin estirar
           body: Container(
             decoration: BoxDecoration(
               color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
