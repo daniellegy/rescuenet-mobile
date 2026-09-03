@@ -175,7 +175,7 @@ class _LocalReportsTabState extends ConsumerState<LocalReportsTab> {
                     r.urgencia.toLowerCase() != _filtroUrgencia) {
                   return false;
                 }
-                final esp = (r.especie ?? '').toLowerCase();
+                final esp = r.especie.toLowerCase();
                 if (_filtroEspecie == 'perros' && !esp.contains('perro')) {
                   return false;
                 }
