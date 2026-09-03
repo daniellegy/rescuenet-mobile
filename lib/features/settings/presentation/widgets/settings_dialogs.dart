@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 
 import '../../../../core/services/camera_service.dart';
 import '../providers/settings_provider.dart';
@@ -12,16 +11,18 @@ import '../../../reports/presentation/providers/active_reports_provider.dart';
 class ProfilePhotoSheet extends ConsumerWidget {
   const ProfilePhotoSheet({super.key});
 
-Future<void> _procesarSubidaFoto({
+  Future<void> _procesarSubidaFoto({
     required ScaffoldMessengerState messenger,
-    required dynamic cameraService, // Reemplaza dynamic con el tipo de tu servicio si lo prefieres
-    required dynamic userProfileNotifier, // Reemplaza dynamic con el tipo de tu notifier
+    required dynamic
+    cameraService, // Reemplaza dynamic con el tipo de tu servicio si lo prefieres
+    required dynamic
+    userProfileNotifier, // Reemplaza dynamic con el tipo de tu notifier
     required bool fromGallery,
   }) async {
     try {
       final pickedFile = await cameraService.takePicture(
         fromGallery: fromGallery,
-        cropImage: true, 
+        cropImage: true,
       );
       if (pickedFile != null) {
         messenger.showSnackBar(
@@ -30,9 +31,9 @@ Future<void> _procesarSubidaFoto({
             duration: Duration(seconds: 2),
           ),
         );
-        
+
         await userProfileNotifier.actualizarFotoPerfil(pickedFile.path);
-        
+
         messenger.showSnackBar(
           const SnackBar(
             content: Text('Foto actualizada exitosamente'),
@@ -69,7 +70,9 @@ Future<void> _procesarSubidaFoto({
             onTap: () async {
               final messenger = ScaffoldMessenger.of(context);
               final cameraService = ref.read(cameraServiceProvider);
-              final userProfileNotifier = ref.read(userProfileProvider.notifier);
+              final userProfileNotifier = ref.read(
+                userProfileProvider.notifier,
+              );
 
               Navigator.pop(context);
 
@@ -87,7 +90,9 @@ Future<void> _procesarSubidaFoto({
             onTap: () async {
               final messenger = ScaffoldMessenger.of(context);
               final cameraService = ref.read(cameraServiceProvider);
-              final userProfileNotifier = ref.read(userProfileProvider.notifier);
+              final userProfileNotifier = ref.read(
+                userProfileProvider.notifier,
+              );
 
               Navigator.pop(context);
 
