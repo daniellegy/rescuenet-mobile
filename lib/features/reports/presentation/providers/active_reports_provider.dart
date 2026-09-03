@@ -1,7 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/network/dio_client.dart';
 import '../../../../core/services/location_service.dart';
-import '../../../history/domain/models/report_model.dart';
+import '../../domain/models/report_model.dart';
 import '../../../settings/presentation/providers/map_limit_provider.dart';
 
 final activeReportsProvider = FutureProvider.autoDispose<List<ReportModel>>((

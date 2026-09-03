@@ -9,7 +9,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'core/routing/app_router.dart';
 import 'core/theme/theme_provider.dart';
 import 'features/auth/presentation/providers/auth_provider.dart';
-import 'features/history/domain/models/report_model.dart';
+import 'features/reports/domain/models/report_model.dart';
 import 'features/map/presentation/providers/map_markers_provider.dart';
 import 'features/reports/presentation/providers/my_active_rescue_provider.dart';
 import 'features/reports/presentation/providers/active_reports_provider.dart';
@@ -23,7 +23,7 @@ void main() async {
   await Firebase.initializeApp();
   final container = ProviderContainer();
   await container.read(authProvider.notifier).restoreSession();
-  
+
   runApp(
     UncontrolledProviderScope(
       container: container,
@@ -99,13 +99,13 @@ class _RescueNetAppState extends ConsumerState<RescueNetApp> {
   }
 
   TextTheme _buildTextTheme(TextTheme baseTheme) {
-    return baseTheme.apply(
-      fontFamily: 'Inter',
-    ).copyWith(
-      bodyLarge: baseTheme.bodyLarge?.copyWith(fontSize: 14),
-      bodyMedium: baseTheme.bodyMedium?.copyWith(fontSize: 14),
-      bodySmall: baseTheme.bodySmall?.copyWith(fontSize: 12),
-    );
+    return baseTheme
+        .apply(fontFamily: 'Inter')
+        .copyWith(
+          bodyLarge: baseTheme.bodyLarge?.copyWith(fontSize: 14),
+          bodyMedium: baseTheme.bodyMedium?.copyWith(fontSize: 14),
+          bodySmall: baseTheme.bodySmall?.copyWith(fontSize: 12),
+        );
   }
 
   @override
@@ -128,7 +128,11 @@ class _RescueNetAppState extends ConsumerState<RescueNetApp> {
         textTheme: _buildTextTheme(ThemeData.light().textTheme),
         appBarTheme: AppBarTheme(
           titleTextStyle: GoogleFonts.dmSerifDisplay(
-            textStyle: const TextStyle(fontSize: 22, color: Colors.black, fontWeight: FontWeight.w600),
+            textStyle: const TextStyle(
+              fontSize: 22,
+              color: Colors.black,
+              fontWeight: FontWeight.w600,
+            ),
           ),
         ),
         useMaterial3: true,
@@ -143,7 +147,11 @@ class _RescueNetAppState extends ConsumerState<RescueNetApp> {
         textTheme: _buildTextTheme(ThemeData.dark().textTheme),
         appBarTheme: AppBarTheme(
           titleTextStyle: GoogleFonts.dmSerifDisplay(
-            textStyle: const TextStyle(fontSize: 22, color: Colors.white, fontWeight: FontWeight.w600),
+            textStyle: const TextStyle(
+              fontSize: 22,
+              color: Colors.white,
+              fontWeight: FontWeight.w600,
+            ),
           ),
         ),
         useMaterial3: true,

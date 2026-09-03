@@ -6,7 +6,7 @@ import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import '../../domain/models/report_model.dart';
+import '../../../reports/domain/models/report_model.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../reports/data/report_repository.dart';
 import '../../../map/presentation/providers/map_markers_provider.dart';

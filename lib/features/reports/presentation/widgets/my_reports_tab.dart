@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../history/domain/models/report_model.dart';
+import '../../domain/models/report_model.dart';
 import '../../../history/presentation/providers/history_provider.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import 'tactical_report_cards.dart';

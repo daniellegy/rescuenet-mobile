@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import '../../../history/domain/models/report_model.dart';
+import '../../domain/models/report_model.dart';
 
 Widget _buildFallbackIcon() => Container(
   width: 45,

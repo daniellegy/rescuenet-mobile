@@ -1,6 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/network/dio_client.dart';
-import '../../domain/models/report_model.dart';
+import '../../../reports/domain/models/report_model.dart';
 
 final publicUserReportsProvider = FutureProvider.autoDispose
     .family<List<ReportModel>, int>((ref, userId) async {

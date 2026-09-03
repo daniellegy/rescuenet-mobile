@@ -1,6 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/network/dio_client.dart';
-import '../../../history/domain/models/report_model.dart';
+import '../../domain/models/report_model.dart';
 
 final miRescateActivoProvider = FutureProvider.autoDispose<ReportModel?>((
   ref,

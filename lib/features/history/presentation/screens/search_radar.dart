@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 // AQUÍ VA EL CAMBIO: Importamos Google Maps y quitamos flutter_map, latlong2 y dotenv
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:geolocator/geolocator.dart';
-import '../../domain/models/report_model.dart';
+import '../../../reports/domain/models/report_model.dart';
 
 class SearchRadarScreen extends StatefulWidget {
   final ReportModel reporte;

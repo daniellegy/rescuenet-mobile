@@ -2,7 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/network/dio_client.dart';
 import '../../../../core/errors/app_exception.dart';
-import '../domain/models/report_model.dart';
+import '../../reports/domain/models/report_model.dart';
 
 class HistoryRepository {
   final Dio _dio;

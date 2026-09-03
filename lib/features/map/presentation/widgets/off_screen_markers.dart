@@ -1,7 +1,7 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
-import '../../../history/domain/models/report_model.dart';
+import '../../../reports/domain/models/report_model.dart';
 
 class OffScreenMarkers extends StatefulWidget {
   final GoogleMapController? mapController;
