@@ -10,7 +10,7 @@ import '../../features/map/presentation/screens/map_screen.dart';
 import '../../features/lost_dogs/presentation/screens/lost_dogs_screen.dart';
 import '../../features/reports/presentation/screens/create_report_screen.dart';
 import '../../features/history/presentation/screens/report_detail_screen.dart';
-import '../../features/history/domain/models/report_model.dart';
+import '../../features/reports/domain/models/report_model.dart';
 import '../../features/settings/presentation/screens/settings_screen.dart';
 import '../../features/history/presentation/screens/search_radar.dart';
 import '../../features/reports/presentation/screens/rescue_stepper_screen.dart';
@@ -69,10 +69,10 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state, child) => MainLayout(child: child),
         routes: [
           GoRoute(path: '/map', builder: (context, state) => const MapScreen()),
-          GoRoute(
-            path: '/lost-dogs',
-            builder: (context, state) => const LostDogsScreen(),
-          ),
+          // GoRoute(
+          //   path: '/lost-dogs',
+          //   builder: (context, state) => const LostDogsScreen(),
+          // ),
           GoRoute(
             path: '/inbox',
             builder: (context, state) => const InboxScreen(),
