@@ -40,7 +40,9 @@ class _CommunityScreenState extends ConsumerState<CommunityScreen>
 
   void _cerrarPantalla() {
     _slideController.reverse().then((_) {
-      if (mounted) context.pop();
+      if (mounted) {
+        context.pop();
+      }
     });
   }
 
