@@ -69,6 +69,7 @@ class RoleSelectionSheet extends ConsumerWidget {
             backgroundColor: Colors.green,
           ),
         );
+        Navigator.pop(parentContext);
       }
     } catch (e) {
       if (parentContext.mounted) {
@@ -160,12 +161,13 @@ class RoleSelectionSheet extends ConsumerWidget {
     int rolTarget,
     String titulo,
   ) async {
-    Navigator.pop(modalContext);
-
+    // Si es el mismo rol, solo cerramos
     if (rolTarget == rolActualId) {
+      Navigator.pop(modalContext);
       return;
     }
 
+    // Validaciones de casos activos
     if (rolActualId == 1) {
       final historial = ref.read(misReportesProvider).value ?? [];
       final tieneActivos = historial.any(
@@ -180,6 +182,7 @@ class RoleSelectionSheet extends ConsumerWidget {
             backgroundColor: Colors.redAccent,
           ),
         );
+        Navigator.pop(modalContext);
         return;
       }
     } else if (rolActualId == 2) {
@@ -193,14 +196,17 @@ class RoleSelectionSheet extends ConsumerWidget {
             backgroundColor: Colors.redAccent,
           ),
         );
+        Navigator.pop(modalContext);
         return;
       }
     }
 
+    // Procesamiento de Manifiesto
     String? tokenFCM;
     if (rolTarget == 2) {
       final acepto = await _mostrarManifiestoVoluntario(parentContext);
       if (!acepto) {
+        Navigator.pop(modalContext); // Cerramos porque el usuario canceló
         return;
       }
       try {
@@ -222,10 +228,12 @@ class RoleSelectionSheet extends ConsumerWidget {
       }
     }
 
+    // Si el bottom sheet por alguna razón externa se cerró, abortamos.
     if (!parentContext.mounted) {
       return;
     }
 
+    // Continuamos con CURP o procesamos el cambio directo
     if (rolTarget == 2 && (curpActual == null || curpActual!.trim().isEmpty)) {
       _mostrarDialogoRegistroCurp(parentContext, ref, tokenFCM);
     } else {
