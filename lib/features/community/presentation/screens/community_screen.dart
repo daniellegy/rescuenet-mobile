@@ -153,7 +153,9 @@ class _CommunityScreenState extends ConsumerState<CommunityScreen>
     return PopScope(
       canPop: false,
       onPopInvoked: (didPop) {
-        if (!didPop) _cerrarPantalla();
+        if (!didPop) {
+          _cerrarPantalla();
+        }
       },
       child: Scaffold(
         backgroundColor: Colors.transparent,
